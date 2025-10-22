@@ -1,65 +1,18 @@
 // ===== CONFIGURATION =====
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz8cxk7pTc_Fpl4t0GmPMRpvOpkjAXoB_vgtfB6lUSmb2vqh5lx0mnfT2aHkkkIp0ly/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwPRwwA972ICs3UJzmAmemzf7ubNBCBHiKkEQnSZMIxadjTBANCw2LzMymcB_t4FoKB/exec';
+const REGISTRATION_START = new Date('2025-10-22T14:00:00+07:00');
+const REGISTRATION_END = new Date('2025-10-30T23:59:59+07:00');
+const DEVELOPER_MODE = true;
 
-// REGISTRATION TIME WINDOW
-const REGISTRATION_START = new Date('2025-10-22T14:00:00+07:00'); // 29 Oktober 2025, 00:00 WIB
-const REGISTRATION_END = new Date('2025-10-30T23:59:59+07:00');   // 30 Oktober 2025, 23:59 WIB
-
-// Logger utility
 const Logger = {
     log: function(message, data = null) {
         const timestamp = new Date().toISOString();
-        const logMessage = `[${timestamp}] ${message}`;
-        console.log(logMessage, data || '');
+        console.log(`[${timestamp}] ${message}`, data || '');
     },
     error: function(message, error = null) {
         const timestamp = new Date().toISOString();
-        const logMessage = `[${timestamp}] ERROR: ${message}`;
-        console.error(logMessage, error || '');
+        console.error(`[${timestamp}] ERROR: ${message}`, error || '');
     }
-};
-
-const cabangData = {
-    'Tartil Al Qur\'an Putra|12-11-29|personal|male|TA': { name: 'Tartil Al Qur\'an Putra', maxAge: '12-11-29', isTeam: false, genderRestriction: 'male', code: 'TA' },
-    'Tartil Al Qur\'an Putri|12-11-29|personal|female|TA': { name: 'Tartil Al Qur\'an Putri', maxAge: '12-11-29', isTeam: false, genderRestriction: 'female', code: 'TA' },
-    'Tilawah Anak-anak Putra|14-11-29|personal|male|TLA': { name: 'Tilawah Anak-anak Putra', maxAge: '14-11-29', isTeam: false, genderRestriction: 'male', code: 'TLA' },
-    'Tilawah Anak-anak Putri|14-11-29|personal|female|TLA': { name: 'Tilawah Anak-anak Putri', maxAge: '14-11-29', isTeam: false, genderRestriction: 'female', code: 'TLA' },
-    'Tilawah Remaja Putra|24-11-29|personal|male|TLR': { name: 'Tilawah Remaja Putra', maxAge: '24-11-29', isTeam: false, genderRestriction: 'male', code: 'TLR' },
-    'Tilawah Remaja Putri|24-11-29|personal|female|TLR': { name: 'Tilawah Remaja Putri', maxAge: '24-11-29', isTeam: false, genderRestriction: 'female', code: 'TLR' },
-    'Tilawah Dewasa Putra|40-11-29|personal|male|TLD': { name: 'Tilawah Dewasa Putra', maxAge: '40-11-29', isTeam: false, genderRestriction: 'male', code: 'TLD' },
-    'Tilawah Dewasa Putri|40-11-29|personal|female|TLD': { name: 'Tilawah Dewasa Putri', maxAge: '40-11-29', isTeam: false, genderRestriction: 'female', code: 'TLD' },
-    'Qira\'at Mujawwad Putra|40-11-29|personal|male|QM': { name: 'Qira\'at Mujawwad Putra', maxAge: '40-11-29', isTeam: false, genderRestriction: 'male', code: 'QM' },
-    'Qira\'at Mujawwad Putri|40-11-29|personal|female|QM': { name: 'Qira\'at Mujawwad Putri', maxAge: '40-11-29', isTeam: false, genderRestriction: 'female', code: 'QM' },
-    'Hafalan 1 Juz Putra|15-11-29|personal|male|H1J': { name: 'Hafalan 1 Juz Putra', maxAge: '15-11-29', isTeam: false, genderRestriction: 'male', code: 'H1J' },
-    'Hafalan 1 Juz Putri|15-11-29|personal|female|H1J': { name: 'Hafalan 1 Juz Putri', maxAge: '15-11-29', isTeam: false, genderRestriction: 'female', code: 'H1J' },
-    'Hafalan 5 Juz Putra|20-11-29|personal|male|H5J': { name: 'Hafalan 5 Juz Putra', maxAge: '20-11-29', isTeam: false, genderRestriction: 'male', code: 'H5J' },
-    'Hafalan 5 Juz Putri|20-11-29|personal|female|H5J': { name: 'Hafalan 5 Juz Putri', maxAge: '20-11-29', isTeam: false, genderRestriction: 'female', code: 'H5J' },
-    'Hafalan 10 Juz Putra|20-11-29|personal|male|H10J': { name: 'Hafalan 10 Juz Putra', maxAge: '20-11-29', isTeam: false, genderRestriction: 'male', code: 'H10J' },
-    'Hafalan 10 Juz Putri|20-11-29|personal|female|H10J': { name: 'Hafalan 10 Juz Putri', maxAge: '20-11-29', isTeam: false, genderRestriction: 'female', code: 'H10J' },
-    'Hafalan 20 Juz Putra|22-11-29|personal|male|H20J': { name: 'Hafalan 20 Juz Putra', maxAge: '22-11-29', isTeam: false, genderRestriction: 'male', code: 'H20J' },
-    'Hafalan 20 Juz Putri|22-11-29|personal|female|H20J': { name: 'Hafalan 20 Juz Putri', maxAge: '22-11-29', isTeam: false, genderRestriction: 'female', code: 'H20J' },
-    'Hafalan 30 Juz Putra|22-11-29|personal|male|H30J': { name: 'Hafalan 30 Juz Putra', maxAge: '22-11-29', isTeam: false, genderRestriction: 'male', code: 'H30J' },
-    'Hafalan 30 Juz Putri|22-11-29|personal|female|H30J': { name: 'Hafalan 30 Juz Putri', maxAge: '22-11-29', isTeam: false, genderRestriction: 'female', code: 'H30J' },
-    'Tafsir Arab Putra|22-11-29|personal|male|TFA': { name: 'Tafsir Arab Putra', maxAge: '22-11-29', isTeam: false, genderRestriction: 'male', code: 'TFA' },
-    'Tafsir Arab Putri|22-11-29|personal|female|TFA': { name: 'Tafsir Arab Putri', maxAge: '22-11-29', isTeam: false, genderRestriction: 'female', code: 'TFA' },
-    'Tafsir Indonesia Putra|34-11-29|personal|male|TFI': { name: 'Tafsir Indonesia Putra', maxAge: '34-11-29', isTeam: false, genderRestriction: 'male', code: 'TFI' },
-    'Tafsir Indonesia Putri|34-11-29|personal|female|TFI': { name: 'Tafsir Indonesia Putri', maxAge: '34-11-29', isTeam: false, genderRestriction: 'female', code: 'TFI' },
-    'Tafsir Inggris Putra|34-11-29|personal|male|TFE': { name: 'Tafsir Inggris Putra', maxAge: '34-11-29', isTeam: false, genderRestriction: 'male', code: 'TFE' },
-    'Tafsir Inggris Putri|34-11-29|personal|female|TFE': { name: 'Tafsir Inggris Putri', maxAge: '34-11-29', isTeam: false, genderRestriction: 'female', code: 'TFE' },
-    'Kaligrafi Naskah Putra|34-11-29|personal|male|KN': { name: 'Kaligrafi Naskah Putra', maxAge: '34-11-29', isTeam: false, genderRestriction: 'male', code: 'KN' },
-    'Kaligrafi Naskah Putri|34-11-29|personal|female|KN': { name: 'Kaligrafi Naskah Putri', maxAge: '34-11-29', isTeam: false, genderRestriction: 'female', code: 'KN' },
-    'Kaligrafi Hiasan Putra|34-11-29|personal|male|KH': { name: 'Kaligrafi Hiasan Putra', maxAge: '34-11-29', isTeam: false, genderRestriction: 'male', code: 'KH' },
-    'Kaligrafi Hiasan Putri|34-11-29|personal|female|KH': { name: 'Kaligrafi Hiasan Putri', maxAge: '34-11-29', isTeam: false, genderRestriction: 'female', code: 'KH' },
-    'Kaligrafi Dekorasi Putra|34-11-29|personal|male|KD': { name: 'Kaligrafi Dekorasi Putra', maxAge: '34-11-29', isTeam: false, genderRestriction: 'male', code: 'KD' },
-    'Kaligrafi Dekorasi Putri|34-11-29|personal|female|KD': { name: 'Kaligrafi Dekorasi Putri', maxAge: '34-11-29', isTeam: false, genderRestriction: 'female', code: 'KD' },
-    'Kaligrafi Kontemporer Putra|34-11-29|personal|male|KK': { name: 'Kaligrafi Kontemporer Putra', maxAge: '34-11-29', isTeam: false, genderRestriction: 'male', code: 'KK' },
-    'Kaligrafi Kontemporer Putri|34-11-29|personal|female|KK': { name: 'Kaligrafi Kontemporer Putri', maxAge: '34-11-29', isTeam: false, genderRestriction: 'female', code: 'KK' },
-    'KTIQ Putra|24-11-29|personal|male|KTIQ': { name: 'KTIQ Putra', maxAge: '24-11-29', isTeam: false, genderRestriction: 'male', code: 'KTIQ' },
-    'KTIQ Putri|24-11-29|personal|female|KTIQ': { name: 'KTIQ Putri', maxAge: '24-11-29', isTeam: false, genderRestriction: 'female', code: 'KTIQ' },
-    'Fahm Al Qur\'an Putra|18-11-29|tim|3|male|FAQ': { name: 'Fahm Al Qur\'an Putra', maxAge: '18-11-29', isTeam: true, memberCount: 3, genderRestriction: 'male', code: 'FAQ' },
-    'Fahm Al Qur\'an Putri|18-11-29|tim|3|female|FAQ': { name: 'Fahm Al Qur\'an Putri', maxAge: '18-11-29', isTeam: true, memberCount: 3, genderRestriction: 'female', code: 'FAQ' },
-    'Syarh Al Qur\'an Putra|18-11-29|tim|3|male|SAQ': { name: 'Syarh Al Qur\'an Putra', maxAge: '18-11-29', isTeam: true, memberCount: 3, genderRestriction: 'male', code: 'SAQ' },
-    'Syarh Al Qur\'an Putri|18-11-29|tim|3|female|SAQ': { name: 'Syarh Al Qur\'an Putri', maxAge: '18-11-29', isTeam: true, memberCount: 3, genderRestriction: 'female', code: 'SAQ' }
 };
 
 let currentCabang = null;
@@ -70,112 +23,118 @@ let savedTeamData = {};
 let confirmCallback = null;
 let countdownInterval = null;
 
-// ===== REGISTRATION TIME CONTROL =====
+// ===== PERBAIKAN #3: DATE INPUT HANDLING =====
+function formatDateInput(e) {
+    let value = e.target.value;
+    if (value.length === 10) return;
+    value = value.replace(/[^\d-]/g, '');
+    const parts = value.split('-');
+    
+    if (parts[0] && parts[0].length > 4) parts[0] = parts[0].slice(0, 4);
+    if (parts[1] && parts[1].length > 2) {
+        parts[1] = parts[1].slice(0, 2);
+        const month = parseInt(parts[1]);
+        if (month > 12) parts[1] = '12';
+    }
+    if (parts[2] && parts[2].length > 2) {
+        parts[2] = parts[2].slice(0, 2);
+        const day = parseInt(parts[2]);
+        if (day > 31) parts[2] = '31';
+    }
+    if (parts[0]) {
+        const year = parseInt(parts[0]);
+        const currentYear = new Date().getFullYear();
+        if (year > currentYear) parts[0] = currentYear.toString();
+    }
+    e.target.value = parts.filter(p => p).join('-');
+}
+
 function checkRegistrationTime() {
     const now = new Date();
     const isOpen = now >= REGISTRATION_START && now <= REGISTRATION_END;
-    
-    Logger.log('Checking registration time - Current: ' + now.toISOString());
-    Logger.log('Registration window: ' + REGISTRATION_START.toISOString() + ' to ' + REGISTRATION_END.toISOString());
-    Logger.log('Is open: ' + isOpen);
-    
     const registrationClosed = document.getElementById('registrationClosed');
     const registrationOpen = document.getElementById('registrationOpen');
-    const closedMessage = document.getElementById('closedMessage');
-    const countdownTimer = document.getElementById('countdownTimer');
     
     if (isOpen) {
         registrationClosed.style.display = 'none';
         registrationOpen.style.display = 'block';
-        if (countdownInterval) {
-            clearInterval(countdownInterval);
-        }
+        if (countdownInterval) clearInterval(countdownInterval);
     } else {
         registrationClosed.style.display = 'block';
         registrationOpen.style.display = 'none';
-        
         if (now < REGISTRATION_START) {
-            closedMessage.textContent = 'Pendaftaran peserta MTQ ke-55 akan dibuka pada tanggal 29 Oktober 2025 pukul 00:00 WIB.';
-            countdownTimer.style.display = 'block';
+            document.getElementById('closedMessage').textContent = 'Pendaftaran peserta MTQ ke-55 akan dibuka pada tanggal 29 Oktober 2025 pukul 00:00 WIB.';
+            document.getElementById('countdownTimer').style.display = 'block';
             startCountdown();
         } else {
-            closedMessage.textContent = 'Mohon maaf, pendaftaran peserta MTQ ke-55 telah ditutup pada tanggal 30 Oktober 2025 pukul 23:59 WIB.';
-            countdownTimer.style.display = 'none';
-            if (countdownInterval) {
-                clearInterval(countdownInterval);
-            }
+            document.getElementById('closedMessage').textContent = 'Mohon maaf, pendaftaran peserta MTQ ke-55 telah ditutup pada tanggal 30 Oktober 2025 pukul 23:59 WIB.';
+            document.getElementById('countdownTimer').style.display = 'none';
+            if (countdownInterval) clearInterval(countdownInterval);
         }
     }
-    
     return isOpen;
 }
 
 function startCountdown() {
-    updateCountdown();
-    countdownInterval = setInterval(updateCountdown, 1000);
+    const update = () => {
+        const now = new Date();
+        const diff = REGISTRATION_START - now;
+        if (diff <= 0) {
+            clearInterval(countdownInterval);
+            checkRegistrationTime();
+            return;
+        }
+        document.getElementById('days').textContent = String(Math.floor(diff / (1000*60*60*24))).padStart(2, '0');
+        document.getElementById('hours').textContent = String(Math.floor((diff % (1000*60*60*24)) / (1000*60*60))).padStart(2, '0');
+        document.getElementById('minutes').textContent = String(Math.floor((diff % (1000*60*60)) / (1000*60))).padStart(2, '0');
+        document.getElementById('seconds').textContent = String(Math.floor((diff % (1000*60)) / 1000)).padStart(2, '0');
+    };
+    update();
+    countdownInterval = setInterval(update, 1000);
 }
 
-function updateCountdown() {
-    const now = new Date();
-    const diff = REGISTRATION_START - now;
-    
-    if (diff <= 0) {
-        clearInterval(countdownInterval);
-        checkRegistrationTime();
-        return;
-    }
-    
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-    
-    document.getElementById('days').textContent = String(days).padStart(2, '0');
-    document.getElementById('hours').textContent = String(hours).padStart(2, '0');
-    document.getElementById('minutes').textContent = String(minutes).padStart(2, '0');
-    document.getElementById('seconds').textContent = String(seconds).padStart(2, '0');
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-    checkRegistrationTime();
-    setInterval(checkRegistrationTime, 60000);
-});
-
-function updateProgress(percent) {
-    const fill = document.getElementById('progressFill');
-    if (fill) {
-        fill.style.width = percent + '%';
-        fill.textContent = percent + '%';
-    }
-}
-
-function showTab(tabName) {
-    document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
-    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-    document.getElementById(tabName).classList.add('active');
-    event.target.classList.add('active');
-}
-
-// VALIDASI JENIS KELAMIN
+// ===== PERBAIKAN #5: VALIDASI JENIS KELAMIN =====
 function validateGender() {
     if (!currentCabang) return { isValid: true, message: '' };
     const genderRestriction = currentCabang.genderRestriction;
     if (!genderRestriction || genderRestriction === 'any') return { isValid: true, message: '' };
     
     const requiredGender = genderRestriction === 'male' ? 'Laki-laki' : 'Perempuan';
-    const cabangType = genderRestriction === 'male' ? 'Putra' : 'Putri';
     
     if (!currentCabang.isTeam) {
         const selectedGender = document.getElementById('jenisKelamin')?.value;
         if (selectedGender && selectedGender !== requiredGender) {
-            return { isValid: false, message: `❌ Jenis kelamin tidak sesuai! Cabang "${currentCabang.name}" khusus untuk peserta ${cabangType}` };
+            return { isValid: false, message: `Jenis kelamin tidak sesuai! Cabang ini khusus untuk ${genderRestriction === 'male' ? 'Laki-laki (Putra)' : 'Perempuan (Putri)'}` };
+        }
+    } else {
+        const expectedGender = genderRestriction === 'male' ? 'Laki-laki' : 'Perempuan';
+        for (let i = 1; i <= currentTeamMemberCount; i++) {
+            const memberGender = document.querySelector(`[name="memberJenisKelamin${i}"]`)?.value;
+            if (memberGender && memberGender !== expectedGender) {
+                return { isValid: false, message: `Peserta #${i}: Jenis kelamin tidak sesuai! Semua peserta tim harus ${expectedGender}` };
+            }
         }
     }
     return { isValid: true, message: '' };
 }
 
+function clearPersonalData() {
+    savedPersonalData = null;
+    uploadedFiles = Object.keys(uploadedFiles).reduce((acc, key) => {
+        if (!key.startsWith('doc')) acc[key] = uploadedFiles[key];
+        return acc;
+    }, {});
+}
+
+function clearTeamData() {
+    savedTeamData = {};
+    uploadedFiles = Object.keys(uploadedFiles).reduce((acc, key) => {
+        if (!key.startsWith('teamDoc')) acc[key] = uploadedFiles[key];
+        return acc;
+    }, {});
+}
+
 function savePersonalData() {
-    Logger.log('Saving personal data');
     savedPersonalData = {
         nik: document.getElementById('nik')?.value || '',
         nama: document.getElementById('nama')?.value || '',
@@ -190,24 +149,15 @@ function savePersonalData() {
         noRek: document.getElementById('noRek')?.value || '',
         namaBank: document.getElementById('namaBank')?.value || ''
     };
-    
     const savedFiles = {};
     for (let i = 1; i <= 5; i++) {
-        if (uploadedFiles[`doc${i}`]) {
-            savedFiles[`doc${i}`] = uploadedFiles[`doc${i}`];
-        }
+        if (uploadedFiles[`doc${i}`]) savedFiles[`doc${i}`] = uploadedFiles[`doc${i}`];
     }
     savedPersonalData.files = savedFiles;
-    Logger.log('Personal data saved', savedPersonalData);
 }
 
 function saveTeamData() {
-    Logger.log('Saving team data before member count change');
-    savedTeamData = {
-        namaRegu: document.getElementById('namaRegu')?.value || '',
-        members: {}
-    };
-    
+    savedTeamData = { namaRegu: document.getElementById('namaRegu')?.value || '', members: {} };
     for (let i = 1; i <= currentTeamMemberCount; i++) {
         const memberData = {
             nik: document.querySelector(`[name="memberNik${i}"]`)?.value || '',
@@ -224,28 +174,16 @@ function saveTeamData() {
             namaBank: document.querySelector(`[name="memberNamaBank${i}"]`)?.value || '',
             files: {}
         };
-        
         for (let d = 1; d <= 5; d++) {
-            if (uploadedFiles[`teamDoc${i}_${d}`]) {
-                memberData.files[`doc${d}`] = uploadedFiles[`teamDoc${i}_${d}`];
-            }
+            if (uploadedFiles[`teamDoc${i}_${d}`]) memberData.files[`doc${d}`] = uploadedFiles[`teamDoc${i}_${d}`];
         }
         savedTeamData.members[i] = memberData;
     }
-    Logger.log('Team data saved', savedTeamData);
 }
 
 function restoreTeamData() {
-    Logger.log('Restoring team data after member count change');
-    if (!savedTeamData || !savedTeamData.members) {
-        Logger.log('No saved team data to restore');
-        return;
-    }
-    
-    if (savedTeamData.namaRegu) {
-        document.getElementById('namaRegu').value = savedTeamData.namaRegu;
-    }
-    
+    if (!savedTeamData || !savedTeamData.members) return;
+    if (savedTeamData.namaRegu) document.getElementById('namaRegu').value = savedTeamData.namaRegu;
     for (let i in savedTeamData.members) {
         const memberData = savedTeamData.members[i];
         if (document.querySelector(`[name="memberNik${i}"]`)) {
@@ -261,55 +199,38 @@ function restoreTeamData() {
             document.querySelector(`[name="memberNamaRek${i}"]`).value = memberData.namaRek;
             document.querySelector(`[name="memberNoRek${i}"]`).value = memberData.noRek;
             document.querySelector(`[name="memberNamaBank${i}"]`).value = memberData.namaBank;
-            
             for (let d in memberData.files) {
                 const docNum = d.replace('doc', '');
                 uploadedFiles[`teamDoc${i}_${docNum}`] = memberData.files[d];
-                const labelId = `teamDoc${i}_${docNum}Name`;
-                const label = document.getElementById(labelId);
+                const label = document.getElementById(`teamDoc${i}_${docNum}Name`);
                 if (label) {
                     label.textContent = memberData.files[d].name;
                     label.style.color = '#28a745';
                 }
             }
-            Logger.log(`Restored member ${i} data`);
         }
     }
 }
 
 function restoreToTeamMember1() {
     if (!savedPersonalData) return;
-    Logger.log('Restoring personal data to team member 1');
-    
     const fields = [
-        { saved: 'nik', team: 'memberNik1' },
-        { saved: 'nama', team: 'memberName1' },
-        { saved: 'jenisKelamin', team: 'memberJenisKelamin1' },
-        { saved: 'tempatLahir', team: 'memberTempatLahir1' },
-        { saved: 'tglLahir', team: 'memberBirthDate1' },
-        { saved: 'umur', team: 'memberUmur1' },
-        { saved: 'alamat', team: 'memberAlamat1' },
-        { saved: 'noTelepon', team: 'memberNoTelepon1' },
-        { saved: 'email', team: 'memberEmail1' },
-        { saved: 'namaRek', team: 'memberNamaRek1' },
-        { saved: 'noRek', team: 'memberNoRek1' },
-        { saved: 'namaBank', team: 'memberNamaBank1' }
+        { saved: 'nik', team: 'memberNik1' }, { saved: 'nama', team: 'memberName1' },
+        { saved: 'jenisKelamin', team: 'memberJenisKelamin1' }, { saved: 'tempatLahir', team: 'memberTempatLahir1' },
+        { saved: 'tglLahir', team: 'memberBirthDate1' }, { saved: 'umur', team: 'memberUmur1' },
+        { saved: 'alamat', team: 'memberAlamat1' }, { saved: 'noTelepon', team: 'memberNoTelepon1' },
+        { saved: 'email', team: 'memberEmail1' }, { saved: 'namaRek', team: 'memberNamaRek1' },
+        { saved: 'noRek', team: 'memberNoRek1' }, { saved: 'namaBank', team: 'memberNamaBank1' }
     ];
-    
     fields.forEach(field => {
         const input = document.querySelector(`[name="${field.team}"]`);
-        if (input && savedPersonalData[field.saved]) {
-            input.value = savedPersonalData[field.saved];
-            Logger.log(`Restored ${field.team}: ${savedPersonalData[field.saved]}`);
-        }
+        if (input && savedPersonalData[field.saved]) input.value = savedPersonalData[field.saved];
     });
-    
     if (savedPersonalData.files) {
         for (let docKey in savedPersonalData.files) {
             const docNum = docKey.replace('doc', '');
             uploadedFiles[`teamDoc1_${docNum}`] = savedPersonalData.files[docKey];
-            const labelId = `teamDoc1_${docNum}Name`;
-            const label = document.getElementById(labelId);
+            const label = document.getElementById(`teamDoc1_${docNum}Name`);
             if (label) {
                 label.textContent = savedPersonalData.files[docKey].name;
                 label.style.color = '#28a745';
@@ -318,12 +239,11 @@ function restoreToTeamMember1() {
     }
 }
 
+// ===== PERBAIKAN #7, #8, #9: HANDLE CABANG CHANGE =====
 function handleCabangChange() {
-    Logger.log('Cabang changed');
     const selectedValue = document.getElementById('cabang').value;
+    const cabangData = getCabangData();
     const data = cabangData[selectedValue];
-    const dataDiriSection = document.getElementById('dataDiriSection');
-    const rekeningPersonal = document.getElementById('rekeningPersonalSection');
     
     if (currentCabang && !currentCabang.isTeam) {
         savePersonalData();
@@ -339,47 +259,45 @@ function handleCabangChange() {
     
     if (!data) {
         currentCabang = null;
-        dataDiriSection.style.display = 'none';
-        rekeningPersonal.style.display = 'none';
+        document.getElementById('dataDiriSection').style.display = 'none';
+        document.getElementById('rekeningPersonalSection').style.display = 'none';
+        clearPersonalData();
+        clearTeamData();
         updateSubmitButtonState();
         return;
     }
     
     currentCabang = data;
     const ageText = data.maxAge.split('-').join(' tahun ') + ' hari';
-    let ageRequirementText = `ℹ️ Batas usia maksimal: ${ageText} (per 1 November 2025)`;
-    
+    let ageRequirementText = `Batas usia maksimal: ${ageText} (per 1 November 2025)`;
     if (data.genderRestriction && data.genderRestriction !== 'any') {
         const genderText = data.genderRestriction === 'male' ? 'Laki-laki' : 'Perempuan';
-        ageRequirementText += `<br>👥 Khusus peserta: ${genderText}`;
+        ageRequirementText += `<br>Khusus peserta: ${genderText}`;
     }
-    
     document.getElementById('ageRequirement').innerHTML = ageRequirementText;
     document.getElementById('ageRequirement').style.display = 'block';
     
     if (data.isTeam) {
-        Logger.log('Switching to team mode');
         currentTeamMemberCount = 2;
         generateTeamForm(2);
         document.getElementById('teamSection').style.display = 'block';
-        dataDiriSection.style.display = 'none';
-        rekeningPersonal.style.display = 'none';
-        
+        document.getElementById('dataDiriSection').style.display = 'none';
+        document.getElementById('rekeningPersonalSection').style.display = 'none';
+        clearPersonalData();
         setTimeout(() => {
-            if (savedPersonalData && Object.keys(savedPersonalData).length > 0) {
-                restoreToTeamMember1();
-            } else if (savedTeamData && Object.keys(savedTeamData).length > 0) {
+            if (savedTeamData && Object.keys(savedTeamData).length > 0) {
                 restoreTeamData();
+            } else if (savedPersonalData && Object.keys(savedPersonalData).length > 0) {
+                restoreToTeamMember1();
             }
             updateSubmitButtonState();
         }, 100);
     } else {
-        Logger.log('Switching to personal mode');
-        dataDiriSection.style.display = 'block';
-        rekeningPersonal.style.display = 'block';
+        document.getElementById('dataDiriSection').style.display = 'block';
+        document.getElementById('rekeningPersonalSection').style.display = 'block';
         generatePersonalDocsForm();
         document.getElementById('personalSection').style.display = 'block';
-        
+        clearTeamData();
         setTimeout(() => {
             if (savedPersonalData && Object.keys(savedPersonalData).length > 0) {
                 document.getElementById('nik').value = savedPersonalData.nik;
@@ -394,13 +312,11 @@ function handleCabangChange() {
                 document.getElementById('namaRek').value = savedPersonalData.namaRek;
                 document.getElementById('noRek').value = savedPersonalData.noRek;
                 document.getElementById('namaBank').value = savedPersonalData.namaBank;
-                
                 if (savedPersonalData.files) {
                     for (let docKey in savedPersonalData.files) {
                         uploadedFiles[docKey] = savedPersonalData.files[docKey];
                         const docNum = docKey.replace('doc', '');
-                        const labelId = `personalDoc${docNum}Name`;
-                        const label = document.getElementById(labelId);
+                        const label = document.getElementById(`personalDoc${docNum}Name`);
                         if (label) {
                             label.textContent = savedPersonalData.files[docKey].name;
                             label.style.color = '#28a745';
@@ -411,19 +327,17 @@ function handleCabangChange() {
             updateSubmitButtonState();
         }, 100);
     }
-    
     updateSubmitButtonState();
 }
 
 function generatePersonalDocsForm() {
-    Logger.log('Generating personal docs form');
     const container = document.getElementById('personalDocs');
     const docs = [
-        { id: 1, name: 'Surat Mandat', desc: 'Ditandatangani oleh Ketua LPTQ Kecamatan' },
-        { id: 2, name: 'KTP/KK/KIA', desc: 'Diterbitkan maksimal 6 bulan sebelum 1 Nov 2025' },
-        { id: 3, name: 'Sertifikat Kejuaraan', desc: 'Dari MTQ Tingkat Kecamatan' },
-        { id: 4, name: 'Foto Buku Tabungan', desc: 'Menunjukkan nomor rekening' },
-        { id: 5, name: 'Pas Photo Terbaru', desc: 'Latar belakang biru' }
+        { id: 1, name: 'Surat Mandat', desc: 'Ditandatangani oleh Ketua LPTQ Kecamatan', required: true },
+        { id: 2, name: 'KTP/KK/KIA', desc: 'Diterbitkan maksimal 6 bulan sebelum 1 Nov 2025', required: true },
+        { id: 3, name: 'Sertifikat Kejuaraan', desc: 'Dari MTQ Tingkat Kecamatan', required: false },
+        { id: 4, name: 'Foto Buku Tabungan', desc: 'Menunjukkan nomor rekening', required: true },
+        { id: 5, name: 'Pas Photo Terbaru', desc: 'Latar belakang biru', required: true }
     ];
     
     container.innerHTML = '';
@@ -431,10 +345,13 @@ function generatePersonalDocsForm() {
         const div = document.createElement('div');
         div.className = 'form-group';
         div.innerHTML = `
-            <label>${doc.id}. ${doc.name} *</label>
+            <label>${doc.id}. ${doc.name} ${doc.required ? '*' : '(Opsional)'}</label>
             <small style="font-size: 0.85em; color: #666; display: block; margin-bottom: 10px;">${doc.desc}</small>
-            <label for="personalDoc${doc.id}" style="display: inline-block; padding: 12px 25px; background: linear-gradient(135deg, var(--secondary), #228b22); color: white; border-radius: 10px; cursor: pointer; font-weight: 600; transition: all 0.3s; margin-right: 10px;">📎 Pilih File</label>
-            <input type="file" id="personalDoc${doc.id}" accept=".pdf,.jpg,.jpeg,.png" style="display: none;">
+            <div style="display: flex; gap: 10px;">
+                <label for="personalDoc${doc.id}" style="display: inline-block; padding: 12px 25px; background: linear-gradient(135deg, var(--secondary), #228b22); color: white; border-radius: 10px; cursor: pointer; font-weight: 600; transition: all 0.3s;">Pilih File</label>
+                <button type="button" id="clearPersonalDoc${doc.id}" style="display: none; padding: 12px 25px; background: linear-gradient(135deg, var(--danger), #c82333); color: white; border-radius: 10px; cursor: pointer; font-weight: 600; transition: all 0.3s;">Hapus</button>
+            </div>
+            <input type="file" id="personalDoc${doc.id}" accept=".pdf,.jpg,.jpeg,.png" style="display: none;" ${doc.required ? 'required' : ''}>
             <span class="file-name" id="personalDoc${doc.id}Name" style="color: #666; font-weight: 600;">Belum ada file</span>
         `;
         container.appendChild(div);
@@ -442,20 +359,29 @@ function generatePersonalDocsForm() {
     
     for (let i = 1; i <= 5; i++) {
         const input = document.getElementById(`personalDoc${i}`);
+        const clearBtn = document.getElementById(`clearPersonalDoc${i}`);
         if (input) {
             input.addEventListener('change', function() {
-                handleFileUpload(this, `personalDoc${i}Name`, `doc${i}`);
+                handleFileUpload(this, `personalDoc${i}Name`, `doc${i}`, `clearPersonalDoc${i}`);
+            });
+        }
+        if (clearBtn) {
+            clearBtn.addEventListener('click', function() {
+                document.getElementById(`personalDoc${i}`).value = '';
+                document.getElementById(`personalDoc${i}Name`).textContent = 'Belum ada file';
+                document.getElementById(`personalDoc${i}Name`).style.color = '#666';
+                delete uploadedFiles[`doc${i}`];
+                clearBtn.style.display = 'none';
+                updateSubmitButtonState();
             });
         }
     }
 }
 
 function generateTeamForm(memberCount) {
-    Logger.log('Generating team form for ' + memberCount + ' members');
     const container = document.getElementById('teamMembers');
-    
     let html = `<p style="margin-bottom: 25px; color: #666; font-size: 0.95em; padding: 15px; background: #e6f3ff; border-radius: 10px;">
-        📊 Saat ini: ${memberCount} peserta ${memberCount < 3 ? '(klik tombol Tambah untuk menambah peserta ke-3)' : ''}
+        Saat ini: ${memberCount} peserta ${memberCount < 3 ? '(klik tombol Tambah untuk menambah peserta ke-3)' : ''}
     </p>`;
     
     for (let i = 1; i <= memberCount; i++) {
@@ -463,8 +389,8 @@ function generateTeamForm(memberCount) {
     }
     
     html += `<div style="margin-top: 25px;">
-        ${memberCount === 2 ? `<button type="button" onclick="addTeamMember()" style="background: linear-gradient(135deg, var(--secondary), #1e7e34);">➕ Tambah Peserta ke-3</button>` : ''}
-        ${memberCount === 3 ? `<button type="button" onclick="removeTeamMember()" style="background: linear-gradient(135deg, var(--danger), #c82333);">❌ Hapus Peserta ke-3</button>` : ''}
+        ${memberCount === 2 ? `<button type="button" onclick="addTeamMember()" style="background: linear-gradient(135deg, var(--secondary), #1e7e34); border: none; padding: 16px 35px; color: white; border-radius: 12px; font-weight: 700; cursor: pointer;">Tambah Peserta ke-3</button>` : ''}
+        ${memberCount === 3 ? `<button type="button" onclick="removeTeamMember()" style="background: linear-gradient(135deg, var(--danger), #c82333); border: none; padding: 16px 35px; color: white; border-radius: 12px; font-weight: 700; cursor: pointer;">Hapus Peserta ke-3</button>` : ''}
     </div>`;
     
     container.innerHTML = html;
@@ -473,10 +399,17 @@ function generateTeamForm(memberCount) {
 
 function generateTeamMemberHTML(i) {
     const isOptional = i > 2;
+    const docs = [
+        { name: 'Surat Mandat', desc: 'Ditandatangani oleh Ketua LPTQ Kecamatan', required: true },
+        { name: 'KTP/KK/KIA', desc: 'Diterbitkan maksimal 6 bulan sebelum 1 Nov 2025', required: true },
+        { name: 'Sertifikat Kejuaraan', desc: 'Dari MTQ Tingkat Kecamatan', required: false },
+        { name: 'Foto Buku Tabungan', desc: 'Menunjukkan nomor rekening atas nama peserta', required: true },
+        { name: 'Pas Photo', desc: 'Latar belakang biru', required: true }
+    ];
+    
     return `
         <div class="team-member" id="teamMember${i}">
             <h4 style="color: var(--primary); margin-bottom: 20px; font-size: 1.2em;">Anggota Tim #${i} ${isOptional ? '(Opsional)' : '(Wajib)'}</h4>
-            
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
                 <div class="form-group">
                     <label>NIK ${isOptional ? '' : '*'}</label>
@@ -488,7 +421,6 @@ function generateTeamMemberHTML(i) {
                     <input type="text" name="memberName${i}" placeholder="Nama lengkap" ${isOptional ? '' : 'required'}>
                 </div>
             </div>
-            
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
                 <div class="form-group">
                     <label>Jenis Kelamin ${isOptional ? '' : '*'}</label>
@@ -503,7 +435,6 @@ function generateTeamMemberHTML(i) {
                     <input type="text" name="memberTempatLahir${i}" placeholder="Kota/Kabupaten" ${isOptional ? '' : 'required'}>
                 </div>
             </div>
-            
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
                 <div class="form-group">
                     <label>Tanggal Lahir ${isOptional ? '' : '*'}</label>
@@ -514,12 +445,10 @@ function generateTeamMemberHTML(i) {
                     <input type="text" name="memberUmur${i}" readonly placeholder="Otomatis terisi">
                 </div>
             </div>
-            
             <div class="form-group" style="margin-bottom: 20px;">
                 <label>Alamat Lengkap ${isOptional ? '' : '*'}</label>
                 <textarea name="memberAlamat${i}" rows="2" placeholder="Jalan, RT/RW, Desa, Kecamatan" ${isOptional ? '' : 'required'}></textarea>
             </div>
-            
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
                 <div class="form-group">
                     <label>No Telepon/WhatsApp ${isOptional ? '' : '*'}</label>
@@ -530,7 +459,6 @@ function generateTeamMemberHTML(i) {
                     <input type="email" name="memberEmail${i}" placeholder="email@example.com" ${isOptional ? '' : 'required'}>
                 </div>
             </div>
-            
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
                 <div class="form-group">
                     <label>Nama Rekening ${isOptional ? '' : '*'}</label>
@@ -541,27 +469,24 @@ function generateTeamMemberHTML(i) {
                     <input type="text" name="memberNoRek${i}" placeholder="Nomor rekening" ${isOptional ? '' : 'required'}>
                 </div>
             </div>
-            
             <div class="form-group" style="margin-bottom: 20px;">
                 <label>Nama Bank ${isOptional ? '' : '*'}</label>
                 <input type="text" name="memberNamaBank${i}" placeholder="BNI, BCA, Mandiri, dll" ${isOptional ? '' : 'required'}>
             </div>
-            
             <div style="background: #e6f3ff; padding: 20px; margin-top: 20px; border-radius: 12px; border-left: 4px solid var(--primary);">
-                <h5 style="color: var(--primary); margin-bottom: 15px; font-size: 1.1em;">📄 Dokumen Anggota #${i}</h5>
-                ${[1,2,3,4,5].map(d => {
-                    const docs = ['Surat Mandat', 'KTP/KK/KIA', 'Sertifikat Kejuaraan', 'Foto Buku Tabungan', 'Pas Photo'];
-                    const descs = ['Ketua LPTQ Kecamatan', '6 bulan sebelum 1 Nov 2025', 'MTQ Tingkat Kecamatan', 'Nomor rekening', 'Latar biru'];
-                    return `
-                        <div style="margin-bottom: 15px;">
-                            <label>${d}. ${docs[d-1]} ${isOptional ? '' : '*'}</label>
-                            <small style="font-size: 0.85em; color: #666; display: block; margin-bottom: 8px;">${descs[d-1]}</small>
-                            <label for="teamDoc${i}_${d}" style="display: inline-block; padding: 10px 20px; background: linear-gradient(135deg, var(--secondary), #228b22); color: white; border-radius: 10px; cursor: pointer; font-weight: 600; transition: all 0.3s; margin-right: 10px;">📎 Pilih</label>
-                            <input type="file" id="teamDoc${i}_${d}" accept=".pdf,.jpg,.jpeg,.png" style="display: none;">
-                            <span class="file-name" id="teamDoc${i}_${d}Name" style="color: #666; font-weight: 600;">Belum ada</span>
+                <h5 style="color: var(--primary); margin-bottom: 15px; font-size: 1.1em;">Dokumen Anggota #${i}</h5>
+                ${docs.map((doc, d) => `
+                    <div style="margin-bottom: 15px;">
+                        <label>${d+1}. ${doc.name} ${doc.required ? '*' : '(Opsional)'}</label>
+                        <small style="font-size: 0.85em; color: #666; display: block; margin-bottom: 8px;">${doc.desc}</small>
+                        <div style="display: flex; gap: 10px;">
+                            <label for="teamDoc${i}_${d+1}" style="display: inline-block; padding: 10px 20px; background: linear-gradient(135deg, var(--secondary), #228b22); color: white; border-radius: 10px; cursor: pointer; font-weight: 600; transition: all 0.3s;">Pilih</label>
+                            <button type="button" id="clearTeamDoc${i}_${d+1}" style="display: none; padding: 10px 20px; background: linear-gradient(135deg, var(--danger), #c82333); color: white; border-radius: 10px; cursor: pointer; font-weight: 600; transition: all 0.3s;">Hapus</button>
                         </div>
-                    `;
-                }).join('')}
+                        <input type="file" id="teamDoc${i}_${d+1}" accept=".pdf,.jpg,.jpeg,.png" style="display: none;" ${doc.required ? 'required' : ''}>
+                        <span class="file-name" id="teamDoc${i}_${d+1}Name" style="color: #666; font-weight: 600;">Belum ada</span>
+                    </div>
+                `).join('')}
             </div>
         </div>
     `;
@@ -569,7 +494,6 @@ function generateTeamMemberHTML(i) {
 
 function addTeamMember() {
     if (currentTeamMemberCount < 3) {
-        Logger.log('Adding team member 3');
         saveTeamData();
         currentTeamMemberCount = 3;
         generateTeamForm(3);
@@ -582,7 +506,6 @@ function addTeamMember() {
 
 function removeTeamMember() {
     if (currentTeamMemberCount === 3) {
-        Logger.log('Removing team member 3');
         saveTeamData();
         currentTeamMemberCount = 2;
         for (let d = 1; d <= 5; d++) {
@@ -597,14 +520,23 @@ function removeTeamMember() {
 }
 
 function setupTeamFormListeners(memberCount) {
-    Logger.log('Setting up team form listeners for ' + memberCount + ' members');
-    
     for (let i = 1; i <= memberCount; i++) {
         for (let d = 1; d <= 5; d++) {
             const input = document.getElementById(`teamDoc${i}_${d}`);
+            const clearBtn = document.getElementById(`clearTeamDoc${i}_${d}`);
             if (input) {
                 input.addEventListener('change', function() {
-                    handleFileUpload(this, `teamDoc${i}_${d}Name`, `teamDoc${i}_${d}`);
+                    handleFileUpload(this, `teamDoc${i}_${d}Name`, `teamDoc${i}_${d}`, `clearTeamDoc${i}_${d}`);
+                });
+            }
+            if (clearBtn) {
+                clearBtn.addEventListener('click', function() {
+                    document.getElementById(`teamDoc${i}_${d}`).value = '';
+                    document.getElementById(`teamDoc${i}_${d}Name`).textContent = 'Belum ada';
+                    document.getElementById(`teamDoc${i}_${d}Name`).style.color = '#666';
+                    delete uploadedFiles[`teamDoc${i}_${d}`];
+                    clearBtn.style.display = 'none';
+                    updateSubmitButtonState();
                 });
             }
         }
@@ -624,7 +556,7 @@ function setupTeamFormListeners(memberCount) {
         
         const birthInput = document.querySelector(`input[name="memberBirthDate${i}"]`);
         if (birthInput) {
-            birthInput.addEventListener('input', validateDateInput);
+            birthInput.addEventListener('input', formatDateInput);
             birthInput.addEventListener('change', function() {
                 if (!this.value) return;
                 const selectedDate = new Date(this.value);
@@ -655,13 +587,15 @@ function setupTeamFormListeners(memberCount) {
     }
 }
 
-function handleFileUpload(input, labelId, fileKey) {
-    Logger.log('Handling file upload: ' + fileKey);
+// ===== PERBAIKAN #6: HANDLE FILE UPLOAD =====
+function handleFileUpload(input, labelId, fileKey, clearBtnId) {
     const label = document.getElementById(labelId);
+    const clearBtn = document.getElementById(clearBtnId);
     
     if (!input.files || input.files.length === 0) {
         label.textContent = 'Belum ada file';
         label.style.color = '#666';
+        if (clearBtn) clearBtn.style.display = 'none';
         delete uploadedFiles[fileKey];
         updateSubmitButtonState();
         return;
@@ -669,10 +603,10 @@ function handleFileUpload(input, labelId, fileKey) {
     
     const file = input.files[0];
     if (file.size > 5 * 1024 * 1024) {
-        Logger.error('File too large: ' + file.name);
         label.textContent = 'File terlalu besar (Max 5MB)';
         label.style.color = '#dc3545';
         input.value = '';
+        if (clearBtn) clearBtn.style.display = 'none';
         delete uploadedFiles[fileKey];
         updateSubmitButtonState();
         return;
@@ -680,26 +614,9 @@ function handleFileUpload(input, labelId, fileKey) {
     
     label.textContent = file.name;
     label.style.color = '#28a745';
+    if (clearBtn) clearBtn.style.display = 'inline-block';
     uploadedFiles[fileKey] = file;
-    Logger.log('File uploaded successfully: ' + file.name);
     updateSubmitButtonState();
-}
-
-function validateDateInput(e) {
-    let value = e.target.value;
-    value = value.replace(/[^\d-]/g, '');
-    const parts = value.split('-');
-    if (parts[0] && parts[0].length > 4) {
-        parts[0] = parts[0].slice(0, 4);
-    }
-    if (parts[0]) {
-        const year = parseInt(parts[0]);
-        const currentYear = new Date().getFullYear();
-        if (year > currentYear) {
-            parts[0] = currentYear.toString();
-        }
-    }
-    e.target.value = parts.join('-');
 }
 
 function calculateAge(birthDateStr) {
@@ -734,14 +651,13 @@ function isAgeValid(ageObj, maxAgeStr) {
 }
 
 function updateSubmitButtonState() {
-    Logger.log('Updating submit button state');
     const submitBtn = document.getElementById('submitBtn');
     const statusDiv = document.getElementById('submitStatusInfo');
     const cabang = document.getElementById('cabang').value;
     
     if (!cabang || !currentCabang) {
         submitBtn.disabled = true;
-        statusDiv.innerHTML = '⚠️ Pilih cabang lomba terlebih dahulu';
+        statusDiv.innerHTML = 'Pilih cabang lomba terlebih dahulu';
         statusDiv.style.display = 'block';
         return;
     }
@@ -772,7 +688,7 @@ function updateSubmitButtonState() {
         statusDiv.style.display = 'none';
     } else {
         submitBtn.disabled = true;
-        statusDiv.innerHTML = '⚠️ ' + reasons.join('<br>⚠️ ');
+        statusDiv.innerHTML = 'âš ï¸ ' + reasons.join('<br>âš ï¸ ');
         statusDiv.style.display = 'block';
     }
 }
@@ -810,9 +726,11 @@ function checkPersonalCompletion() {
         }
     }
     
-    for (let i = 1; i <= 5; i++) {
+    const requiredDocs = [1, 2, 4, 5];
+    const docNames = { 1: 'Surat Mandat', 2: 'KTP/KK/KIA', 4: 'Foto Buku Tabungan', 5: 'Pas Photo' };
+    for (let i of requiredDocs) {
         if (!uploadedFiles[`doc${i}`]) {
-            reasons.push(`Dokumen personal #${i} belum diupload`);
+            reasons.push(`Dokumen ${docNames[i]} belum diupload`);
         }
     }
     
@@ -884,49 +802,37 @@ function checkTeamMember(memberIndex, isRequired) {
         }
     }
     
-    for (let d = 1; d <= 5; d++) {
+    const requiredDocs = [1, 2, 4, 5];
+    const docNames = { 1: 'Surat Mandat', 2: 'KTP/KK/KIA', 4: 'Foto Buku Tabungan', 5: 'Pas Photo' };
+    for (let d of requiredDocs) {
         if (!uploadedFiles[`teamDoc${memberIndex}_${d}`]) {
-            reasons.push(`${prefix}: Dokumen #${d} belum diupload`);
+            reasons.push(`${prefix}: Dokumen ${docNames[d]} belum diupload`);
         }
     }
     
     return reasons;
 }
 
-// Event listeners untuk personal form
-document.getElementById('nik').addEventListener('input', function() {
-    this.value = this.value.replace(/[^0-9]/g, '').slice(0, 16);
-    updateSubmitButtonState();
+document.addEventListener('DOMContentLoaded', function() {
+    checkRegistrationTime();
+    setInterval(checkRegistrationTime, 60000);
+    initDeveloperMode();
 });
 
-document.getElementById('jenisKelamin').addEventListener('change', updateSubmitButtonState);
+function showTab(tabName) {
+    document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(tabName).classList.add('active');
+    event.target.classList.add('active');
+}
 
-document.getElementById('tglLahir').addEventListener('input', validateDateInput);
-document.getElementById('tglLahir').addEventListener('change', function() {
-    if (!this.value) return;
-    const selectedDate = new Date(this.value);
-    const today = new Date();
-    if (selectedDate > today) {
-        showResultModal(false, 'Tanggal Tidak Valid', 'Tanggal lahir tidak boleh lebih dari hari ini!');
-        this.value = '';
-        document.getElementById('umur').value = '';
-        updateSubmitButtonState();
-        return;
+function updateProgress(percent) {
+    const fill = document.getElementById('progressFill');
+    if (fill) {
+        fill.style.width = percent + '%';
+        fill.textContent = percent + '%';
     }
-    const ageObj = calculateAge(this.value);
-    if (ageObj) {
-        document.getElementById('umur').value = formatAge(ageObj);
-    }
-    updateSubmitButtonState();
-});
-
-['nik', 'nama', 'jenisKelamin', 'tempatLahir', 'alamat', 'noTelepon', 'email', 'namaRek', 'noRek', 'namaBank'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) {
-        el.addEventListener('input', updateSubmitButtonState);
-        el.addEventListener('change', updateSubmitButtonState);
-    }
-});
+}
 
 function showConfirmModal(title, message) {
     return new Promise((resolve) => {
@@ -945,27 +851,18 @@ function closeConfirmModal(result) {
     }
 }
 
-async function resetForm() {
-    const confirmed = await showConfirmModal(
-        'Konfirmasi Bersihkan Form',
-        'Apakah Anda yakin ingin membersihkan semua isian form?'
-    );
-    
-    if (!confirmed) return;
-    
-    document.getElementById('registrationForm').reset();
-    document.getElementById('umur').value = '';
-    uploadedFiles = {};
-    savedPersonalData = null;
-    savedTeamData = {};
-    currentCabang = null;
-}
-
-function showResultModal(success, title, message) {
+// ===== PERBAIKAN #1: RESULT MODAL TIDAK AUTO CLOSE =====
+function showResultModal(success, title, message, details = null) {
     const modal = document.getElementById('resultModal');
-    document.getElementById('resultIcon').textContent = success ? '✅' : '❌';
+    document.getElementById('resultIcon').textContent = success ? 'âœ…' : 'âŒ';
     document.getElementById('resultTitle').textContent = title;
-    document.getElementById('resultMessage').textContent = message;
+    
+    let messageText = message;
+    if (details && success) {
+        messageText = `${message}\n\nðŸ"‹ Data Registrasi Anda:\nNIK: ${details.nik}\nNama: ${details.nama}\nCabang: ${details.cabang}\nNomor Peserta: ${details.nomorPeserta}`;
+    }
+    
+    document.getElementById('resultMessage').textContent = messageText;
     modal.classList.add('show');
 }
 
@@ -995,6 +892,226 @@ async function fileToBase64(file) {
         reader.onerror = error => reject(error);
     });
 }
+
+async function resetForm() {
+    const confirmed = await showConfirmModal(
+        'Konfirmasi Bersihkan Form',
+        'Apakah Anda yakin ingin membersihkan semua isian form?'
+    );
+    
+    if (!confirmed) return;
+    
+    document.getElementById('registrationForm').reset();
+    document.getElementById('umur').value = '';
+    uploadedFiles = {};
+    savedPersonalData = null;
+    savedTeamData = {};
+    currentCabang = null;
+}
+
+function getCabangData() {
+    return {
+        'Tartil Al Qur\'an Putra|12-11-29|personal|male|TA': { name: 'Tartil Al Qur\'an Putra', maxAge: '12-11-29', isTeam: false, genderRestriction: 'male', code: 'TA' },
+        'Tartil Al Qur\'an Putri|12-11-29|personal|female|TA': { name: 'Tartil Al Qur\'an Putri', maxAge: '12-11-29', isTeam: false, genderRestriction: 'female', code: 'TA' },
+        'Tilawah Anak-anak Putra|14-11-29|personal|male|TLA': { name: 'Tilawah Anak-anak Putra', maxAge: '14-11-29', isTeam: false, genderRestriction: 'male', code: 'TLA' },
+        'Tilawah Anak-anak Putri|14-11-29|personal|female|TLA': { name: 'Tilawah Anak-anak Putri', maxAge: '14-11-29', isTeam: false, genderRestriction: 'female', code: 'TLA' },
+        'Tilawah Remaja Putra|24-11-29|personal|male|TLR': { name: 'Tilawah Remaja Putra', maxAge: '24-11-29', isTeam: false, genderRestriction: 'male', code: 'TLR' },
+        'Tilawah Remaja Putri|24-11-29|personal|female|TLR': { name: 'Tilawah Remaja Putri', maxAge: '24-11-29', isTeam: false, genderRestriction: 'female', code: 'TLR' },
+        'Tilawah Dewasa Putra|40-11-29|personal|male|TLD': { name: 'Tilawah Dewasa Putra', maxAge: '40-11-29', isTeam: false, genderRestriction: 'male', code: 'TLD' },
+        'Tilawah Dewasa Putri|40-11-29|personal|female|TLD': { name: 'Tilawah Dewasa Putri', maxAge: '40-11-29', isTeam: false, genderRestriction: 'female', code: 'TLD' },
+        'Qira\'at Mujawwad Putra|40-11-29|personal|male|QM': { name: 'Qira\'at Mujawwad Putra', maxAge: '40-11-29', isTeam: false, genderRestriction: 'male', code: 'QM' },
+        'Qira\'at Mujawwad Putri|40-11-29|personal|female|QM': { name: 'Qira\'at Mujawwad Putri', maxAge: '40-11-29', isTeam: false, genderRestriction: 'female', code: 'QM' },
+        'Hafalan 1 Juz Putra|15-11-29|personal|male|H1J': { name: 'Hafalan 1 Juz Putra', maxAge: '15-11-29', isTeam: false, genderRestriction: 'male', code: 'H1J' },
+        'Hafalan 1 Juz Putri|15-11-29|personal|female|H1J': { name: 'Hafalan 1 Juz Putri', maxAge: '15-11-29', isTeam: false, genderRestriction: 'female', code: 'H1J' },
+        'Hafalan 5 Juz Putra|20-11-29|personal|male|H5J': { name: 'Hafalan 5 Juz Putra', maxAge: '20-11-29', isTeam: false, genderRestriction: 'male', code: 'H5J' },
+        'Hafalan 5 Juz Putri|20-11-29|personal|female|H5J': { name: 'Hafalan 5 Juz Putri', maxAge: '20-11-29', isTeam: false, genderRestriction: 'female', code: 'H5J' },
+        'Hafalan 10 Juz Putra|20-11-29|personal|male|H10J': { name: 'Hafalan 10 Juz Putra', maxAge: '20-11-29', isTeam: false, genderRestriction: 'male', code: 'H10J' },
+        'Hafalan 10 Juz Putri|20-11-29|personal|female|H10J': { name: 'Hafalan 10 Juz Putri', maxAge: '20-11-29', isTeam: false, genderRestriction: 'female', code: 'H10J' },
+        'Hafalan 20 Juz Putra|22-11-29|personal|male|H20J': { name: 'Hafalan 20 Juz Putra', maxAge: '22-11-29', isTeam: false, genderRestriction: 'male', code: 'H20J' },
+        'Hafalan 20 Juz Putri|22-11-29|personal|female|H20J': { name: 'Hafalan 20 Juz Putri', maxAge: '22-11-29', isTeam: false, genderRestriction: 'female', code: 'H20J' },
+        'Hafalan 30 Juz Putra|22-11-29|personal|male|H30J': { name: 'Hafalan 30 Juz Putra', maxAge: '22-11-29', isTeam: false, genderRestriction: 'male', code: 'H30J' },
+        'Hafalan 30 Juz Putri|22-11-29|personal|female|H30J': { name: 'Hafalan 30 Juz Putri', maxAge: '22-11-29', isTeam: false, genderRestriction: 'female', code: 'H30J' },
+        'Tafsir Arab Putra|22-11-29|personal|male|TFA': { name: 'Tafsir Arab Putra', maxAge: '22-11-29', isTeam: false, genderRestriction: 'male', code: 'TFA' },
+        'Tafsir Arab Putri|22-11-29|personal|female|TFA': { name: 'Tafsir Arab Putri', maxAge: '22-11-29', isTeam: false, genderRestriction: 'female', code: 'TFA' },
+        'Tafsir Indonesia Putra|34-11-29|personal|male|TFI': { name: 'Tafsir Indonesia Putra', maxAge: '34-11-29', isTeam: false, genderRestriction: 'male', code: 'TFI' },
+        'Tafsir Indonesia Putri|34-11-29|personal|female|TFI': { name: 'Tafsir Indonesia Putri', maxAge: '34-11-29', isTeam: false, genderRestriction: 'female', code: 'TFI' },
+        'Tafsir Inggris Putra|34-11-29|personal|male|TFE': { name: 'Tafsir Inggris Putra', maxAge: '34-11-29', isTeam: false, genderRestriction: 'male', code: 'TFE' },
+        'Tafsir Inggris Putri|34-11-29|personal|female|TFE': { name: 'Tafsir Inggris Putri', maxAge: '34-11-29', isTeam: false, genderRestriction: 'female', code: 'TFE' },
+        'Kaligrafi Naskah Putra|34-11-29|personal|male|KN': { name: 'Kaligrafi Naskah Putra', maxAge: '34-11-29', isTeam: false, genderRestriction: 'male', code: 'KN' },
+        'Kaligrafi Naskah Putri|34-11-29|personal|female|KN': { name: 'Kaligrafi Naskah Putri', maxAge: '34-11-29', isTeam: false, genderRestriction: 'female', code: 'KN' },
+        'Kaligrafi Hiasan Putra|34-11-29|personal|male|KH': { name: 'Kaligrafi Hiasan Putra', maxAge: '34-11-29', isTeam: false, genderRestriction: 'male', code: 'KH' },
+        'Kaligrafi Hiasan Putri|34-11-29|personal|female|KH': { name: 'Kaligrafi Hiasan Putri', maxAge: '34-11-29', isTeam: false, genderRestriction: 'female', code: 'KH' },
+        'Kaligrafi Dekorasi Putra|34-11-29|personal|male|KD': { name: 'Kaligrafi Dekorasi Putra', maxAge: '34-11-29', isTeam: false, genderRestriction: 'male', code: 'KD' },
+        'Kaligrafi Dekorasi Putri|34-11-29|personal|female|KD': { name: 'Kaligrafi Dekorasi Putri', maxAge: '34-11-29', isTeam: false, genderRestriction: 'female', code: 'KD' },
+        'Kaligrafi Kontemporer Putra|34-11-29|personal|male|KK': { name: 'Kaligrafi Kontemporer Putra', maxAge: '34-11-29', isTeam: false, genderRestriction: 'male', code: 'KK' },
+        'Kaligrafi Kontemporer Putri|34-11-29|personal|female|KK': { name: 'Kaligrafi Kontemporer Putri', maxAge: '34-11-29', isTeam: false, genderRestriction: 'female', code: 'KK' },
+        'KTIQ Putra|24-11-29|personal|male|KTIQ': { name: 'KTIQ Putra', maxAge: '24-11-29', isTeam: false, genderRestriction: 'male', code: 'KTIQ' },
+        'KTIQ Putri|24-11-29|personal|female|KTIQ': { name: 'KTIQ Putri', maxAge: '24-11-29', isTeam: false, genderRestriction: 'female', code: 'KTIQ' },
+        'Fahm Al Qur\'an Putra|18-11-29|tim|3|male|FAQ': { name: 'Fahm Al Qur\'an Putra', maxAge: '18-11-29', isTeam: true, memberCount: 3, genderRestriction: 'male', code: 'FAQ' },
+        'Fahm Al Qur\'an Putri|18-11-29|tim|3|female|FAQ': { name: 'Fahm Al Qur\'an Putri', maxAge: '18-11-29', isTeam: true, memberCount: 3, genderRestriction: 'female', code: 'FAQ' },
+        'Syarh Al Qur\'an Putra|18-11-29|tim|3|male|SAQ': { name: 'Syarh Al Qur\'an Putra', maxAge: '18-11-29', isTeam: true, memberCount: 3, genderRestriction: 'male', code: 'SAQ' },
+        'Syarh Al Qur\'an Putri|18-11-29|tim|3|female|SAQ': { name: 'Syarh Al Qur\'an Putri', maxAge: '18-11-29', isTeam: true, memberCount: 3, genderRestriction: 'female', code: 'SAQ' }
+    };
+}
+
+// ===== PERBAIKAN #11: DEVELOPER MODE =====
+function initDeveloperMode() {
+    if (!DEVELOPER_MODE) return;
+    
+    const devModal = document.createElement('div');
+    devModal.id = 'devModal';
+    devModal.className = 'dev-modal';
+    devModal.innerHTML = `
+        <div class="dev-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="margin: 0; color: var(--primary);">👨‍💻 Developer Tools</h3>
+                <button onclick="closeDevModal()" style="background: #6c757d; padding: 8px 15px; border: none; color: white; border-radius: 5px; cursor: pointer;">Tutup</button>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <button onclick="fillPersonalDataRandom()" style="background: linear-gradient(135deg, #2e8b57, #1e7e34); border: none; color: white; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: 600;">📝 Isi Data Peserta Personal</button>
+                <button onclick="fillTeamMember1Random()" style="background: linear-gradient(135deg, #2e8b57, #1e7e34); border: none; color: white; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: 600;">👤 Isi Tim Peserta 1</button>
+                <button onclick="fillTeamMember2Random()" style="background: linear-gradient(135deg, #2e8b57, #1e7e34); border: none; color: white; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: 600;">👥 Isi Tim Peserta 2</button>
+                <button onclick="fillTeamMember3Random()" style="background: linear-gradient(135deg, #2e8b57, #1e7e34); border: none; color: white; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: 600;">👨‍👩‍👧 Isi Tim Peserta 3</button>
+                <button onclick="clearAllDevData()" style="background: linear-gradient(135deg, var(--danger), #c82333); border: none; color: white; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: 600; grid-column: 1/-1;">🗑️ Hapus Semua Data</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(devModal);
+    
+    const devBtn = document.createElement('button');
+    devBtn.id = 'devBtn';
+    devBtn.style.cssText = 'position: fixed; bottom: 20px; right: 20px; background: linear-gradient(135deg, #1e5c96, #2e8b57); color: white; border: none; padding: 15px 20px; border-radius: 50%; width: 60px; height: 60px; cursor: pointer; font-size: 1.5em; z-index: 1000; box-shadow: 0 4px 15px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center;';
+    devBtn.textContent = '⚙️';
+    devBtn.onclick = () => {
+        const modal = document.getElementById('devModal');
+        modal.classList.toggle('show-dev');
+    };
+    document.body.appendChild(devBtn);
+}
+
+function closeDevModal() {
+    document.getElementById('devModal').classList.remove('show-dev');
+}
+
+function generateRandomNIK() {
+    return Math.floor(Math.random() * 9000000000000000 + 1000000000000000).toString();
+}
+
+function generateRandomName() {
+    const firstNames = ['Ahmad', 'Budi', 'Citra', 'Dina', 'Eka', 'Farah', 'Gilang', 'Hana', 'Irfan', 'Jaya'];
+    const lastNames = ['Rahman', 'Suryanto', 'Kusuma', 'Wijaya', 'Santoso', 'Hermawan', 'Pratama', 'Setiawan'];
+    return firstNames[Math.floor(Math.random() * firstNames.length)] + ' ' + lastNames[Math.floor(Math.random() * lastNames.length)];
+}
+
+function generateRandomBirthDate() {
+    const year = Math.floor(Math.random() * 20) + 2000;
+    const month = Math.floor(Math.random() * 12) + 1;
+    const day = Math.floor(Math.random() * 28) + 1;
+    return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
+function generateRandomPhone() {
+    return '08' + Math.floor(Math.random() * 9000000000 + 1000000000).toString().slice(0, 10);
+}
+
+function generateRandomAddress() {
+    const streets = ['Jl. Merdeka', 'Jl. Diponegoro', 'Jl. Sudirman', 'Jl. Gatot Subroto', 'Jl. Ahmad Yani'];
+    const street = streets[Math.floor(Math.random() * streets.length)];
+    const number = Math.floor(Math.random() * 200) + 1;
+    const rt = Math.floor(Math.random() * 10) + 1;
+    const rw = Math.floor(Math.random() * 10) + 1;
+    return `${street} No. ${number}, RT ${rt}/RW ${rw}`;
+}
+
+function generateRandomAccountNumber() {
+    return Math.floor(Math.random() * 9000000000000 + 1000000000000).toString();
+}
+
+function fillPersonalDataRandom() {
+    if (!currentCabang || currentCabang.isTeam) {
+        alert('Pilih Cabang Individu terlebih dahulu!');
+        return;
+    }
+    
+    const birthDate = generateRandomBirthDate();
+    const ageObj = calculateAge(birthDate);
+    
+    document.getElementById('nik').value = generateRandomNIK();
+    document.getElementById('nama').value = generateRandomName();
+    document.getElementById('jenisKelamin').value = currentCabang.genderRestriction === 'male' ? 'Laki-laki' : 'Perempuan';
+    document.getElementById('tempatLahir').value = 'Jakarta';
+    document.getElementById('tglLahir').value = birthDate;
+    document.getElementById('umur').value = formatAge(ageObj);
+    document.getElementById('alamat').value = generateRandomAddress();
+    document.getElementById('noTelepon').value = generateRandomPhone();
+    document.getElementById('email').value = `user${Math.floor(Math.random() * 10000)}@email.com`;
+    document.getElementById('namaRek').value = generateRandomName();
+    document.getElementById('noRek').value = generateRandomAccountNumber();
+    document.getElementById('namaBank').value = ['BNI', 'BCA', 'Mandiri', 'BRI'][Math.floor(Math.random() * 4)];
+    
+    updateSubmitButtonState();
+}
+
+function fillTeamMember1Random() {
+    if (!currentCabang || !currentCabang.isTeam) {
+        alert('Pilih Cabang Tim terlebih dahulu!');
+        return;
+    }
+    fillTeamMemberRandom(1);
+}
+
+function fillTeamMember2Random() {
+    if (!currentCabang || !currentCabang.isTeam) {
+        alert('Pilih Cabang Tim terlebih dahulu!');
+        return;
+    }
+    fillTeamMemberRandom(2);
+}
+
+function fillTeamMember3Random() {
+    if (!currentCabang || !currentCabang.isTeam) {
+        alert('Pilih Cabang Tim terlebih dahulu!');
+        return;
+    }
+    if (currentTeamMemberCount < 3) {
+        alert('Tambahkan Peserta ke-3 terlebih dahulu!');
+        return;
+    }
+    fillTeamMemberRandom(3);
+}
+
+function fillTeamMemberRandom(memberIndex) {
+    const birthDate = generateRandomBirthDate();
+    const ageObj = calculateAge(birthDate);
+    
+    document.querySelector(`[name="memberNik${memberIndex}"]`).value = generateRandomNIK();
+    document.querySelector(`[name="memberName${memberIndex}"]`).value = generateRandomName();
+    document.querySelector(`[name="memberJenisKelamin${memberIndex}"]`).value = currentCabang.genderRestriction === 'male' ? 'Laki-laki' : 'Perempuan';
+    document.querySelector(`[name="memberTempatLahir${memberIndex}"]`).value = 'Jakarta';
+    document.querySelector(`[name="memberBirthDate${memberIndex}"]`).value = birthDate;
+    document.querySelector(`[name="memberUmur${memberIndex}"]`).value = formatAge(ageObj);
+    document.querySelector(`[name="memberAlamat${memberIndex}"]`).value = generateRandomAddress();
+    document.querySelector(`[name="memberNoTelepon${memberIndex}"]`).value = generateRandomPhone();
+    document.querySelector(`[name="memberEmail${memberIndex}"]`).value = `member${memberIndex}${Math.floor(Math.random() * 10000)}@email.com`;
+    document.querySelector(`[name="memberNamaRek${memberIndex}"]`).value = generateRandomName();
+    document.querySelector(`[name="memberNoRek${memberIndex}"]`).value = generateRandomAccountNumber();
+    document.querySelector(`[name="memberNamaBank${memberIndex}"]`).value = ['BNI', 'BCA', 'Mandiri', 'BRI'][Math.floor(Math.random() * 4)];
+    
+    updateSubmitButtonState();
+}
+
+function clearAllDevData() {
+    if (confirm('Hapus semua data yang sudah diisi?')) {
+        document.getElementById('registrationForm').reset();
+        uploadedFiles = {};
+        savedPersonalData = null;
+        savedTeamData = {};
+        document.getElementById('umur').value = '';
+        updateSubmitButtonState();
+    }
+}
+
+// ===== FORM SUBMISSION =====
 document.getElementById('registrationForm')?.addEventListener('submit', async function(e) {
     e.preventDefault();
     
@@ -1018,7 +1135,10 @@ document.getElementById('registrationForm')?.addEventListener('submit', async fu
         const formData = new FormData();
         formData.append('kecamatan', document.getElementById('kecamatan').value);
         formData.append('cabang', currentCabang.name);
+        formData.append('cabangCode', currentCabang.code);
         formData.append('maxAge', currentCabang.maxAge);
+        formData.append('genderCode', currentCabang.genderRestriction);
+        formData.append('isTeam', currentCabang.isTeam ? 'true' : 'false');
         
         const nikList = [];
         if (!currentCabang.isTeam) {
@@ -1036,6 +1156,26 @@ document.getElementById('registrationForm')?.addEventListener('submit', async fu
             formData.append('namaRek', document.getElementById('namaRek').value);
             formData.append('noRek', document.getElementById('noRek').value);
             formData.append('namaBank', document.getElementById('namaBank').value);
+        } else {
+            formData.append('namaRegu', document.getElementById('namaRegu').value);
+            for (let i = 1; i <= currentTeamMemberCount; i++) {
+                const nik = document.querySelector(`[name="memberNik${i}"]`).value;
+                if (nik) nikList.push(nik);
+                
+                formData.append(`memberNik${i}`, nik);
+                formData.append(`memberName${i}`, document.querySelector(`[name="memberName${i}"]`).value);
+                formData.append(`memberJenisKelamin${i}`, document.querySelector(`[name="memberJenisKelamin${i}"]`).value);
+                formData.append(`memberTempatLahir${i}`, document.querySelector(`[name="memberTempatLahir${i}"]`).value);
+                formData.append(`memberBirthDate${i}`, document.querySelector(`[name="memberBirthDate${i}"]`).value);
+                formData.append(`memberUmur${i}`, document.querySelector(`[name="memberUmur${i}"]`).value);
+                formData.append(`memberAlamat${i}`, document.querySelector(`[name="memberAlamat${i}"]`).value);
+                formData.append(`memberNoTelepon${i}`, document.querySelector(`[name="memberNoTelepon${i}"]`).value);
+                formData.append(`memberEmail${i}`, document.querySelector(`[name="memberEmail${i}"]`).value);
+                formData.append(`memberNamaRek${i}`, document.querySelector(`[name="memberNamaRek${i}"]`).value);
+                formData.append(`memberNoRek${i}`, document.querySelector(`[name="memberNoRek${i}"]`).value);
+                formData.append(`memberNamaBank${i}`, document.querySelector(`[name="memberNamaBank${i}"]`).value);
+            }
+            formData.append('memberGenderCode1', document.querySelector('[name="memberJenisKelamin1"]').value === 'Laki-laki' ? 'male' : 'female');
         }
         
         formData.append('nikList', JSON.stringify(nikList));
@@ -1052,7 +1192,6 @@ document.getElementById('registrationForm')?.addEventListener('submit', async fu
                     const base64 = await fileToBase64(file);
                     formData.append(key, base64);
                     formData.append(key + '_name', file.name);
-                    formData.append(key + '_type', file.type);
                     fileCount++;
                     updateProgress(15 + (fileCount / totalFiles) * 45);
                 } catch (fileError) {
@@ -1075,8 +1214,7 @@ document.getElementById('registrationForm')?.addEventListener('submit', async fu
         showLoadingOverlay(false);
         
         if (result.success) {
-            showResultModal(true, 'Registrasi Berhasil!', 'Data Anda telah tersimpan.\nEmail konfirmasi akan dikirim dalam 24 jam.');
-            setTimeout(() => location.reload(), 2000);
+            showResultModal(true, 'Registrasi Berhasil!', 'Data Anda telah tersimpan.\nEmail konfirmasi akan dikirim dalam 24 jam.', result.details);
         } else {
             showResultModal(false, 'Registrasi Ditolak', result.message || 'Terjadi kesalahan');
         }
@@ -1088,3 +1226,47 @@ document.getElementById('registrationForm')?.addEventListener('submit', async fu
         document.getElementById('progressContainer').style.display = 'none';
     }
 });
+
+// Personal form event listeners
+['nik', 'nama', 'jenisKelamin', 'tempatLahir', 'alamat', 'noTelepon', 'email', 'namaRek', 'noRek', 'namaBank'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+        el.addEventListener('input', updateSubmitButtonState);
+        el.addEventListener('change', updateSubmitButtonState);
+    }
+});
+
+const nikEl = document.getElementById('nik');
+if (nikEl) {
+    nikEl.addEventListener('input', function() {
+        this.value = this.value.replace(/[^0-9]/g, '').slice(0, 16);
+        updateSubmitButtonState();
+    });
+}
+
+const jenisKelaminEl = document.getElementById('jenisKelamin');
+if (jenisKelaminEl) {
+    jenisKelaminEl.addEventListener('change', updateSubmitButtonState);
+}
+
+const tglLahirEl = document.getElementById('tglLahir');
+if (tglLahirEl) {
+    tglLahirEl.addEventListener('input', formatDateInput);
+    tglLahirEl.addEventListener('change', function() {
+        if (!this.value) return;
+        const selectedDate = new Date(this.value);
+        const today = new Date();
+        if (selectedDate > today) {
+            showResultModal(false, 'Tanggal Tidak Valid', 'Tanggal lahir tidak boleh lebih dari hari ini!');
+            this.value = '';
+            document.getElementById('umur').value = '';
+            updateSubmitButtonState();
+            return;
+        }
+        const ageObj = calculateAge(this.value);
+        if (ageObj) {
+            document.getElementById('umur').value = formatAge(ageObj);
+        }
+        updateSubmitButtonState();
+    });
+}

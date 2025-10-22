@@ -10,6 +10,15 @@ const REGISTRATION_END = new Date('2025-10-30T23:59:59+07:00');
 // MAX PARTICIPANTS PER BRANCH
 const MAX_PARTICIPANTS_PER_BRANCH = 62;
 
+// Document type mapping
+const DOC_TYPES = {
+  1: 'Surat Mandat',
+  2: 'KTP',
+  3: 'Sertifikat',
+  4: 'Rekening',
+  5: 'Pas Photo'
+};
+
 // ===== FUNGSI UTAMA =====
 function doPost(e) {
   try {
@@ -58,16 +67,17 @@ function doPost(e) {
     
     // Generate nomor peserta
     Logger.log('Generating nomor peserta...');
-    const nomorPeserta = generateNomorPeserta(sheet, formData.cabangCode, formData.genderCode || formData.memberGenderCode1);
+    const isTeam = formData.isTeam === 'true';
+    const nomorPeserta = generateNomorPeserta(sheet, formData.cabangCode, formData.genderCode || formData.memberGenderCode1, isTeam);
     if (!nomorPeserta.success) {
       Logger.log('Failed to generate nomor peserta: ' + nomorPeserta.message);
       return createResponse(false, nomorPeserta.message);
     }
     Logger.log('Nomor peserta generated: ' + nomorPeserta.number);
     
-    // Process file uploads
+    // Process file uploads with unique names
     Logger.log('Processing file uploads...');
-    const fileLinks = processFileUploads(e, formData);
+    const fileLinks = processFileUploads(e, formData, nomorPeserta.number);
     Logger.log('Files processed: ' + Object.keys(fileLinks).length);
     
     // Prepare and append data
@@ -77,7 +87,12 @@ function doPost(e) {
     Logger.log('Data successfully appended to row: ' + sheet.getLastRow());
     
     Logger.log('=== END doPost SUCCESS ===');
-    return createResponse(true, 'Registrasi berhasil!', nomorPeserta.number);
+    return createResponse(true, 'Registrasi berhasil!', nomorPeserta.number, {
+      nik: formData.nik || '',
+      nama: formData.nama || '',
+      cabang: formData.cabang || '',
+      nomorPeserta: nomorPeserta.number
+    });
     
   } catch (error) {
     Logger.log('=== ERROR in doPost ===');
@@ -89,7 +104,7 @@ function doPost(e) {
 }
 
 // ===== GENERATE NOMOR PESERTA =====
-function generateNomorPeserta(sheet, cabangCode, genderCode) {
+function generateNomorPeserta(sheet, cabangCode, genderCode, isTeam) {
   try {
     const lastRow = sheet.getLastRow();
     
@@ -115,8 +130,9 @@ function generateNomorPeserta(sheet, cabangCode, genderCode) {
     
     Logger.log('Existing numbers for ' + cabangCode + ': ' + existingNumbers.join(', '));
     
-    // Determine if odd (female) or even (male)
-    const isOdd = genderCode === 'female';
+    // For team registration, use even numbers only (regardless of gender)
+    // For personal registration, use odd (female) or even (male)
+    const isOdd = isTeam ? false : (genderCode === 'female');
     
     // Find next available number
     let nextNumber = isOdd ? 1 : 2;
@@ -164,11 +180,11 @@ function checkDuplicates(sheet, nikList) {
     Logger.log('Checking against ' + data.length + ' existing registrations');
     
     // Column indices (0-based after getting values)
-    const cabangCol = 4; // Cabang Lomba column
-    const nikCol = 7; // NIK column
-    const member1NikCol = 19; // Anggota Tim #1 - NIK
-    const member2NikCol = 31; // Anggota Tim #2 - NIK
-    const member3NikCol = 43; // Anggota Tim #3 - NIK
+    const cabangCol = 4;
+    const nikCol = 7;
+    const member1NikCol = 19;
+    const member2NikCol = 31;
+    const member3NikCol = 43;
     
     for (let i = 0; i < data.length; i++) {
       const row = data[i];
@@ -218,7 +234,7 @@ function checkDuplicates(sheet, nikList) {
 }
 
 // ===== CREATE RESPONSE =====
-function createResponse(success, message, nomorPeserta) {
+function createResponse(success, message, nomorPeserta, details) {
   const response = {
     success: success,
     message: message
@@ -226,6 +242,10 @@ function createResponse(success, message, nomorPeserta) {
   
   if (nomorPeserta) {
     response.nomorPeserta = nomorPeserta;
+  }
+  
+  if (details) {
+    response.details = details;
   }
   
   return ContentService.createTextOutput(JSON.stringify(response))
@@ -290,54 +310,73 @@ function addHeaders(sheet) {
     'Anggota Tim #3 - Nama Rekening',
     'Anggota Tim #3 - No Rekening',
     'Anggota Tim #3 - Nama Bank',
-    'Link - Doc Personal 1',
-    'Link - Doc Personal 2',
-    'Link - Doc Personal 3',
-    'Link - Doc Personal 4',
-    'Link - Doc Personal 5',
-    'Link - Team 1 Doc 1',
-    'Link - Team 1 Doc 2',
-    'Link - Team 1 Doc 3',
-    'Link - Team 1 Doc 4',
-    'Link - Team 1 Doc 5',
-    'Link - Team 2 Doc 1',
-    'Link - Team 2 Doc 2',
-    'Link - Team 2 Doc 3',
-    'Link - Team 2 Doc 4',
-    'Link - Team 2 Doc 5',
-    'Link - Team 3 Doc 1',
-    'Link - Team 3 Doc 2',
-    'Link - Team 3 Doc 3',
-    'Link - Team 3 Doc 4',
-    'Link - Team 3 Doc 5',
+    'Link - Doc Surat Mandat Personal',
+    'Link - Doc KTP Personal',
+    'Link - Doc Sertifikat Personal',
+    'Link - Doc Rekening Personal',
+    'Link - Doc Pas Photo Personal',
+    'Link - Doc Surat Mandat Team 1',
+    'Link - Doc KTP Team 1',
+    'Link - Doc Sertifikat Team 1',
+    'Link - Doc Rekening Team 1',
+    'Link - Doc Pas Photo Team 1',
+    'Link - Doc Surat Mandat Team 2',
+    'Link - Doc KTP Team 2',
+    'Link - Doc Sertifikat Team 2',
+    'Link - Doc Rekening Team 2',
+    'Link - Doc Pas Photo Team 2',
+    'Link - Doc Surat Mandat Team 3',
+    'Link - Doc KTP Team 3',
+    'Link - Doc Sertifikat Team 3',
+    'Link - Doc Rekening Team 3',
+    'Link - Doc Pas Photo Team 3',
     'Status'
   ];
   sheet.appendRow(headers);
 }
 
-// ===== PROSES UPLOAD FILE =====
-function processFileUploads(e, formData) {
+// ===== PERBAIKAN #4: PROSES UPLOAD FILE TANPA _type dan _name =====
+function processFileUploads(e, formData, nomorPeserta) {
   const fileLinks = {};
   const folder = DriveApp.getFolderById(FOLDER_ID);
+  const timestamp = new Date().getTime();
   
   try {
     const allBlobs = e.parameters;
     Logger.log('Processing file blobs: ' + JSON.stringify(Object.keys(allBlobs)));
     
     for (let key in allBlobs) {
+      // SKIP _type dan _name parameters - JANGAN PROCESS
+      if (key.endsWith('_type') || key.endsWith('_name')) {
+        Logger.log('Skipping metadata: ' + key);
+        continue;
+      }
+      
+      // Hanya process file yang sebenarnya (doc1, doc2, teamDoc1_1, dll)
       if (key.startsWith('doc') || key.startsWith('teamDoc')) {
         try {
           if (allBlobs[key] && allBlobs[key][0]) {
+            // Ambil original name dari metadata
+            const originalName = allBlobs[key + '_name'] ? allBlobs[key + '_name'][0] : key;
+            const mimeType = allBlobs[key + '_type'] ? allBlobs[key + '_type'][0] : 'application/octet-stream';
+            
+            // Extract file extension
+            const lastDotIndex = originalName.lastIndexOf('.');
+            const extension = lastDotIndex > -1 ? originalName.substring(lastDotIndex) : '';
+            
+            // Create unique filename: NomorPeserta_DocType_Timestamp.ext
+            const uniqueFileName = nomorPeserta + '_' + key + '_' + timestamp + extension;
+            
             const blob = Utilities.newBlob(
               Utilities.base64Decode(allBlobs[key][0]),
-              allBlobs[key + '_type'] ? allBlobs[key + '_type'][0] : 'application/octet-stream',
-              allBlobs[key + '_name'] ? allBlobs[key + '_name'][0] : key
+              mimeType,
+              uniqueFileName
             );
             
             const file = folder.createFile(blob);
             file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
             fileLinks[key] = file.getUrl();
-            Logger.log('Uploaded file: ' + key + ' -> ' + file.getName());
+            Logger.log('Uploaded file: ' + key + ' -> ' + uniqueFileName);
           }
         } catch (fileError) {
           Logger.log('Error uploading file ' + key + ': ' + fileError.message);

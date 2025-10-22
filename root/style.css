@@ -723,3 +723,52 @@ button:disabled {
         font-size: 1.8em;
     }
 }
+
+/* ===== DEVELOPER MODE STYLING ===== */
+.dev-modal {
+    display: none;
+    position: fixed;
+    bottom: 100px;
+    right: 20px;
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+    padding: 0;
+    min-width: 320px;
+    z-index: 999;
+    animation: slideIn 0.3s ease;
+}
+
+.dev-modal.show-dev {
+    display: block;
+}
+
+.dev-content {
+    padding: 20px;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+#devBtn {
+    animation: pulse-dev 2s infinite;
+}
+
+@keyframes pulse-dev {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 4px 15px rgba(30, 92, 150, 0.3);
+    }
+    50% {
+        transform: scale(1.1);
+        box-shadow: 0 6px 25px rgba(30, 92, 150, 0.5);
+    }
+}
