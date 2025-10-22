@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registrasi MTQ ke-55 Kabupaten Indramayu 2025</title>
+    <link rel="icon" type="image/png" href="logomtq.png">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <p id="loadingMessage" style="font-size: 1.3em; font-weight: 600;">Memproses...</p>
+        </div>
+    </div>
+
+    <!-- Hero Section -->
+    <div class="hero">
+        <div class="hero-content">
+            <img src="logomtq.png" alt="Logo MTQ" class="hero-logo">
+            <h1>📖 Musabaqah Tilawatil Qur'an (MTQ) ke-55</h1>
+            <p class="hero-subtitle">Tingkat Kabupaten Indramayu - Tahun 2025</p>
+            <p class="hero-date">4-6 November 2025 | Kecamatan Sindang</p>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="nav-tabs">
+            <button class="nav-btn active" onclick="showTab('informasi')">📋 Informasi</button>
+            <button class="nav-btn" onclick="showTab('registrasi')">✏️ Registrasi</button>
+        </div>
+
+        <!-- INFORMASI TAB -->
+        <div id="informasi" class="content-section active">
+            <h2 class="section-title">ℹ️ Informasi Penting Registrasi MTQ ke-55</h2>
+            
+            <div class="timeline">
+                <div class="timeline-item">
+                    <div class="timeline-icon">📅</div>
+                    <div class="info-card">
+                        <h3>📅 Jadwal Penting</h3>
+                        <p><strong>Pendaftaran Online:</strong> 29-30 Oktober 2025</p>
+                        <p><strong>Pelaksanaan Maqra:</strong> 31 Oktober 2025</p>
+                        <p><strong>Pengambilan Nomor Peserta & Maqra:</strong> 1 November 2025</p>
+                        <p><strong>Pelaksanaan MTQ:</strong> 4-6 November 2025</p>
+                    </div>
+                </div>
+
+                <div class="timeline-item">
+                    <div class="timeline-icon">📋</div>
+                    <div class="info-card">
+                        <h3>📋 Dokumen yang Diperlukan (untuk SETIAP peserta/anggota)</h3>
+                        <p>a. <strong>Surat Mandat</strong> - Ditandatangani oleh Ketua LPTQ Kecamatan</p>
+                        <p>b. <strong>KTP/KK/KIA</strong> - Diterbitkan maksimal 6 bulan sebelum 1 November 2025</p>
+                        <p>c. <strong>Sertifikat Kejuaraan</strong> - Dari MTQ Tingkat Kecamatan</p>
+                        <p>d. <strong>Foto Buku Tabungan</strong> - Menunjukkan nomor rekening atas nama peserta</p>
+                        <p>e. <strong>Pas Photo Terbaru</strong> - Latar belakang biru</p>
+                    </div>
+                </div>
+
+                <div class="timeline-item">
+                    <div class="timeline-icon">🎯</div>
+                    <div class="info-card">
+                        <h3>🎯 Ketentuan Peserta</h3>
+                        <p>✓ Peserta adalah hasil MTQ Tingkat Kecamatan</p>
+                        <p>✓ Batas usia maksimal dihitung per <strong>1 November 2025</strong></p>
+                        <p>✓ NIK calon peserta harus divalidasi melalui Disdukcapil</p>
+                        <p>✓ Dokumen KTP/KK diterbitkan maksimal 6 bulan sebelum 1 November 2025</p>
+                    </div>
+                </div>
+
+                <div class="timeline-item">
+                    <div class="timeline-icon">⚠️</div>
+                    <div class="info-card">
+                        <h3>⚠️ Penting untuk Diperhatikan</h3>
+                        <p>• Setiap peserta hanya boleh mendaftar di <strong>SATU cabang lomba</strong></p>
+                        <p>• Pastikan jenis kelamin sesuai dengan cabang yang dipilih (Putra/Putri)</p>
+                        <p>• Semua dokumen harus di-scan dari aslinya</p>
+                        <p>• Pengisian form calon peserta harus lengkap dan benar</p>
+                    </div>
+                </div>
+
+                <div class="timeline-item">
+                    <div class="timeline-icon">👥</div>
+                    <div class="info-card">
+                        <h3>👥 Ketentuan Cabang Beregu (Tim)</h3>
+                        <p>• <strong>Fahm Al Qur'an:</strong> 1 regu terdiri dari 3 orang (boleh 2 orang jika tidak memungkinkan)</p>
+                        <p>• <strong>Syarh Al Qur'an:</strong> 1 regu terdiri dari 3 orang (boleh 2 orang jika tidak memungkinkan)</p>
+                        <p>• Batas usia maksimal: 18 tahun 11 bulan 29 hari</p>
+                        <p>• Semua anggota tim harus dari jenis kelamin yang sama (Putra atau Putri)</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- REGISTRASI TAB -->
+        <div id="registrasi" class="content-section">
+            <div id="registrationClosed" class="registration-closed" style="display: none;">
+                <div class="closed-icon">🔒</div>
+                <h2>Pendaftaran Ditutup</h2>
+                <p id="closedMessage">Mohon maaf, pendaftaran peserta MTQ ke-55 saat ini ditutup.</p>
+                <div id="countdownTimer" class="countdown-timer" style="display: none;">
+                    <p>Pendaftaran dibuka dalam:</p>
+                    <div class="countdown-display">
+                        <div class="countdown-item">
+                            <span id="days">00</span>
+                            <label>Hari</label>
+                        </div>
+                        <div class="countdown-item">
+                            <span id="hours">00</span>
+                            <label>Jam</label>
+                        </div>
+                        <div class="countdown-item">
+                            <span id="minutes">00</span>
+                            <label>Menit</label>
+                        </div>
+                        <div class="countdown-item">
+                            <span id="seconds">00</span>
+                            <label>Detik</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="registrationOpen" style="display: none;">
+                <h2 class="section-title">✏️ Form Registrasi Peserta MTQ ke-55</h2>
+
+                <div class="warning-message">
+                    ⚠️ <strong>Perhatian:</strong> Pastikan semua data sudah benar sebelum mengirim. Setiap peserta hanya boleh terdaftar di SATU cabang lomba. Data yang sudah dikirim tidak dapat diubah.
+                </div>
+
+                <div class="progress-container" id="progressContainer">
+                    <p style="margin-bottom: 15px; font-weight: 600; color: var(--primary); font-size: 1.1em;">Sedang memproses registrasi...</p>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill">0%</div>
+                    </div>
+                </div>
+
+                <form id="registrationForm" name="registrationForm">
+                    <!-- Cabang & Kecamatan Section -->
+                    <h3 style="color: var(--primary); margin-bottom: 25px; font-size: 1.4em;">🏆 Pilih Cabang & Kecamatan</h3>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="cabang">Cabang Lomba *</label>
+                            <select id="cabang" name="cabang" required onchange="handleCabangChange()">
+                                <option value="">-- Pilih Cabang Lomba --</option>
+                                
+                                <optgroup label="Tartil Al Qur'an (Max: 12 tahun 11 bulan 29 hari)">
+                                    <option value="Tartil Al Qur'an Putra|12-11-29|personal|male|TA">Tartil Al Qur'an Putra</option>
+                                    <option value="Tartil Al Qur'an Putri|12-11-29|personal|female|TA">Tartil Al Qur'an Putri</option>
+                                </optgroup>
+                                
+                                <optgroup label="Tilawah Anak-anak (Max: 14 tahun 11 bulan 29 hari)">
+                                    <option value="Tilawah Anak-anak Putra|14-11-29|personal|male|TLA">Tilawah Anak-anak Putra</option>
+                                    <option value="Tilawah Anak-anak Putri|14-11-29|personal|female|TLA">Tilawah Anak-anak Putri</option>
+                                </optgroup>
+                                
+                                <optgroup label="Tilawah Remaja (Max: 24 tahun 11 bulan 29 hari)">
+                                    <option value="Tilawah Remaja Putra|24-11-29|personal|male|TLR">Tilawah Remaja Putra</option>
+                                    <option value="Tilawah Remaja Putri|24-11-29|personal|female|TLR">Tilawah Remaja Putri</option>
+                                </optgroup>
+                                
+                                <optgroup label="Tilawah Dewasa (Max: 40 tahun 11 bulan 29 hari)">
+                                    <option value="Tilawah Dewasa Putra|40-11-29|personal|male|TLD">Tilawah Dewasa Putra</option>
+                                    <option value="Tilawah Dewasa Putri|40-11-29|personal|female|TLD">Tilawah Dewasa Putri</option>
+                                </optgroup>
+                                
+                                <optgroup label="Qira'at Mujawwad (Max: 40 tahun 11 bulan 29 hari)">
+                                    <option value="Qira'at Mujawwad Putra|40-11-29|personal|male|QM">Qira'at Mujawwad Putra</option>
+                                    <option value="Qira'at Mujawwad Putri|40-11-29|personal|female|QM">Qira'at Mujawwad Putri</option>
+                                </optgroup>
+                                
+                                <optgroup label="Hafalan 1 Juz (Max: 15 tahun 11 bulan 29 hari)">
+                                    <option value="Hafalan 1 Juz Putra|15-11-29|personal|male|H1J">Hafalan 1 Juz Putra</option>
+                                    <option value="Hafalan 1 Juz Putri|15-11-29|personal|female|H1J">Hafalan 1 Juz Putri</option>
+                                </optgroup>
+                                
+                                <optgroup label="Hafalan 5 Juz (Max: 20 tahun 11 bulan 29 hari)">
+                                    <option value="Hafalan 5 Juz Putra|20-11-29|personal|male|H5J">Hafalan 5 Juz Putra</option>
+                                    <option value="Hafalan 5 Juz Putri|20-11-29|personal|female|H5J">Hafalan 5 Juz Putri</option>
+                                </optgroup>
+                                
+                                <optgroup label="Hafalan 10 Juz (Max: 20 tahun 11 bulan 29 hari)">
+                                    <option value="Hafalan 10 Juz Putra|20-11-29|personal|male|H10J">Hafalan 10 Juz Putra</option>
+                                    <option value="Hafalan 10 Juz Putri|20-11-29|personal|female|H10J">Hafalan 10 Juz Putri</option>
+                                </optgroup>
+                                
+                                <optgroup label="Hafalan 20 Juz (Max: 22 tahun 11 bulan 29 hari)">
+                                    <option value="Hafalan 20 Juz Putra|22-11-29|personal|male|H20J">Hafalan 20 Juz Putra</option>
+                                    <option value="Hafalan 20 Juz Putri|22-11-29|personal|female|H20J">Hafalan 20 Juz Putri</option>
+                                </optgroup>
+                                
+                                <optgroup label="Hafalan 30 Juz (Max: 22 tahun 11 bulan 29 hari)">
+                                    <option value="Hafalan 30 Juz Putra|22-11-29|personal|male|H30J">Hafalan 30 Juz Putra</option>
+                                    <option value="Hafalan 30 Juz Putri|22-11-29|personal|female|H30J">Hafalan 30 Juz Putri</option>
+                                </optgroup>
+                                
+                                <optgroup label="Tafsir Arab (Max: 22 tahun 11 bulan 29 hari)">
+                                    <option value="Tafsir Arab Putra|22-11-29|personal|male|TFA">Tafsir Arab Putra</option>
+                                    <option value="Tafsir Arab Putri|22-11-29|personal|female|TFA">Tafsir Arab Putri</option>
+                                </optgroup>
+                                
+                                <optgroup label="Tafsir Indonesia (Max: 34 tahun 11 bulan 29 hari)">
+                                    <option value="Tafsir Indonesia Putra|34-11-29|personal|male|TFI">Tafsir Indonesia Putra</option>
+                                    <option value="Tafsir Indonesia Putri|34-11-29|personal|female|TFI">Tafsir Indonesia Putri</option>
+                                </optgroup>
+                                
+                                <optgroup label="Tafsir Inggris (Max: 34 tahun 11 bulan 29 hari)">
+                                    <option value="Tafsir Inggris Putra|34-11-29|personal|male|TFE">Tafsir Inggris Putra</option>
+                                    <option value="Tafsir Inggris Putri|34-11-29|personal|female|TFE">Tafsir Inggris Putri</option>
+                                </optgroup>
+                                
+                                <optgroup label="Kaligrafi Naskah (Max: 34 tahun 11 bulan 29 hari)">
+                                    <option value="Kaligrafi Naskah Putra|34-11-29|personal|male|KN">Kaligrafi Naskah Putra</option>
+                                    <option value="Kaligrafi Naskah Putri|34-11-29|personal|female|KN">Kaligrafi Naskah Putri</option>
+                                </optgroup>
+                                
+                                <optgroup label="Kaligrafi Hiasan (Max: 34 tahun 11 bulan 29 hari)">
+                                    <option value="Kaligrafi Hiasan Putra|34-11-29|personal|male|KH">Kaligrafi Hiasan Putra</option>
+                                    <option value="Kaligrafi Hiasan Putri|34-11-29|personal|female|KH">Kaligrafi Hiasan Putri</option>
+                                </optgroup>
+                                
+                                <optgroup label="Kaligrafi Dekorasi (Max: 34 tahun 11 bulan 29 hari)">
+                                    <option value="Kaligrafi Dekorasi Putra|34-11-29|personal|male|KD">Kaligrafi Dekorasi Putra</option>
+                                    <option value="Kaligrafi Dekorasi Putri|34-11-29|personal|female|KD">Kaligrafi Dekorasi Putri</option>
+                                </optgroup>
+                                
+                                <optgroup label="Kaligrafi Kontemporer (Max: 34 tahun 11 bulan 29 hari)">
+                                    <option value="Kaligrafi Kontemporer Putra|34-11-29|personal|male|KK">Kaligrafi Kontemporer Putra</option>
+                                    <option value="Kaligrafi Kontemporer Putri|34-11-29|personal|female|KK">Kaligrafi Kontemporer Putri</option>
+                                </optgroup>
+                                
+                                <optgroup label="KTIQ (Max: 24 tahun 11 bulan 29 hari)">
+                                    <option value="KTIQ Putra|24-11-29|personal|male|KTIQ">KTIQ Putra</option>
+                                    <option value="KTIQ Putri|24-11-29|personal|female|KTIQ">KTIQ Putri</option>
+                                </optgroup>
+                                
+                                <optgroup label="Fahm Al Qur'an (Tim - Max: 18 tahun 11 bulan 29 hari)">
+                                    <option value="Fahm Al Qur'an Putra|18-11-29|tim|3|male|FAQ">Fahm Al Qur'an Putra (Tim)</option>
+                                    <option value="Fahm Al Qur'an Putri|18-11-29|tim|3|female|FAQ">Fahm Al Qur'an Putri (Tim)</option>
+                                </optgroup>
+                                
+                                <optgroup label="Syarh Al Qur'an (Tim - Max: 18 tahun 11 bulan 29 hari)">
+                                    <option value="Syarh Al Qur'an Putra|18-11-29|tim|3|male|SAQ">Syarh Al Qur'an Putra (Tim)</option>
+                                    <option value="Syarh Al Qur'an Putri|18-11-29|tim|3|female|SAQ">Syarh Al Qur'an Putri (Tim)</option>
+                                </optgroup>
+                            </select>
+                            <div id="ageRequirement" class="age-info" style="display: none;"></div>
+                        </div>
+                        <div class="form-group">
+                            <label for="kecamatan">Kecamatan Asal *</label>
+                            <select id="kecamatan" name="kecamatan" required>
+                                <option value="">-- Pilih Kecamatan --</option>
+                                <option value="Anjatan">Anjatan</option>
+                                <option value="Arahan">Arahan</option>
+                                <option value="Balongan">Balongan</option>
+                                <option value="Bangodua">Bangodua</option>
+                                <option value="Bongas">Bongas</option>
+                                <option value="Cantigi">Cantigi</option>
+                                <option value="Cikedung">Cikedung</option>
+                                <option value="Gabuswetan">Gabuswetan</option>
+                                <option value="Gantar">Gantar</option>
+                                <option value="Haurgeulis">Haurgeulis</option>
+                                <option value="Indramayu">Indramayu</option>
+                                <option value="Jatibarang">Jatibarang</option>
+                                <option value="Juntinyuat">Juntinyuat</option>
+                                <option value="Kandanghaur">Kandanghaur</option>
+                                <option value="Karangampel">Karangampel</option>
+                                <option value="Kedokan Bunder">Kedokan Bunder</option>
+                                <option value="Kertasemaya">Kertasemaya</option>
+                                <option value="Krangkeng">Krangkeng</option>
+                                <option value="Kroya">Kroya</option>
+                                <option value="Lelea">Lelea</option>
+                                <option value="Lohbener">Lohbener</option>
+                                <option value="Losarang">Losarang</option>
+                                <option value="Pasekan">Pasekan</option>
+                                <option value="Patrol">Patrol</option>
+                                <option value="Sindang">Sindang</option>
+                                <option value="Sliyeg">Sliyeg</option>
+                                <option value="Sukagumiwang">Sukagumiwang</option>
+                                <option value="Sukra">Sukra</option>
+                                <option value="Terisi">Terisi</option>
+                                <option value="Tukdana">Tukdana</option>
+                                <option value="Widasari">Widasari</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Data Diri Peserta Section -->
+                    <h3 style="color: var(--primary); margin-top: 40px; margin-bottom: 25px; font-size: 1.4em;" id="dataDiriHeader">📋 Data Diri Peserta</h3>
+                    <div id="dataDiriSection" style="display: none;">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="nik">NIK *</label>
+                                <input type="text" id="nik" name="nik" maxlength="16" inputmode="numeric" placeholder="16 digit NIK">
+                                <small style="font-size: 0.85em; color: #666; display: block; margin-top: 5px;">Masukkan 16 digit NIK tanpa spasi</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="nama">Nama Lengkap *</label>
+                                <input type="text" id="nama" name="nama" placeholder="Nama lengkap sesuai KTP">
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="jenisKelamin">Jenis Kelamin *</label>
+                                <select id="jenisKelamin" name="jenisKelamin">
+                                    <option value="">-- Pilih Jenis Kelamin --</option>
+                                    <option value="Laki-laki">Laki-laki</option>
+                                    <option value="Perempuan">Perempuan</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="tempatLahir">Tempat Lahir *</label>
+                                <input type="text" id="tempatLahir" name="tempatLahir" placeholder="Kota/Kabupaten">
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="tglLahir">Tanggal Lahir *</label>
+                                <input type="date" id="tglLahir" name="tglLahir">
+                                <small style="font-size: 0.85em; color: #666; display: block; margin-top: 5px;">Tidak boleh melebihi hari ini</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="umur">Umur (per 1 November 2025) *</label>
+                                <input type="text" id="umur" name="umur" readonly placeholder="Otomatis terisi">
+                                <small style="font-size: 0.85em; color: #666; display: block; margin-top: 5px;">Format: Tahun-Bulan-Hari</small>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="alamat">Alamat Lengkap *</label>
+                            <textarea id="alamat" name="alamat" rows="3" placeholder="Jalan, RT/RW, Desa, Kecamatan"></textarea>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="noTelepon">Nomor Telepon/WhatsApp *</label>
+                                <input type="tel" id="noTelepon" name="noTelepon" placeholder="08xxxxxxxxxx">
+                            </div>
+                            <div class="form-group">
+                                <label for="email">Email *</label>
+                                <input type="email" id="email" name="email" placeholder="email@example.com">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Team Section -->
+                    <div id="teamSection" style="display: none;">
+                        <h3 style="color: var(--primary); margin-bottom: 25px; font-size: 1.4em;">👥 Data Regu/Tim</h3>
+                        <div class="form-group">
+                            <label for="namaRegu">Nama Regu/Tim *</label>
+                            <input type="text" id="namaRegu" name="namaRegu" placeholder="Nama regu/tim Anda">
+                        </div>
+                        <div id="teamMembers"></div>
+                    </div>
+
+                    <!-- Rekening Section -->
+                    <div id="rekeningPersonalSection" style="display: none;">
+                        <h3 style="color: var(--primary); margin-top: 40px; margin-bottom: 25px; font-size: 1.4em;">💳 Informasi Rekening</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="namaRek">Nama Pemilik Rekening *</label>
+                                <input type="text" id="namaRek" name="namaRek" placeholder="Nama sesuai buku tabungan">
+                            </div>
+                            <div class="form-group">
+                                <label for="noRek">Nomor Rekening *</label>
+                                <input type="text" id="noRek" name="noRek" placeholder="Nomor rekening">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="namaBank">Nama Bank *</label>
+                            <input type="text" id="namaBank" name="namaBank" placeholder="BNI, BCA, Mandiri, dll">
+                        </div>
+                    </div>
+
+                    <!-- Upload Dokumen Section -->
+                    <h3 style="color: var(--primary); margin-top: 40px; margin-bottom: 25px; font-size: 1.4em;">📄 Upload Dokumen Persyaratan</h3>
+                    <p style="margin-bottom: 20px; padding: 15px; background: #fff3cd; border-radius: 10px; color: #856404; font-size: 0.95em;">
+                        Format: PDF, JPG, PNG | Max 5MB per file
+                    </p>
+
+                    <div id="personalSection" style="display: none;">
+                        <h4 style="color: var(--primary); margin-bottom: 20px; font-size: 1.2em;">Dokumen Peserta Perorangan</h4>
+                        <div id="personalDocs"></div>
+                    </div>
+
+                    <!-- Submit Status Info -->
+                    <div id="submitStatusInfo" class="submit-status-info" style="display: none;"></div>
+
+                    <div style="margin-top: 35px; padding: 20px; background: linear-gradient(135deg, #e6f3ff 0%, #d4e9ff 100%); border-radius: 12px; border-left: 5px solid var(--primary);">
+                        <p style="margin: 0; color: var(--primary); line-height: 1.8; font-size: 0.95em;">
+                            <strong>📌 Catatan:</strong> Dengan klik "Daftar Peserta", Anda menyetujui bahwa semua data dan dokumen yang diupload adalah akurat dan benar.
+                        </p>
+                    </div>
+
+                    <div style="margin-top: 25px; display: flex; gap: 15px; flex-wrap: wrap;">
+                        <button type="submit" class="btn-submit" id="submitBtn">✅ Daftar Peserta</button>
+                        <button type="button" class="btn-reset" onclick="resetForm()">🔄 Bersihkan Form</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Result Modal -->
+    <div id="resultModal" class="result-modal">
+        <div class="result-content">
+            <div class="result-icon" id="resultIcon"></div>
+            <div style="font-size: 1.8em; font-weight: 700; margin-bottom: 15px; color: var(--primary);" id="resultTitle"></div>
+            <div style="font-size: 1em; color: #555; line-height: 1.8; margin-bottom: 25px; white-space: pre-wrap;" id="resultMessage"></div>
+            <button style="background: linear-gradient(135deg, var(--primary), var(--secondary));" onclick="closeResultModal()">Tutup</button>
+        </div>
+    </div>
+
+    <!-- Confirm Modal -->
+    <div id="confirmModal" class="confirm-modal">
+        <div class="confirm-content">
+            <div class="confirm-icon">⚠️</div>
+            <div style="font-size: 1.6em; font-weight: 700; margin-bottom: 15px; color: var(--primary);" id="confirmTitle">Konfirmasi</div>
+            <div style="font-size: 1em; color: #555; line-height: 1.8; margin-bottom: 25px; white-space: pre-wrap;" id="confirmMessage">Apakah Anda yakin?</div>
+            <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
+                <button style="background: #6c757d;" onclick="closeConfirmModal(false)">Batal</button>
+                <button style="background: linear-gradient(135deg, var(--danger), #c82333);" onclick="closeConfirmModal(true)">Ya, Lanjutkan</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
