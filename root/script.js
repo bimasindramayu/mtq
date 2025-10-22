@@ -2,7 +2,7 @@
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxckdmignbbUMhmpFJb2ekhjH_HI5LVcl0i6-UUrrcUC0kcVqm36Y03w6pgQhAci7U/exec';
 
 // REGISTRATION TIME WINDOW
-const REGISTRATION_START = new Date('2025-10-22T13:30:00+07:00'); // 29 Oktober 2025, 00:00 WIB
+const REGISTRATION_START = new Date('2025-10-22T14:00:00+07:00'); // 29 Oktober 2025, 00:00 WIB
 const REGISTRATION_END = new Date('2025-10-30T23:59:59+07:00');   // 30 Oktober 2025, 23:59 WIB
 
 // Logger utility
