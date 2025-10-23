@@ -1,3 +1,4 @@
+// root/script.js
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyMJ2E2SnBtd3ZhR6GmiGzTea1SVguT-qL6XkWYRjZS1O26q4lM0q-eq4O7e4SRVS-t/exec';
 
 const REFERENCE_DATE = new Date('2025-11-01');
