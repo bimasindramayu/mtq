@@ -9,15 +9,15 @@
 </head>
 <body>
     <div class="header">
-        <h1>Admin Dashboard - Verifikasi Peserta MTQ</h1>
-        <p>Kelola dan verifikasi data peserta lomba</p>
+        <h1>🎯 Admin Dashboard MTQ</h1>
+        <p>Kelola dan verifikasi data peserta lomba Musabaqah Tilawatil Quran</p>
     </div>
 
     <div class="container">
         <div id="alertContainer"></div>
 
         <div class="search-section">
-            <h3>Cari Data Peserta</h3>
+            <h3>🔍 Cari Data Peserta</h3>
             <div class="search-row">
                 <div class="form-group">
                     <label for="searchName">Nama / NIK</label>
@@ -46,8 +46,8 @@
                 </div>
             </div>
             <div class="button-group">
-                <button class="btn-primary" onclick="searchData()">Cari</button>
-                <button class="btn-secondary" onclick="resetSearch()">Reset</button>
+                <button class="btn-primary" onclick="searchData()">🔎 Cari</button>
+                <button class="btn-secondary" onclick="resetSearch()">↺ Reset</button>
             </div>
         </div>
 
@@ -72,7 +72,7 @@
                 <tbody id="tableBody"></tbody>
             </table>
             <div id="noData" class="no-data" style="display: none;">
-                <p>Tidak ada data ditemukan</p>
+                <p>📭 Tidak ada data ditemukan</p>
             </div>
         </div>
     </div>
@@ -81,14 +81,14 @@
         <div class="modal-content">
             <div id="modalAlertContainer"></div>
             <div class="modal-header">
-                <span>Detail Peserta</span>
+                <span>📋 Detail Peserta</span>
                 <button class="close-btn" onclick="closeDetailModal()">✕</button>
             </div>
             <div class="modal-body" id="detailContent"></div>
             <div class="modal-footer" id="detailFooter">
                 <button class="btn-secondary" onclick="closeDetailModal()">Tutup</button>
-                <button class="btn-primary" onclick="toggleEditMode()">Edit</button>
-                <button class="btn-danger" onclick="confirmDelete()">Hapus</button>
+                <button class="btn-primary" onclick="toggleEditMode()">✏️ Edit</button>
+                <button class="btn-danger" onclick="confirmDelete()">🗑️ Hapus</button>
             </div>
         </div>
     </div>

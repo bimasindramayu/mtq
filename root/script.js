@@ -1,13 +1,28 @@
 // root/script.js
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyMJ2E2SnBtd3ZhR6GmiGzTea1SVguT-qL6XkWYRjZS1O26q4lM0q-eq4O7e4SRVS-t/exec';
 
-const REFERENCE_DATE = new Date('2025-11-01');
+/* ========== CONFIG SECTION ========== */
+const CONFIG = {
+    // Set ke false untuk matikan logger, true untuk aktifkan
+    DEBUG_MODE: false,
+    
+    // Google Apps Script URL
+    APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbyMJ2E2SnBtd3ZhR6GmiGzTea1SVguT-qL6XkWYRjZS1O26q4lM0q-eq4O7e4SRVS-t/exec',
+    
+    // Reference date untuk perhitungan umur
+    REFERENCE_DATE: new Date('2025-11-01'),
+    
+    // WIB Timezone offset
+    WIB_OFFSET: 7 * 60 * 60 * 1000
+};
 
-const WIB_OFFSET = 7 * 60 * 60 * 1000; // 7 jam dalam milliseconds
+/* ========== END CONFIG ========== */
 
-// Logger utility
+const APPS_SCRIPT_URL = CONFIG.APPS_SCRIPT_URL;
+const REFERENCE_DATE = CONFIG.REFERENCE_DATE;
+const WIB_OFFSET = CONFIG.WIB_OFFSET;
+
 const Logger = {
-    enabled: true,
+    enabled: CONFIG.DEBUG_MODE,
     log: function(category, message, data = null) {
         if (!this.enabled) return;
         const timestamp = new Date().toLocaleTimeString();
@@ -38,7 +53,6 @@ let sortColumn = null;
 let sortDirection = 'asc';
 let filesToUpload = {};
 
-
 const KECAMATAN_LIST = [
     'Anjatan', 'Arahan', 'Balongan', 'Bangodua', 'Bongas', 'Cantigi',
     'Cikedung', 'Gabuswetan', 'Gantar', 'Haurgeulis', 'Indramayu',
@@ -48,7 +62,6 @@ const KECAMATAN_LIST = [
     'Sukra', 'Terisi', 'Tukdana', 'Widasari', 'Kroya'
 ];
 
-
 document.addEventListener('DOMContentLoaded', function() {
     loadData();
 });
@@ -57,7 +70,8 @@ function showAlert(message, type = 'success', isModal = false) {
     const container = isModal ? document.getElementById('modalAlertContainer') : document.getElementById('alertContainer');
     const alert = document.createElement('div');
     alert.className = `alert alert-${type}`;
-    alert.innerHTML = `<strong>${type === 'success' ? '✓' : type === 'error' ? '✗' : 'ℹ'}</strong> ${message}`;
+    const icons = { success: '✓', error: '✕', info: 'ℹ' };
+    alert.innerHTML = `<strong>${icons[type] || 'ℹ'}</strong> ${message}`;
     container.appendChild(alert);
     setTimeout(() => alert.remove(), 5000);
 }
@@ -89,7 +103,6 @@ function loadData() {
                 Logger.log('loadData', `Received ${data.data.length} rows`);
                 headers = data.headers;
                 
-                // Create header index map for easy lookup
                 const headerMap = {};
                 data.headers.forEach((header, idx) => {
                     headerMap[header] = idx;
@@ -101,79 +114,32 @@ function loadData() {
                     data.headers.forEach((header, i) => {
                         let value = row[i] || '';
                         
-                        // KHUSUS: Parse "Batas Usia Max" - Convert dari ISO datetime ke umur maksimal
                         if (header === 'Batas Usia Max') {
                             if (value && value !== '-' && value !== '') {
                                 Logger.group(`Processing Batas Usia Max (row ${idx})`);
                                 Logger.log('Batas Usia Processing', 'Original value:', value);
-                                Logger.log('Batas Usia Processing', 'Original type:', typeof value);
                                 
                                 let processedValue = value;
                                 
-                                // Cek apakah format ISO datetime (YYYY-MM-DDTHH:MM:SS.000Z)
                                 if (typeof value === 'string' && value.includes('T')) {
                                     Logger.log('Batas Usia Processing', 'Detected: ISO datetime format');
-                                    const isoDate = value.split('T')[0]; // e.g., "2029-12-10"
+                                    const isoDate = value.split('T')[0];
                                     const parts = isoDate.split('-');
                                     const year = parseInt(parts[0]);
                                     const month = parts[1];
                                     const day = parts[2];
                                     
-                                    Logger.log('Batas Usia Processing', 'Extracted date:', {year, month, day});
-                                    
-                                    // Google Sheets interpret "12-11-29" sebagai 12 November 2029 (DD-MM-YYYY)
-                                    // Namun saat mengirim via API, Sheets malah mengirim ISO: 2029-12-10
-                                    // Jadi kita perlu special handling:
-                                    // 
-                                    // Format asli yang diinginkan: DD-MM-YY
-                                    // ISO yang diterima: YYYY-MM-DD
-                                    // 
-                                    // Mapping dari ISO 2029-12-10 ke original 12-11-29:
-                                    // Sheets interpret: 12 (hari asli) - 11 (bulan asli) - 29 (tahun asli = 2029)
-                                    // Sheets output ISO: 2029 (tahun asli) - 12 (?) - 10 (?)
-                                    // 
-                                    // Pattern: YYYY-MM-DD dari 2029-12-10 sebenarnya adalah:
-                                    // YYYY (2029) = tahun dari 29 -> jadi ini adalah 20YY format
-                                    // MM (12) = bulan? tidak, karena original bulan adalah 11
-                                    // DD (10) = hari? tidak, karena original hari adalah 12
-                                    //
-                                    // Coba mapping lain: 
-                                    // 2029-12-10 -> ambil: day(10) sebagai tahun(-29) + 30? tidak
-                                    // 
-                                    // Coba ekstrak dengan asumsi Sheets format regional DD/MM/YY:
-                                    // Original 12-11-29 (DD-MM-YY) -> Sheets interpret sebagai date
-                                    // Mungkin bulan dan hari ter-swap?
-                                    // 2029-12-10: bulan 12 seharusnya 11, hari 10 seharusnya 12?
-                                    // Berarti swap MM dan DD: 10-12-29 -> tapi ini juga salah
-                                    //
-                                    // Mari gunakan logic empiris dari data:
-                                    // ISO 2029-12-10 harus menjadi 12-11-29
-                                    // Dari 2029, 12, 10 -> 12, 11, 29
-                                    // Pattern: day(dari original) = MM(12) dari ISO
-                                    //          month(dari original) = MM-1(12-1=11) dari ISO
-                                    //          year(dari original) = YY(29) dari year(2029)
-                                    
-                                    const yearLastTwoDigits = year % 100; // 29
-                                    const monthFromISO = parseInt(month); // 12
-                                    const dayFromISO = parseInt(day); // 10
-                                    
-                                    // Extract original dari ISO dengan swap-adjust:
-                                    // day original = month dari ISO (12)
-                                    // month original = month dari ISO - 1 (11)
-                                    // year original = YY dari YYYY (29)
+                                    const yearLastTwoDigits = year % 100;
+                                    const monthFromISO = parseInt(month);
+                                    const dayFromISO = parseInt(day);
                                     
                                     const originalDay = monthFromISO;
                                     const originalMonth = monthFromISO - 1;
                                     const originalYear = yearLastTwoDigits;
                                     
                                     processedValue = `${String(originalDay).padStart(2, '0')}-${String(originalMonth).padStart(2, '0')}-${String(originalYear).padStart(2, '0')}`;
-                                    
-                                    Logger.log('Batas Usia Processing', 'Extracted with swap-adjust logic');
-                                    Logger.log('Batas Usia Processing', 'Extracted values:', {originalDay, originalMonth, originalYear});
                                     Logger.log('Batas Usia Processing', 'Final format DD-MM-YY:', processedValue);
-                                    Logger.log('Batas Usia Processing', 'Meaning:', `${originalDay} Tahun ${originalMonth} Bulan ${originalYear} Hari`);
                                 }
-                                // Cek apakah format YYYY-MM-DD (4 digit tahun di awal)
                                 else if (typeof value === 'string' && value.match(/^\d{4}-\d{2}-\d{2}$/)) {
                                     Logger.log('Batas Usia Processing', 'Detected: YYYY-MM-DD format');
                                     const parts = value.split('-');
@@ -203,16 +169,6 @@ function loadData() {
                                     processedValue = `${String(yearTwoDigit).padStart(2, '0')}-${String(months).padStart(2, '0')}-${String(days).padStart(2, '0')}`;
                                     Logger.log('Batas Usia Processing', 'Converted to max age format (YY-MM-DD):', processedValue);
                                 }
-                                // Format YY-MM-DD (sudah benar, hanya normalize)
-                                else if (typeof value === 'string' && value.match(/^\d{1,2}-\d{1,2}-\d{1,2}$/)) {
-                                    Logger.log('Batas Usia Processing', 'Detected: YY-MM-DD format (already correct)');
-                                    const parts = value.split('-');
-                                    const yy = String(parseInt(parts[0])).padStart(2, '0');
-                                    const mm = String(parseInt(parts[1])).padStart(2, '0');
-                                    const dd = String(parseInt(parts[2])).padStart(2, '0');
-                                    processedValue = `${yy}-${mm}-${dd}`;
-                                    Logger.log('Batas Usia Processing', 'Normalized YY-MM-DD to:', processedValue);
-                                }
                                 
                                 value = processedValue;
                                 Logger.log('Batas Usia Processing', 'FINAL VALUE:', value);
@@ -220,12 +176,10 @@ function loadData() {
                             }
                         }
                         
-                        // Parse tanggal lahir fields
                         if (header.includes('Tanggal Lahir') || header.includes('Tgl Lahir')) {
                             if (value && value !== '-' && value !== '') {
                                 Logger.group(`Processing Date: ${header} (row ${idx})`);
                                 Logger.log('Date Processing', 'Original value:', value);
-                                Logger.log('Date Processing', 'Value type:', typeof value);
                                 
                                 const dateObj = new Date(value);
                                 if (!isNaN(dateObj.getTime())) {
@@ -241,12 +195,10 @@ function loadData() {
                             }
                         }
                         
-                        // Handle Umur format
                         if (header.includes('Umur')) {
                             if (value && value !== '-' && value !== '') {
                                 Logger.group(`Processing Age: ${header} (row ${idx})`);
                                 Logger.log('Age Processing', 'Original value:', value);
-                                Logger.log('Age Processing', 'Value type:', typeof value);
                                 
                                 if (typeof value === 'string' && (value.includes('T') || value.match(/^\d{4}-\d{2}-\d{2}/))) {
                                     Logger.log('Age Processing', 'DETECTED: Date format, need to recalculate from birth date');
@@ -296,7 +248,6 @@ function loadData() {
                 
                 filteredData = [...allData];
                 Logger.log('loadData', '=== DATA LOADED SUCCESSFULLY ===');
-                Logger.log('loadData', 'Sample data (first row):', allData[0]);
                 
                 renderTable();
                 updateStats();
@@ -316,7 +267,6 @@ function loadData() {
 function compareAge(personAgeStr, maxYears, maxMonths, maxDays, personLabel) {
     Logger.log('compareAge', 'Person:', personLabel);
     Logger.log('compareAge', 'Person age:', personAgeStr);
-    Logger.log('compareAge', 'Max allowed:', {maxYears, maxMonths, maxDays});
     
     const ageParts = personAgeStr.split('-');
     if (ageParts.length !== 3) {
@@ -328,14 +278,8 @@ function compareAge(personAgeStr, maxYears, maxMonths, maxDays, personLabel) {
     const personMonths = parseInt(ageParts[1]) || 0;
     const personDays = parseInt(ageParts[2]) || 0;
     
-    Logger.log('compareAge', 'Parsed person age:', {personYears, personMonths, personDays});
-    
-    // Konversi ke hari untuk perbandingan akurat
     const personTotalDays = (personYears * 365) + (personMonths * 30.44) + personDays;
     const maxTotalDays = (maxYears * 365) + (maxMonths * 30.44) + maxDays;
-    
-    Logger.log('compareAge', 'Person total days:', personTotalDays);
-    Logger.log('compareAge', 'Max total days:', maxTotalDays);
     
     if (personTotalDays > maxTotalDays) {
         const message = `⚠️ ${personLabel} melebihi batas usia maksimal!\n\nUmur ${personLabel}: ${personYears} Tahun ${personMonths} Bulan ${personDays} Hari\nBatas Usia Maksimal: ${maxYears} Tahun ${maxMonths} Bulan ${maxDays} Hari\n\nData tidak dapat disimpan sampai umur sesuai dengan ketentuan.`;
@@ -354,21 +298,16 @@ function validateAgeRestriction() {
     Logger.log('validateAgeRestriction', '=== START VALIDATION ===');
     Logger.log('validateAgeRestriction', 'Cabang:', cabang);
     Logger.log('validateAgeRestriction', 'Max age from data:', maxAgeStr);
-    console.log('VALIDATION: Max age str:', maxAgeStr); // Debugging
     
     if (!maxAgeStr || maxAgeStr === '-') {
         Logger.log('validateAgeRestriction', 'No max age found');
-        console.log('VALIDATION: No max age'); // Debugging
         return { isValid: true, message: '' };
     }
     
-    // Parse max age dari format "YY-MM-DD"
     const maxAgeParts = maxAgeStr.split('-');
-    console.log('VALIDATION: Max age parts:', maxAgeParts); // Debugging
     
     if (maxAgeParts.length !== 3) {
         Logger.log('validateAgeRestriction', 'Invalid max age format:', maxAgeStr);
-        console.log('VALIDATION: Invalid format'); // Debugging
         return { isValid: true, message: '' };
     }
     
@@ -376,84 +315,57 @@ function validateAgeRestriction() {
     let maxAgeMonths = parseInt(maxAgeParts[1]) || 0;
     let maxAgeDays = parseInt(maxAgeParts[2]) || 0;
     
-    Logger.log('validateAgeRestriction', 'Parsed max age:', {maxAgeYears, maxAgeMonths, maxAgeDays});
-    console.log('VALIDATION: Parsed max age:', {maxAgeYears, maxAgeMonths, maxAgeDays}); // Debugging
-    
-    // Cek peserta utama
     const personalAge = currentRowData['Umur'] || '';
     Logger.log('validateAgeRestriction', 'Personal age:', personalAge);
-    console.log('VALIDATION: Personal age:', personalAge); // Debugging
     
     if (personalAge && personalAge !== '-') {
         const validation = compareAge(personalAge, maxAgeYears, maxAgeMonths, maxAgeDays, 'Peserta Utama');
-        console.log('VALIDATION: Personal validation result:', validation); // Debugging
         if (!validation.isValid) {
             Logger.log('validateAgeRestriction', 'Personal validation FAILED');
-            console.log('VALIDATION: Personal FAILED'); // Debugging
             return validation;
         }
     }
     
-    // Cek anggota tim jika ada
     for (let i = 1; i <= 3; i++) {
         const memberAge = currentRowData[`Anggota Tim #${i} - Umur`] || '';
         const memberName = currentRowData[`Anggota Tim #${i} - Nama`] || '-';
         
-        Logger.log('validateAgeRestriction', `Member ${i} age:`, memberAge, 'Name:', memberName);
-        console.log(`VALIDATION: Member ${i} age:`, memberAge, 'Name:', memberName); // Debugging
-        
         if (memberAge && memberAge !== '-' && memberName !== '-') {
             const validation = compareAge(memberAge, maxAgeYears, maxAgeMonths, maxAgeDays, `Anggota Tim #${i}`);
-            console.log(`VALIDATION: Member ${i} result:`, validation); // Debugging
             if (!validation.isValid) {
                 Logger.log('validateAgeRestriction', `Member ${i} validation FAILED`);
-                console.log(`VALIDATION: Member ${i} FAILED`); // Debugging
                 return validation;
             }
         }
     }
     
     Logger.log('validateAgeRestriction', '=== ALL VALIDATION PASSED ===');
-    console.log('VALIDATION: ALL PASSED'); // Debugging
     return { isValid: true, message: '' };
 }
 
 function formatDate(dateStr) {
-    Logger.log('formatDate', 'Input:', dateStr);
-    
     if (!dateStr || dateStr === '-') {
-        Logger.log('formatDate', 'Output: -');
         return '-';
     }
     
     try {
         const date = new Date(dateStr);
         if (isNaN(date.getTime())) {
-            Logger.log('formatDate', 'Invalid date, returning original:', dateStr);
             return dateStr;
         }
         
-        // Adjustment untuk timezone Sheets
         const adjusted = new Date(date.getTime() + (7 * 60 * 60 * 1000));
-        
         const day = String(adjusted.getUTCDate()).padStart(2, '0');
         const month = String(adjusted.getUTCMonth() + 1).padStart(2, '0');
         const year = adjusted.getUTCFullYear();
-        const result = `${day}-${month}-${year}`;
-        
-        Logger.log('formatDate', 'Output:', result);
-        return result;
+        return `${day}-${month}-${year}`;
     } catch (e) {
-        Logger.log('formatDate', 'Error:', e.message);
         return dateStr;
     }
 }
 
 function toDateInputValue(dateStr) {
-    Logger.log('toDateInputValue', 'Input:', dateStr);
-    
     if (!dateStr || dateStr === '-') {
-        Logger.log('toDateInputValue', 'Output: empty');
         return '';
     }
     
@@ -461,99 +373,65 @@ function toDateInputValue(dateStr) {
         let date;
         if (dateStr instanceof Date) {
             date = dateStr;
-            Logger.log('toDateInputValue', 'Input is Date object');
         } else {
             date = new Date(dateStr);
-            Logger.log('toDateInputValue', 'Parsed as Date');
         }
         
         if (isNaN(date.getTime())) {
-            Logger.log('toDateInputValue', 'Invalid date, returning empty');
             return '';
         }
         
-        // Adjustment untuk timezone Sheets
         const adjusted = new Date(date.getTime() + (7 * 60 * 60 * 1000));
-        
         const year = adjusted.getUTCFullYear();
         const month = String(adjusted.getUTCMonth() + 1).padStart(2, '0');
         const day = String(adjusted.getUTCDate()).padStart(2, '0');
-        const result = `${year}-${month}-${day}`;
-        
-        Logger.log('toDateInputValue', 'Output:', result);
-        return result;
+        return `${year}-${month}-${day}`;
     } catch (e) {
-        Logger.log('toDateInputValue', 'Error:', e.message);
-        console.error('Error converting date:', e);
         return '';
     }
 }
 
 function formatAge(ageStr) {
-    Logger.log('formatAge', 'Input:', ageStr);
-    Logger.log('formatAge', 'Input type:', typeof ageStr);
-    
     if (!ageStr || ageStr === '-') {
-        Logger.log('formatAge', 'Output: -');
         return '-';
     }
     
     const strAge = String(ageStr).trim();
-    Logger.log('formatAge', 'String value:', strAge);
-    
     const parts = strAge.split('-');
-    Logger.log('formatAge', 'Parts:', parts);
     
     if (parts.length === 3) {
         const years = parseInt(parts[0]) || 0;
         const months = parseInt(parts[1]) || 0;
         const days = parseInt(parts[2]) || 0;
-        
-        Logger.log('formatAge', 'Parsed values:', {years, months, days});
-        
-        const result = `${years} Tahun ${months} Bulan ${days} Hari`;
-        Logger.log('formatAge', 'Output:', result);
-        return result;
+        return `${years} Tahun ${months} Bulan ${days} Hari`;
     }
     
-    Logger.log('formatAge', 'Not in expected format, returning original');
     return ageStr;
 }
 
 function calculateAge(birthDateStr) {
-    Logger.log('calculateAge', 'Input:', birthDateStr);
-    Logger.log('calculateAge', 'Input type:', typeof birthDateStr);
-    
     if (!birthDateStr || birthDateStr === '-') {
-        Logger.log('calculateAge', 'Output: -');
         return '-';
     }
     
     try {
         let birthDate;
-        
         if (birthDateStr instanceof Date) {
             birthDate = birthDateStr;
-            Logger.log('calculateAge', 'Input is Date object');
         } else {
             birthDate = new Date(birthDateStr);
-            Logger.log('calculateAge', 'Parsed as Date:', birthDate);
         }
         
         if (isNaN(birthDate.getTime())) {
-            Logger.log('calculateAge', 'Invalid date, returning -');
             return '-';
         }
         
-        // Adjustment untuk timezone Sheets (+7 jam)
         const adjusted = new Date(birthDate.getTime() + (7 * 60 * 60 * 1000));
         const adjustedRef = new Date(REFERENCE_DATE.getTime() + (7 * 60 * 60 * 1000));
         
         let years = adjustedRef.getUTCFullYear() - adjusted.getUTCFullYear();
         let months = adjustedRef.getUTCMonth() - adjusted.getUTCMonth();
         let days = adjustedRef.getUTCDate() - adjusted.getUTCDate();
-        
-        Logger.log('calculateAge', 'Initial calculation:', {years, months, days});
         
         if (days < 0) {
             months--;
@@ -566,14 +444,8 @@ function calculateAge(birthDateStr) {
             months += 12;
         }
         
-        Logger.log('calculateAge', 'Final calculation:', {years, months, days});
-        
-        const result = `${String(years).padStart(2, '0')}-${String(months).padStart(2, '0')}-${String(days).padStart(2, '0')}`;
-        Logger.log('calculateAge', 'Output:', result);
-        return result;
+        return `${String(years).padStart(2, '0')}-${String(months).padStart(2, '0')}-${String(days).padStart(2, '0')}`;
     } catch (e) {
-        Logger.log('calculateAge', 'Error:', e.message);
-        console.error('Error calculating age:', e);
         return '-';
     }
 }
@@ -699,16 +571,16 @@ function updateStats() {
             <div class="stat-value">${total}</div>
             <div class="stat-label">Total Peserta</div>
         </div>
-        <div class="stat-card" style="border-top-color: var(--warning);">
-            <div class="stat-value" style="color: var(--warning);">${pending}</div>
+        <div class="stat-card">
+            <div class="stat-value" style="background: linear-gradient(135deg, #f59e0b, #f97316); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">${pending}</div>
             <div class="stat-label">Menunggu Verifikasi</div>
         </div>
-        <div class="stat-card" style="border-top-color: var(--success);">
-            <div class="stat-value" style="color: var(--success);">${verified}</div>
+        <div class="stat-card">
+            <div class="stat-value" style="background: linear-gradient(135deg, #10b981, #059669); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">${verified}</div>
             <div class="stat-label">Terverifikasi</div>
         </div>
-        <div class="stat-card" style="border-top-color: var(--danger);">
-            <div class="stat-value" style="color: var(--danger);">${rejected}</div>
+        <div class="stat-card">
+            <div class="stat-value" style="background: linear-gradient(135deg, #ef4444, #dc2626); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">${rejected}</div>
             <div class="stat-label">Ditolak</div>
         </div>
     `;
@@ -728,8 +600,6 @@ function viewDetail(idx) {
     }
     
     Logger.log('viewDetail', 'Row data loaded:', currentRowData);
-    Logger.log('viewDetail', 'Umur value:', currentRowData['Umur']);
-    Logger.log('viewDetail', 'Tanggal Lahir value:', currentRowData['Tanggal Lahir']);
     
     renderDetailView();
     document.getElementById('detailModal').classList.add('show');
@@ -749,17 +619,12 @@ function renderDetailView() {
         detailContent.classList.remove('edit-mode');
         detailFooter.innerHTML = `
             <button class="btn-secondary" onclick="closeDetailModal()">Tutup</button>
-            <button class="btn-primary" onclick="toggleEditMode()">Edit</button>
-            <button class="btn-danger" onclick="confirmDelete()">Hapus</button>
+            <button class="btn-primary" onclick="toggleEditMode()">✏️ Edit</button>
+            <button class="btn-danger" onclick="confirmDelete()">🗑️ Hapus</button>
         `;
     }
 
-    // Ambil info batas umur untuk ditampilkan
-    // PENTING: Pastikan ambil dari allData yang sudah ter-parse
     let maxAgeStr = '-';
-    
-    // currentRowData sudah adalah copy dari filteredData[idx]
-    // Tapi kami perlu ambil dari allData untuk nilai yang sudah ter-parse
     const indexInAllData = allData.findIndex(r => 
         r['Nomor Peserta'] === currentRowData['Nomor Peserta'] && 
         r['Nama Lengkap'] === currentRowData['Nama Lengkap']
@@ -797,7 +662,7 @@ function renderDetailView() {
         <div class="detail-row">
             <div class="detail-group" style="grid-column: 1/-1;">
                 <span class="detail-label">Persyaratan Umur Cabang</span>
-                <span class="detail-value" style="background: #e3f2fd; border-color: #2196f3; font-weight: 600;">${maxAgeDisplay}</span>
+                <span class="detail-value" style="background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(59, 130, 246, 0.15)); border-color: #3b82f6; font-weight: 600;">${maxAgeDisplay}</span>
             </div>
         </div>
     `;
@@ -829,7 +694,7 @@ function renderDetailView() {
 
     if (currentRowData['Anggota Tim #1 - NIK'] && currentRowData['Anggota Tim #1 - NIK'] !== '-') {
         html += `
-            <div style="margin-top: 25px; padding-top: 20px; border-top: 2px solid #e0e0e0;">
+            <div style="margin-top: 25px; padding-top: 20px; border-top: 2px solid rgba(15, 52, 96, 0.15);">
                 <h4 style="color: var(--primary); margin-bottom: 15px;">👥 Data Regu/Tim</h4>
                 <div class="detail-group" style="margin-bottom: 15px;">
                     <span class="detail-label">Nama Regu/Tim</span>
@@ -877,7 +742,6 @@ function renderDetailView() {
             input.addEventListener('change', handleFileChange);
         });
 
-        // Attach date change listeners untuk auto-calculate age
         document.querySelectorAll('.date-text-input').forEach(input => {
             input.addEventListener('change', function(e) {
                 const dateValue = e.target.value;
@@ -887,11 +751,9 @@ function renderDetailView() {
                 
                 Logger.log('renderDetailView', 'Date changed for member:', memberNum, 'Value:', dateValue);
                 
-                // Calculate age
                 const newAge = calculateAge(dateValue);
                 Logger.log('renderDetailView', 'Calculated age:', newAge);
                 
-                // Update currentRowData
                 if (memberNum) {
                     const umurField = `Anggota Tim #${memberNum} - Umur`;
                     currentRowData[umurField] = newAge;
@@ -899,17 +761,13 @@ function renderDetailView() {
                     currentRowData['Umur'] = newAge;
                 }
                 
-                // Update display dan input fields
                 updateAgeDisplay(memberNum, newAge);
-                
-                // Validasi umur setelah perubahan
                 setTimeout(() => {
                     performAgeValidation();
                 }, 100);
             });
         });
 
-        // Initial validation
         Logger.log('renderDetailView', 'Performing initial age validation');
         performAgeValidation();
     }
@@ -966,7 +824,7 @@ function updateAgeDisplay(memberNum, newAge) {
 
 function renderPersonalSection(memberNum, fields) {
     const prefix = memberNum ? '' : '📋 Data Diri Peserta';
-    let html = memberNum ? '' : `<div style="margin-top: 25px; padding-top: 20px; border-top: 2px solid #e0e0e0;"><h4 style="color: var(--primary); margin-bottom: 15px;">${prefix}</h4>`;
+    let html = memberNum ? '' : `<div style="margin-top: 25px; padding-top: 20px; border-top: 2px solid rgba(15, 52, 96, 0.15);"><h4 style="color: var(--primary); margin-bottom: 15px;">${prefix}</h4>`;
     
     html += `
         <div class="detail-row">
@@ -1051,7 +909,7 @@ function renderDocumentSection(type, docKeys, title) {
     if (!hasDocuments && !isEditMode) return '';
 
     let html = `
-        <div style="margin-top: 25px; padding-top: 20px; border-top: 2px solid #e0e0e0;">
+        <div style="margin-top: 25px; padding-top: 20px; border-top: 2px solid rgba(15, 52, 96, 0.15);">
             <h4 style="color: var(--primary); margin-bottom: 15px;">${title}</h4>
             <div class="file-preview">
     `;
@@ -1059,7 +917,7 @@ function renderDocumentSection(type, docKeys, title) {
     docKeys.forEach((key, idx) => {
         const hasFile = currentRowData[key] && currentRowData[key].trim();
         html += `
-            <div style="margin-bottom: 15px; padding: 10px; background: white; border-radius: 6px; border: 1px solid #e0e0e0;">
+            <div style="margin-bottom: 15px; padding: 10px; background: white; border-radius: 6px; border: 1px solid rgba(15, 52, 96, 0.1);">
                 <strong style="color: var(--primary); display: block; margin-bottom: 5px;">${docNames[idx]}</strong>
         `;
         
@@ -1162,15 +1020,6 @@ function renderStatusSelect() {
     `;
 }
 
-function handleFileChange(e) {
-    const field = e.target.getAttribute('data-field');
-    const file = e.target.files[0];
-    if (file) {
-        filesToUpload[field] = file;
-        console.log('File akan diupload:', field, file.name);
-    }
-}
-
 function toggleEditMode() {
     isEditMode = true;
     filesToUpload = {};
@@ -1261,13 +1110,11 @@ async function saveEdit() {
 function showAgeValidationError(message) {
     const container = document.getElementById('modalAlertContainer');
     
-    // Hapus alert sebelumnya
     const existingAlert = container.querySelector('.alert-age-error');
     if (existingAlert) {
         existingAlert.remove();
     }
     
-    // Buat alert baru
     const alert = document.createElement('div');
     alert.className = 'alert alert-error alert-age-error';
     alert.innerHTML = `<strong>⚠️ Validasi Umur Gagal</strong><br>${message}`;
@@ -1388,39 +1235,5 @@ function deleteData(rowToDelete) {
         hideLoading(isModal);
         console.error('Error deleting data:', error);
         showAlert('Error: ' + error.message, 'error', isModal);
-    });
-}
-
-function updateSaveButtonState(isDisabled) {
-    const saveButton = document.querySelector('button.btn-success');
-    if (saveButton) {
-        if (isDisabled) {
-            saveButton.disabled = true;
-            saveButton.style.opacity = '0.5';
-            saveButton.style.cursor = 'not-allowed';
-        } else {
-            saveButton.disabled = false;
-            saveButton.style.opacity = '1';
-            saveButton.style.cursor = 'pointer';
-        }
-    }
-}
-
-function attachAgeValidationListeners() {
-    // Validasi saat ada perubahan pada field tanggal lahir
-    const dateInputs = document.querySelectorAll('.date-text-input');
-    dateInputs.forEach(input => {
-        input.addEventListener('change', function() {
-            setTimeout(() => {
-                const validation = validateAgeRestriction();
-                if (!validation.isValid) {
-                    showAgeValidationError(validation.message);
-                    updateSaveButtonState(true);
-                } else {
-                    clearAgeValidationError();
-                    updateSaveButtonState(false);
-                }
-            }, 500); // Delay untuk memastikan umur sudah ter-update
-        });
     });
 }
