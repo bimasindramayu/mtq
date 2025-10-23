@@ -23,7 +23,6 @@ let savedTeamData = {};
 let confirmCallback = null;
 let countdownInterval = null;
 
-// ===== PERBAIKAN #3: DATE INPUT HANDLING =====
 function formatDateInput(e) {
     let value = e.target.value;
     if (value.length === 10) return;
@@ -93,7 +92,6 @@ function startCountdown() {
     countdownInterval = setInterval(update, 1000);
 }
 
-// ===== PERBAIKAN #5: VALIDASI JENIS KELAMIN =====
 function validateGender() {
     if (!currentCabang) return { isValid: true, message: '' };
     const genderRestriction = currentCabang.genderRestriction;
@@ -239,18 +237,29 @@ function restoreToTeamMember1() {
     }
 }
 
-// ===== PERBAIKAN #7, #8, #9: HANDLE CABANG CHANGE =====
+// ===== FIX: handleCabangChange dengan Cleanup Required Attributes =====
+
 function handleCabangChange() {
     const selectedValue = document.getElementById('cabang').value;
     const cabangData = getCabangData();
     const data = cabangData[selectedValue];
     
+    Logger.log('=== CABANG CHANGE START ===');
+    Logger.log('Previous cabang: ' + (currentCabang ? (currentCabang.isTeam ? 'TEAM' : 'PERSONAL') : 'NONE'));
+    Logger.log('New cabang: ' + (data ? (data.isTeam ? 'TEAM' : 'PERSONAL') : 'NONE'));
+    
+    const wasTeam = currentCabang && currentCabang.isTeam;
+    
+    // Simpan data sebelumnya
     if (currentCabang && !currentCabang.isTeam) {
+        Logger.log('Saving PERSONAL data...');
         savePersonalData();
     } else if (currentCabang && currentCabang.isTeam) {
+        Logger.log('Saving TEAM data...');
         saveTeamData();
     }
     
+    // Hide semua section
     document.getElementById('personalSection').style.display = 'none';
     document.getElementById('teamSection').style.display = 'none';
     document.getElementById('ageRequirement').style.display = 'none';
@@ -258,48 +267,182 @@ function handleCabangChange() {
     document.getElementById('personalDocs').innerHTML = '';
     
     if (!data) {
+        Logger.log('No cabang selected, clearing all');
         currentCabang = null;
         document.getElementById('dataDiriSection').style.display = 'none';
         document.getElementById('rekeningPersonalSection').style.display = 'none';
         clearPersonalData();
         clearTeamData();
         updateSubmitButtonState();
+        Logger.log('=== CABANG CHANGE CANCEL ===');
         return;
     }
     
     currentCabang = data;
     const ageText = data.maxAge.split('-').join(' tahun ') + ' hari';
     let ageRequirementText = `Batas usia maksimal: ${ageText} (per 1 November 2025)`;
+    
     if (data.genderRestriction && data.genderRestriction !== 'any') {
         const genderText = data.genderRestriction === 'male' ? 'Laki-laki' : 'Perempuan';
         ageRequirementText += `<br>Khusus peserta: ${genderText}`;
     }
+    
     document.getElementById('ageRequirement').innerHTML = ageRequirementText;
     document.getElementById('ageRequirement').style.display = 'block';
     
     if (data.isTeam) {
+        Logger.log('Switching to TEAM cabang');
+        Logger.log('Cleaning up personal file inputs...');
+        
+        // CRITICAL: Clean up personal file inputs sebelum pindah ke team
+        for (let i = 1; i <= 5; i++) {
+            const personalInput = document.getElementById(`personalDoc${i}`);
+            if (personalInput && personalInput.hasAttribute('required')) {
+                personalInput.removeAttribute('required');
+                Logger.log(`  Removed required from personalDoc${i}`);
+            }
+        }
+        
+        // CRITICAL: Prepare uploadedFiles BEFORE generating form
+        // Jika dari PERSONAL, copy files dari PERSONAL ke uploadedFiles dengan format teamDoc1_X
+        if (wasTeam === false && savedPersonalData) {
+            Logger.log('Pre-copying PERSONAL files to TEAM member 1 format...');
+            if (savedPersonalData.files) {
+                for (let docKey in savedPersonalData.files) {
+                    const docNum = docKey.replace('doc', '');
+                    uploadedFiles[`teamDoc1_${docNum}`] = savedPersonalData.files[docKey];
+                    Logger.log(`  Pre-copied: doc${docNum} -> teamDoc1_${docNum}`);
+                }
+            }
+        }
+        
         currentTeamMemberCount = 2;
         generateTeamForm(2);
         document.getElementById('teamSection').style.display = 'block';
         document.getElementById('dataDiriSection').style.display = 'none';
         document.getElementById('rekeningPersonalSection').style.display = 'none';
-        clearPersonalData();
+        
+        // CRITICAL: Immediately remove required from file inputs yang sudah ter-upload
+        Logger.log('Removing required from TEAM file inputs with uploaded files...');
+        for (let i = 1; i <= 2; i++) {
+            for (let d = 1; d <= 5; d++) {
+                const teamInput = document.getElementById(`teamDoc${i}_${d}`);
+                if (teamInput && uploadedFiles[`teamDoc${i}_${d}`]) {
+                    if (teamInput.hasAttribute('required')) {
+                        teamInput.removeAttribute('required');
+                        Logger.log(`  Removed required from teamDoc${i}_${d} (file exists)`);
+                    }
+                }
+            }
+        }
+        
         setTimeout(() => {
-            if (savedTeamData && Object.keys(savedTeamData).length > 0) {
-                restoreTeamData();
-            } else if (savedPersonalData && Object.keys(savedPersonalData).length > 0) {
+            // ISSUE #8: Copy Individu ke Tim1, clear Individu data
+            if (wasTeam === false && savedPersonalData) {
+                Logger.log('Restoring PERSONAL data to TEAM member 1');
                 restoreToTeamMember1();
+                savedPersonalData = null;
+                uploadedFiles = Object.keys(uploadedFiles).reduce((acc, key) => {
+                    if (!key.startsWith('doc')) acc[key] = uploadedFiles[key];
+                    return acc;
+                }, {});
+            } else if (savedTeamData && Object.keys(savedTeamData).length > 0) {
+                Logger.log('Restoring TEAM data');
+                restoreTeamData();
             }
             updateSubmitButtonState();
+            Logger.log('=== CABANG CHANGE TO TEAM COMPLETE ===');
         }, 100);
     } else {
+        Logger.log('Switching to PERSONAL cabang');
+        Logger.log('Cleaning up team file inputs...');
+        
+        // CRITICAL: Clean up team file inputs sebelum pindah ke personal
+        for (let i = 1; i <= 3; i++) {
+            for (let d = 1; d <= 5; d++) {
+                const teamInput = document.getElementById(`teamDoc${i}_${d}`);
+                if (teamInput && teamInput.hasAttribute('required')) {
+                    teamInput.removeAttribute('required');
+                    Logger.log(`  Removed required from teamDoc${i}_${d}`);
+                }
+            }
+        }
+        
+        // CRITICAL: Prepare uploadedFiles BEFORE generating form
+        // Jika dari TEAM, copy files dari TEAM member 1 ke uploadedFiles
+        if (wasTeam === true && savedTeamData && savedTeamData.members && savedTeamData.members[1]) {
+            Logger.log('Pre-copying TEAM member 1 files to uploadedFiles...');
+            const member1 = savedTeamData.members[1];
+            if (member1.files) {
+                for (let d in member1.files) {
+                    const docNum = d.replace('doc', '');
+                    uploadedFiles[`doc${docNum}`] = member1.files[d];
+                    Logger.log(`  Pre-copied: doc${docNum}`);
+                }
+            }
+        }
+        
         document.getElementById('dataDiriSection').style.display = 'block';
         document.getElementById('rekeningPersonalSection').style.display = 'block';
         generatePersonalDocsForm();
         document.getElementById('personalSection').style.display = 'block';
-        clearTeamData();
+        
+        // CRITICAL: Immediately remove required from file inputs yang sudah ter-upload
+        // Ini harus dilakukan SETELAH generatePersonalDocsForm() tapi SEBELUM setTimeout
+        Logger.log('Removing required from file inputs with uploaded files...');
+        for (let i = 1; i <= 5; i++) {
+            const personalInput = document.getElementById(`personalDoc${i}`);
+            if (personalInput && uploadedFiles[`doc${i}`]) {
+                if (personalInput.hasAttribute('required')) {
+                    personalInput.removeAttribute('required');
+                    Logger.log(`  Removed required from personalDoc${i} (file exists)`);
+                }
+            }
+        }
+        
         setTimeout(() => {
-            if (savedPersonalData && Object.keys(savedPersonalData).length > 0) {
+            // ISSUE #8: Copy Tim1 ke Individu, clear Tim data
+            if (wasTeam === true && savedTeamData && savedTeamData.members && savedTeamData.members[1]) {
+                Logger.log('Restoring TEAM member 1 data to PERSONAL');
+                const member1 = savedTeamData.members[1];
+                
+                document.getElementById('nik').value = member1.nik;
+                document.getElementById('nama').value = member1.name;
+                document.getElementById('jenisKelamin').value = member1.jenisKelamin;
+                document.getElementById('tempatLahir').value = member1.tempatLahir;
+                document.getElementById('tglLahir').value = member1.birthDate;
+                document.getElementById('umur').value = member1.umur;
+                document.getElementById('alamat').value = member1.alamat;
+                document.getElementById('noTelepon').value = member1.noTelepon;
+                document.getElementById('email').value = member1.email;
+                document.getElementById('namaRek').value = member1.namaRek;
+                document.getElementById('noRek').value = member1.noRek;
+                document.getElementById('namaBank').value = member1.namaBank;
+                
+                if (member1.files) {
+                    Logger.log('Copying files from TEAM member 1...');
+                    for (let d in member1.files) {
+                        const docNum = d.replace('doc', '');
+                        // File sudah di-copy ke uploadedFiles sebelumnya, hanya update label
+                        const label = document.getElementById(`personalDoc${docNum}Name`);
+                        if (label) {
+                            label.textContent = member1.files[d].name;
+                            label.style.color = '#28a745';
+                        }
+                        Logger.log(`  File label updated: doc${docNum}`);
+                    }
+                }
+                
+                // Clear Team data
+                savedTeamData = {};
+                uploadedFiles = Object.keys(uploadedFiles).reduce((acc, key) => {
+                    if (!key.startsWith('teamDoc')) acc[key] = uploadedFiles[key];
+                    return acc;
+                }, {});
+                
+                Logger.log('TEAM member 1 data restored to PERSONAL');
+            } else if (savedPersonalData && Object.keys(savedPersonalData).length > 0) {
+                Logger.log('Restoring PERSONAL data');
                 document.getElementById('nik').value = savedPersonalData.nik;
                 document.getElementById('nama').value = savedPersonalData.nama;
                 document.getElementById('jenisKelamin').value = savedPersonalData.jenisKelamin;
@@ -312,7 +455,9 @@ function handleCabangChange() {
                 document.getElementById('namaRek').value = savedPersonalData.namaRek;
                 document.getElementById('noRek').value = savedPersonalData.noRek;
                 document.getElementById('namaBank').value = savedPersonalData.namaBank;
+                
                 if (savedPersonalData.files) {
+                    Logger.log('Copying PERSONAL files...');
                     for (let docKey in savedPersonalData.files) {
                         uploadedFiles[docKey] = savedPersonalData.files[docKey];
                         const docNum = docKey.replace('doc', '');
@@ -321,12 +466,15 @@ function handleCabangChange() {
                             label.textContent = savedPersonalData.files[docKey].name;
                             label.style.color = '#28a745';
                         }
+                        Logger.log(`  Copied file: ${docKey}`);
                     }
                 }
             }
             updateSubmitButtonState();
+            Logger.log('=== CABANG CHANGE TO PERSONAL COMPLETE ===');
         }, 100);
     }
+    
     updateSubmitButtonState();
 }
 
@@ -347,11 +495,11 @@ function generatePersonalDocsForm() {
         div.innerHTML = `
             <label>${doc.id}. ${doc.name} ${doc.required ? '*' : '(Opsional)'}</label>
             <small style="font-size: 0.85em; color: #666; display: block; margin-bottom: 10px;">${doc.desc}</small>
-            <div style="display: flex; gap: 10px;">
-                <label for="personalDoc${doc.id}" style="display: inline-block; padding: 12px 25px; background: linear-gradient(135deg, var(--secondary), #228b22); color: white; border-radius: 10px; cursor: pointer; font-weight: 600; transition: all 0.3s;">Pilih File</label>
-                <button type="button" id="clearPersonalDoc${doc.id}" style="display: none; padding: 12px 25px; background: linear-gradient(135deg, var(--danger), #c82333); color: white; border-radius: 10px; cursor: pointer; font-weight: 600; transition: all 0.3s;">Hapus</button>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <label for="personalDoc${doc.id}" style="display: inline-block; padding: 10px 20px; background: linear-gradient(135deg, var(--secondary), #228b22); color: white; border-radius: 10px; cursor: pointer; font-weight: 600; transition: all 0.3s; white-space: nowrap;">Pilih File</label>
+                <button type="button" id="clearPersonalDoc${doc.id}" style="display: none; padding: 10px 20px; background: linear-gradient(135deg, var(--danger), #c82333); color: white; border-radius: 10px; cursor: pointer; font-weight: 600; transition: all 0.3s; white-space: nowrap;">Hapus</button>
             </div>
-            <input type="file" id="personalDoc${doc.id}" accept=".pdf,.jpg,.jpeg,.png" style="display: none;" ${doc.required ? 'required' : ''}>
+            <input type="file" id="personalDoc${doc.id}" name="personalDoc${doc.id}" accept=".pdf,.jpg,.jpeg,.png" style="display: none;" ${doc.required ? 'required' : ''}>
             <span class="file-name" id="personalDoc${doc.id}Name" style="color: #666; font-weight: 600;">Belum ada file</span>
         `;
         container.appendChild(div);
@@ -479,11 +627,11 @@ function generateTeamMemberHTML(i) {
                     <div style="margin-bottom: 15px;">
                         <label>${d+1}. ${doc.name} ${doc.required ? '*' : '(Opsional)'}</label>
                         <small style="font-size: 0.85em; color: #666; display: block; margin-bottom: 8px;">${doc.desc}</small>
-                        <div style="display: flex; gap: 10px;">
-                            <label for="teamDoc${i}_${d+1}" style="display: inline-block; padding: 10px 20px; background: linear-gradient(135deg, var(--secondary), #228b22); color: white; border-radius: 10px; cursor: pointer; font-weight: 600; transition: all 0.3s;">Pilih</label>
-                            <button type="button" id="clearTeamDoc${i}_${d+1}" style="display: none; padding: 10px 20px; background: linear-gradient(135deg, var(--danger), #c82333); color: white; border-radius: 10px; cursor: pointer; font-weight: 600; transition: all 0.3s;">Hapus</button>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <label for="teamDoc${i}_${d+1}" style="display: inline-block; padding: 10px 20px; background: linear-gradient(135deg, var(--secondary), #228b22); color: white; border-radius: 10px; cursor: pointer; font-weight: 600; transition: all 0.3s; white-space: nowrap;">Pilih</label>
+                            <button type="button" id="clearTeamDoc${i}_${d+1}" style="display: none; padding: 10px 20px; background: linear-gradient(135deg, var(--danger), #c82333); color: white; border-radius: 10px; cursor: pointer; font-weight: 600; transition: all 0.3s; white-space: nowrap;">Hapus</button>
                         </div>
-                        <input type="file" id="teamDoc${i}_${d+1}" accept=".pdf,.jpg,.jpeg,.png" style="display: none;" ${doc.required ? 'required' : ''}>
+                        <input type="file" id="teamDoc${i}_${d+1}" name="teamDoc${i}_${d+1}" accept=".pdf,.jpg,.jpeg,.png" style="display: none;" ${doc.required ? 'required' : ''}>
                         <span class="file-name" id="teamDoc${i}_${d+1}Name" style="color: #666; font-weight: 600;">Belum ada</span>
                     </div>
                 `).join('')}
@@ -562,7 +710,6 @@ function setupTeamFormListeners(memberCount) {
                 const selectedDate = new Date(this.value);
                 const today = new Date();
                 if (selectedDate > today) {
-                    showResultModal(false, 'Tanggal Tidak Valid', 'Tanggal lahir tidak boleh lebih dari hari ini!');
                     this.value = '';
                     document.querySelector(`input[name="memberUmur${i}"]`).value = '';
                     updateSubmitButtonState();
@@ -587,7 +734,6 @@ function setupTeamFormListeners(memberCount) {
     }
 }
 
-// ===== PERBAIKAN #6: HANDLE FILE UPLOAD =====
 function handleFileUpload(input, labelId, fileKey, clearBtnId) {
     const label = document.getElementById(labelId);
     const clearBtn = document.getElementById(clearBtnId);
@@ -654,10 +800,18 @@ function updateSubmitButtonState() {
     const submitBtn = document.getElementById('submitBtn');
     const statusDiv = document.getElementById('submitStatusInfo');
     const cabang = document.getElementById('cabang').value;
+    const kecamatan = document.getElementById('kecamatan').value;
+    
+    if (!kecamatan) {
+        submitBtn.disabled = true;
+        statusDiv.innerHTML = '⚠️ Pilih kecamatan asal terlebih dahulu';
+        statusDiv.style.display = 'block';
+        return;
+    }
     
     if (!cabang || !currentCabang) {
         submitBtn.disabled = true;
-        statusDiv.innerHTML = 'Pilih cabang lomba terlebih dahulu';
+        statusDiv.innerHTML = '⚠️ Pilih cabang lomba terlebih dahulu';
         statusDiv.style.display = 'block';
         return;
     }
@@ -688,7 +842,7 @@ function updateSubmitButtonState() {
         statusDiv.style.display = 'none';
     } else {
         submitBtn.disabled = true;
-        statusDiv.innerHTML = 'âš ï¸ ' + reasons.join('<br>âš ï¸ ');
+        statusDiv.innerHTML = '⚠️ ' + reasons.join('<br>⚠️ ');
         statusDiv.style.display = 'block';
     }
 }
@@ -740,7 +894,7 @@ function checkPersonalCompletion() {
 function checkTeamCompletion() {
     const reasons = [];
     const namaRegu = document.getElementById('namaRegu').value;
-    if (!namaRegu) {
+    if (!namaRegu || namaRegu.trim() === '') {
         reasons.push('Nama regu/tim belum diisi');
     }
     
@@ -851,15 +1005,31 @@ function closeConfirmModal(result) {
     }
 }
 
-// ===== PERBAIKAN #1: RESULT MODAL TIDAK AUTO CLOSE =====
 function showResultModal(success, title, message, details = null) {
     const modal = document.getElementById('resultModal');
-    document.getElementById('resultIcon').textContent = success ? 'âœ…' : 'âŒ';
+    document.getElementById('resultIcon').textContent = success ? '✓' : '✗';
     document.getElementById('resultTitle').textContent = title;
     
     let messageText = message;
     if (details && success) {
-        messageText = `${message}\n\nðŸ"‹ Data Registrasi Anda:\nNIK: ${details.nik}\nNama: ${details.nama}\nCabang: ${details.cabang}\nNomor Peserta: ${details.nomorPeserta}`;
+        if (currentCabang && currentCabang.isTeam) {
+            let teamData = `${message}\n\n`;
+            teamData += `=== Data Registrasi Anda ===\n`;
+            teamData += `Nama Regu/Tim: ${details.namaRegu || '-'}\n`;
+            teamData += `Cabang: ${details.cabang || '-'}\n`;
+            teamData += `Nomor Peserta: ${details.nomorPeserta || '-'}\n\n`;
+            teamData += `=== Anggota Tim ===\n`;
+            
+            if (details.teamMembers && details.teamMembers.length > 0) {
+                for (let i = 0; i < details.teamMembers.length; i++) {
+                    const member = details.teamMembers[i];
+                    teamData += `${i + 1}. ${member.nama}\n   NIK: ${member.nik}\n`;
+                }
+            }
+            messageText = teamData;
+        } else {
+            messageText = `${message}\n\n=== Data Registrasi Anda ===\nNIK: ${details.nik}\nNama: ${details.nama}\nCabang: ${details.cabang}\nNomor Peserta: ${details.nomorPeserta}`;
+        }
     }
     
     document.getElementById('resultMessage').textContent = messageText;
@@ -868,6 +1038,44 @@ function showResultModal(success, title, message, details = null) {
 
 function closeResultModal() {
     document.getElementById('resultModal').classList.remove('show');
+    document.getElementById('registrationForm').reset();
+    
+    // Clear semua file input values
+    for (let i = 1; i <= 5; i++) {
+        const personalInput = document.getElementById(`personalDoc${i}`);
+        if (personalInput) {
+            personalInput.value = '';
+            personalInput.removeAttribute('required');
+        }
+    }
+    
+    for (let i = 1; i <= 3; i++) {
+        for (let d = 1; d <= 5; d++) {
+            const teamInput = document.getElementById(`teamDoc${i}_${d}`);
+            if (teamInput) {
+                teamInput.value = '';
+                teamInput.removeAttribute('required');
+            }
+        }
+    }
+    
+    uploadedFiles = {};
+    savedPersonalData = null;
+    savedTeamData = {};
+    document.getElementById('cabang').value = '';
+    document.getElementById('kecamatan').value = '';
+    document.getElementById('umur').value = '';
+    document.getElementById('ageRequirement').innerHTML = '';
+    document.getElementById('ageRequirement').style.display = 'none';
+    document.getElementById('dataDiriSection').style.display = 'none';
+    document.getElementById('rekeningPersonalSection').style.display = 'none';
+    document.getElementById('teamSection').style.display = 'none';
+    document.getElementById('personalSection').style.display = 'none';
+    document.getElementById('teamMembers').innerHTML = '';
+    document.getElementById('personalDocs').innerHTML = '';
+    currentCabang = null;
+    currentTeamMemberCount = 2;
+    updateSubmitButtonState();
 }
 
 function showLoadingOverlay(show, message = 'Memproses...') {
@@ -902,11 +1110,25 @@ async function resetForm() {
     if (!confirmed) return;
     
     document.getElementById('registrationForm').reset();
+    document.getElementById('cabang').value = '';
+    document.getElementById('kecamatan').value = '';
     document.getElementById('umur').value = '';
+    document.getElementById('ageRequirement').innerHTML = '';
+    document.getElementById('ageRequirement').style.display = 'none';
+    document.getElementById('dataDiriSection').style.display = 'none';
+    document.getElementById('rekeningPersonalSection').style.display = 'none';
+    document.getElementById('teamSection').style.display = 'none';
+    document.getElementById('personalSection').style.display = 'none';
+    document.getElementById('teamMembers').innerHTML = '';
+    document.getElementById('personalDocs').innerHTML = '';
+    
     uploadedFiles = {};
     savedPersonalData = null;
     savedTeamData = {};
     currentCabang = null;
+    currentTeamMemberCount = 2;
+    
+    updateSubmitButtonState();
 }
 
 function getCabangData() {
@@ -954,7 +1176,6 @@ function getCabangData() {
     };
 }
 
-// ===== PERBAIKAN #11: DEVELOPER MODE =====
 function initDeveloperMode() {
     if (!DEVELOPER_MODE) return;
     
@@ -964,15 +1185,15 @@ function initDeveloperMode() {
     devModal.innerHTML = `
         <div class="dev-content">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h3 style="margin: 0; color: var(--primary);">👨‍💻 Developer Tools</h3>
+                <h3 style="margin: 0; color: var(--primary);">Developer Tools</h3>
                 <button onclick="closeDevModal()" style="background: #6c757d; padding: 8px 15px; border: none; color: white; border-radius: 5px; cursor: pointer;">Tutup</button>
             </div>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                <button onclick="fillPersonalDataRandom()" style="background: linear-gradient(135deg, #2e8b57, #1e7e34); border: none; color: white; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: 600;">📝 Isi Data Peserta Personal</button>
-                <button onclick="fillTeamMember1Random()" style="background: linear-gradient(135deg, #2e8b57, #1e7e34); border: none; color: white; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: 600;">👤 Isi Tim Peserta 1</button>
-                <button onclick="fillTeamMember2Random()" style="background: linear-gradient(135deg, #2e8b57, #1e7e34); border: none; color: white; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: 600;">👥 Isi Tim Peserta 2</button>
-                <button onclick="fillTeamMember3Random()" style="background: linear-gradient(135deg, #2e8b57, #1e7e34); border: none; color: white; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: 600;">👨‍👩‍👧 Isi Tim Peserta 3</button>
-                <button onclick="clearAllDevData()" style="background: linear-gradient(135deg, var(--danger), #c82333); border: none; color: white; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: 600; grid-column: 1/-1;">🗑️ Hapus Semua Data</button>
+                <button onclick="fillPersonalDataRandom()" style="background: linear-gradient(135deg, #2e8b57, #1e7e34); border: none; color: white; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: 600;">Isi Data Personal</button>
+                <button onclick="fillTeamMember1Random()" style="background: linear-gradient(135deg, #2e8b57, #1e7e34); border: none; color: white; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: 600;">Isi Tim Peserta 1</button>
+                <button onclick="fillTeamMember2Random()" style="background: linear-gradient(135deg, #2e8b57, #1e7e34); border: none; color: white; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: 600;">Isi Tim Peserta 2</button>
+                <button onclick="fillTeamMember3Random()" style="background: linear-gradient(135deg, #2e8b57, #1e7e34); border: none; color: white; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: 600;">Isi Tim Peserta 3</button>
+                <button onclick="clearAllDevData()" style="background: linear-gradient(135deg, var(--danger), #c82333); border: none; color: white; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: 600; grid-column: 1/-1;">Hapus Semua</button>
             </div>
         </div>
     `;
@@ -1111,27 +1332,106 @@ function clearAllDevData() {
     }
 }
 
-// ===== FORM SUBMISSION =====
+// ===== FORM SUBMISSION HANDLER - FINAL VERSION WITH DETAILED LOGGING =====
+
 document.getElementById('registrationForm')?.addEventListener('submit', async function(e) {
     e.preventDefault();
     
-    if (!checkRegistrationTime()) {
-        showResultModal(false, 'Pendaftaran Ditutup', 'Mohon maaf, waktu pendaftaran telah berakhir atau belum dimulai.');
-        return;
-    }
-    
-    const confirmed = await showConfirmModal(
-        'Konfirmasi Pendaftaran',
-        'Apakah Anda yakin semua data sudah benar?\n\nData yang sudah dikirim tidak dapat diubah.'
-    );
-    
-    if (!confirmed) return;
-    
-    showLoadingOverlay(true, 'Memvalidasi data...');
-    document.getElementById('progressContainer').style.display = 'block';
-    updateProgress(5);
+    Logger.log('=== FORM SUBMISSION START ===');
+    Logger.log('Cabang Type: ' + (currentCabang ? (currentCabang.isTeam ? 'TEAM' : 'PERSONAL') : 'NONE'));
+    Logger.log('Current Team Member Count: ' + currentTeamMemberCount);
     
     try {
+        // ===== STEP 1: BERSIHKAN REQUIRED ATTRIBUTE SEBELUM VALIDASI =====
+        Logger.log('STEP 1: Cleaning required attributes from file inputs...');
+        
+        let personalFilesRemoved = 0;
+        let teamFilesRemoved = 0;
+        
+        // Untuk Personal Form - SELALU bersihkan karena mungkin ada sisa dari form sebelumnya
+        Logger.log('Cleaning personal form files...');
+        for (let i = 1; i <= 5; i++) {
+            const personalInput = document.getElementById(`personalDoc${i}`);
+            if (personalInput) {
+                const hasUpload = uploadedFiles[`doc${i}`];
+                Logger.log(`  personalDoc${i}: uploaded=${!!hasUpload}, required=${personalInput.hasAttribute('required')}`);
+                
+                if (!hasUpload) {
+                    if (personalInput.hasAttribute('required')) {
+                        personalInput.removeAttribute('required');
+                        personalFilesRemoved++;
+                        Logger.log(`    -> Removed required from personalDoc${i}`);
+                    }
+                } else {
+                    // Jika ada upload dan doc 3 (optional), pastikan tidak ada required
+                    if (i === 3 && personalInput.hasAttribute('required')) {
+                        personalInput.removeAttribute('required');
+                        Logger.log(`    -> Removed required from optional personalDoc${i}`);
+                    }
+                }
+            }
+        }
+        Logger.log(`Personal files cleaned: ${personalFilesRemoved} removed required`);
+        
+        // Untuk Team Form
+        Logger.log('Cleaning team form files...');
+        for (let i = 1; i <= 3; i++) {
+            for (let d = 1; d <= 5; d++) {
+                const teamInput = document.getElementById(`teamDoc${i}_${d}`);
+                if (teamInput) {
+                    const hasUpload = uploadedFiles[`teamDoc${i}_${d}`];
+                    
+                    // Log hanya untuk file yang required
+                    if (teamInput.hasAttribute('required')) {
+                        Logger.log(`  teamDoc${i}_${d}: uploaded=${!!hasUpload}, required=true`);
+                        
+                        if (!hasUpload) {
+                            teamInput.removeAttribute('required');
+                            teamFilesRemoved++;
+                            Logger.log(`    -> Removed required (NO UPLOAD)`);
+                        }
+                    }
+                    
+                    // Jika doc 3 (optional), hapus required
+                    if (d === 3 && teamInput.hasAttribute('required')) {
+                        teamInput.removeAttribute('required');
+                        Logger.log(`    -> Removed required from optional teamDoc${i}_3`);
+                    }
+                }
+            }
+        }
+        Logger.log(`Team files cleaned: ${teamFilesRemoved} removed required`);
+        
+        // ===== STEP 2: CEK REGISTRATION TIME =====
+        Logger.log('STEP 2: Checking registration time...');
+        if (!checkRegistrationTime()) {
+            Logger.log('ERROR: Registration time is closed');
+            showResultModal(false, 'Pendaftaran Ditutup', 'Mohon maaf, waktu pendaftaran telah berakhir atau belum dimulai.');
+            return;
+        }
+        Logger.log('Registration time: VALID');
+        
+        // ===== STEP 3: MINTA KONFIRMASI USER =====
+        Logger.log('STEP 3: Waiting for user confirmation...');
+        const confirmed = await showConfirmModal(
+            'Konfirmasi Pendaftaran',
+            'Apakah Anda yakin semua data sudah benar?\n\nData yang sudah dikirim tidak dapat diubah.'
+        );
+        
+        if (!confirmed) {
+            Logger.log('User cancelled registration');
+            return;
+        }
+        Logger.log('User confirmed registration');
+        
+        // ===== STEP 4: TAMPILKAN LOADING & PROGRESS =====
+        Logger.log('STEP 4: Showing loading overlay...');
+        showLoadingOverlay(true, 'Memvalidasi data...');
+        document.getElementById('progressContainer').style.display = 'block';
+        updateProgress(5);
+        
+        // ===== STEP 5: SIAPKAN FORMDATA =====
+        Logger.log('STEP 5: Preparing form data...');
         const formData = new FormData();
         formData.append('kecamatan', document.getElementById('kecamatan').value);
         formData.append('cabang', currentCabang.name);
@@ -1141,9 +1441,17 @@ document.getElementById('registrationForm')?.addEventListener('submit', async fu
         formData.append('isTeam', currentCabang.isTeam ? 'true' : 'false');
         
         const nikList = [];
+        const responseDetails = { 
+            cabang: currentCabang.name, 
+            nomorPeserta: '' 
+        };
+        
+        // ===== STEP 6A: JIKA INDIVIDU =====
         if (!currentCabang.isTeam) {
+            Logger.log('STEP 6A: Processing PERSONAL registration...');
             const nik = document.getElementById('nik').value;
             nikList.push(nik);
+            
             formData.append('nik', nik);
             formData.append('nama', document.getElementById('nama').value);
             formData.append('jenisKelamin', document.getElementById('jenisKelamin').value);
@@ -1156,14 +1464,37 @@ document.getElementById('registrationForm')?.addEventListener('submit', async fu
             formData.append('namaRek', document.getElementById('namaRek').value);
             formData.append('noRek', document.getElementById('noRek').value);
             formData.append('namaBank', document.getElementById('namaBank').value);
-        } else {
-            formData.append('namaRegu', document.getElementById('namaRegu').value);
+            
+            responseDetails.nik = nik;
+            responseDetails.nama = document.getElementById('nama').value;
+            
+            Logger.log('Personal data: NIK=' + nik + ', Nama=' + responseDetails.nama);
+        } 
+        // ===== STEP 6B: JIKA TIM =====
+        else {
+            Logger.log('STEP 6B: Processing TEAM registration...');
+            Logger.log('Team members to process: ' + currentTeamMemberCount);
+            
+            const namaRegu = document.getElementById('namaRegu').value;
+            formData.append('namaRegu', namaRegu);
+            responseDetails.namaRegu = namaRegu;
+            responseDetails.teamMembers = [];
+            
+            Logger.log('Team name: ' + namaRegu);
+            
+            // Loop untuk setiap anggota tim
             for (let i = 1; i <= currentTeamMemberCount; i++) {
+                Logger.log(`Processing Team Member #${i}...`);
+                
                 const nik = document.querySelector(`[name="memberNik${i}"]`).value;
+                const nama = document.querySelector(`[name="memberName${i}"]`).value;
+                
                 if (nik) nikList.push(nik);
                 
+                Logger.log(`  Member ${i}: NIK=${nik}, Nama=${nama}`);
+                
                 formData.append(`memberNik${i}`, nik);
-                formData.append(`memberName${i}`, document.querySelector(`[name="memberName${i}"]`).value);
+                formData.append(`memberName${i}`, nama);
                 formData.append(`memberJenisKelamin${i}`, document.querySelector(`[name="memberJenisKelamin${i}"]`).value);
                 formData.append(`memberTempatLahir${i}`, document.querySelector(`[name="memberTempatLahir${i}"]`).value);
                 formData.append(`memberBirthDate${i}`, document.querySelector(`[name="memberBirthDate${i}"]`).value);
@@ -1174,33 +1505,57 @@ document.getElementById('registrationForm')?.addEventListener('submit', async fu
                 formData.append(`memberNamaRek${i}`, document.querySelector(`[name="memberNamaRek${i}"]`).value);
                 formData.append(`memberNoRek${i}`, document.querySelector(`[name="memberNoRek${i}"]`).value);
                 formData.append(`memberNamaBank${i}`, document.querySelector(`[name="memberNamaBank${i}"]`).value);
+                
+                // Simpan data member untuk response
+                if (nik && nama) {
+                    responseDetails.teamMembers.push({ nik: nik, nama: nama });
+                    Logger.log(`  Member ${i} saved to response`);
+                }
             }
+            
             formData.append('memberGenderCode1', document.querySelector('[name="memberJenisKelamin1"]').value === 'Laki-laki' ? 'male' : 'female');
+            Logger.log('Team registration data prepared successfully');
         }
         
         formData.append('nikList', JSON.stringify(nikList));
+        Logger.log('NIK list: ' + JSON.stringify(nikList));
         updateProgress(15);
         
+        // ===== STEP 7: KONVERSI FILE KE BASE64 =====
+        Logger.log('STEP 7: Converting files to base64...');
         showLoadingOverlay(true, 'Mengkonversi file...');
+        
         let fileCount = 0;
         const totalFiles = Object.keys(uploadedFiles).length;
+        Logger.log('Total files to convert: ' + totalFiles);
         
-        for (let key in uploadedFiles) {
+        const uploadedFilesList = Object.keys(uploadedFiles);
+        for (let idx = 0; idx < uploadedFilesList.length; idx++) {
+            const key = uploadedFilesList[idx];
             if (uploadedFiles[key]) {
                 try {
                     const file = uploadedFiles[key];
+                    Logger.log(`Converting file ${idx + 1}/${uploadedFilesList.length}: ${key} (${file.name})`);
+                    
                     const base64 = await fileToBase64(file);
                     formData.append(key, base64);
                     formData.append(key + '_name', file.name);
                     fileCount++;
+                    
                     updateProgress(15 + (fileCount / totalFiles) * 45);
+                    Logger.log(`File converted: ${key}`);
                 } catch (fileError) {
-                    Logger.error('Error converting file', fileError);
+                    Logger.error('Error converting file ' + key, fileError);
+                    throw fileError;
                 }
             }
         }
         
+        Logger.log(`File conversion complete: ${fileCount}/${totalFiles} files converted`);
         updateProgress(60);
+        
+        // ===== STEP 8: KIRIM DATA KE SERVER =====
+        Logger.log('STEP 8: Sending data to server...');
         showLoadingOverlay(true, 'Mengirim data ke server...');
         
         const response = await fetch(APPS_SCRIPT_URL, {
@@ -1208,33 +1563,72 @@ document.getElementById('registrationForm')?.addEventListener('submit', async fu
             body: formData
         });
         
+        Logger.log('Server response status: ' + response.status);
         updateProgress(80);
+        
         const result = await response.json();
+        Logger.log('Server response: ' + JSON.stringify(result));
+        
         updateProgress(100);
         showLoadingOverlay(false);
         
+        // ===== STEP 9: HANDLE RESPONSE =====
+        Logger.log('STEP 9: Handling server response...');
         if (result.success) {
-            showResultModal(true, 'Registrasi Berhasil!', 'Data Anda telah tersimpan.\nEmail konfirmasi akan dikirim dalam 24 jam.', result.details);
+            responseDetails.nomorPeserta = result.nomorPeserta;
+            Logger.log('Registration SUCCESS! Nomor Peserta: ' + result.nomorPeserta);
+            Logger.log('=== FORM SUBMISSION SUCCESS ===');
+            showResultModal(true, 'Registrasi Berhasil!', 'Data Anda telah tersimpan.\nEmail konfirmasi akan dikirim dalam 24 jam.', responseDetails);
         } else {
+            Logger.log('Registration FAILED: ' + result.message);
+            Logger.log('=== FORM SUBMISSION FAILED ===');
             showResultModal(false, 'Registrasi Ditolak', result.message || 'Terjadi kesalahan');
         }
-    } catch (error) {
-        Logger.error('Submit error', error);
+    } 
+    // ===== STEP 10: HANDLE ERROR =====
+    catch (error) {
+        Logger.error('STEP 10: Submission error occurred', error);
+        Logger.log('Error name: ' + error.name);
+        Logger.log('Error message: ' + error.message);
+        Logger.log('Error stack: ' + error.stack);
+        
         showLoadingOverlay(false);
         showResultModal(false, 'Kesalahan Sistem', 'Terjadi kesalahan: ' + error.message);
-    } finally {
+        Logger.log('=== FORM SUBMISSION ERROR ===');
+    } 
+    // ===== STEP 11: CLEANUP =====
+    finally {
+        Logger.log('STEP 11: Cleanup...');
         document.getElementById('progressContainer').style.display = 'none';
+        Logger.log('=== FORM SUBMISSION COMPLETE ===');
     }
 });
 
 // Personal form event listeners
-['nik', 'nama', 'jenisKelamin', 'tempatLahir', 'alamat', 'noTelepon', 'email', 'namaRek', 'noRek', 'namaBank'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) {
-        el.addEventListener('input', updateSubmitButtonState);
-        el.addEventListener('change', updateSubmitButtonState);
-    }
-});
+const tglLahirEl = document.getElementById('tglLahir');
+if (tglLahirEl) {
+    tglLahirEl.addEventListener('input', formatDateInput);
+    tglLahirEl.addEventListener('change', function() {
+        if (!this.value) return;
+        const selectedDate = new Date(this.value);
+        const today = new Date();
+        
+        if (selectedDate > today) {
+            this.value = '';
+            document.getElementById('umur').value = '';
+            document.getElementById('submitStatusInfo').innerHTML = '⚠️ Tanggal lahir tidak boleh lebih dari hari ini';
+            document.getElementById('submitStatusInfo').style.display = 'block';
+            updateSubmitButtonState();
+            return;
+        }
+        
+        const ageObj = calculateAge(this.value);
+        if (ageObj) {
+            document.getElementById('umur').value = formatAge(ageObj);
+        }
+        updateSubmitButtonState();
+    });
+}
 
 const nikEl = document.getElementById('nik');
 if (nikEl) {
@@ -1249,24 +1643,12 @@ if (jenisKelaminEl) {
     jenisKelaminEl.addEventListener('change', updateSubmitButtonState);
 }
 
-const tglLahirEl = document.getElementById('tglLahir');
-if (tglLahirEl) {
-    tglLahirEl.addEventListener('input', formatDateInput);
-    tglLahirEl.addEventListener('change', function() {
-        if (!this.value) return;
-        const selectedDate = new Date(this.value);
-        const today = new Date();
-        if (selectedDate > today) {
-            showResultModal(false, 'Tanggal Tidak Valid', 'Tanggal lahir tidak boleh lebih dari hari ini!');
-            this.value = '';
-            document.getElementById('umur').value = '';
-            updateSubmitButtonState();
-            return;
-        }
-        const ageObj = calculateAge(this.value);
-        if (ageObj) {
-            document.getElementById('umur').value = formatAge(ageObj);
-        }
-        updateSubmitButtonState();
-    });
-}
+['nik', 'nama', 'jenisKelamin', 'tempatLahir', 'alamat', 'noTelepon', 'email', 'namaRek', 'noRek', 'namaBank'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+        el.addEventListener('input', updateSubmitButtonState);
+        el.addEventListener('change', updateSubmitButtonState);
+    }
+});
+
+document.getElementById('kecamatan')?.addEventListener('change', updateSubmitButtonState);
