@@ -73,8 +73,8 @@ body::before {
 /* Hero Section */
 .hero {
     background: rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(30px);
     -webkit-backdrop-filter: blur(30px);
+    backdrop-filter: blur(30px);
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     padding: 100px 20px 80px;
     text-align: center;
