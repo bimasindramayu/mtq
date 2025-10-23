@@ -1,8 +1,8 @@
 // ===== CONFIGURATION =====
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby451S5eHRQXKIydYT5O4gCfZ7nhZ47YQ83JUB0_H7PbY6-G56lz3H86HAy8jmYYwNL/exec';
-const REGISTRATION_START = new Date('2025-10-22T14:00:00+07:00');
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyMJ2E2SnBtd3ZhR6GmiGzTea1SVguT-qL6XkWYRjZS1O26q4lM0q-eq4O7e4SRVS-t/exec';
+const REGISTRATION_START = new Date('2025-10-29T00:00:00+07:00');
 const REGISTRATION_END = new Date('2025-10-30T23:59:59+07:00');
-const DEVELOPER_MODE = true;
+const DEVELOPER_MODE = false;
 
 const Logger = {
     log: function(message, data = null) {
@@ -1578,7 +1578,7 @@ document.getElementById('registrationForm')?.addEventListener('submit', async fu
             responseDetails.nomorPeserta = result.nomorPeserta;
             Logger.log('Registration SUCCESS! Nomor Peserta: ' + result.nomorPeserta);
             Logger.log('=== FORM SUBMISSION SUCCESS ===');
-            showResultModal(true, 'Registrasi Berhasil!', 'Data Anda telah tersimpan.\nEmail konfirmasi akan dikirim dalam 24 jam.', responseDetails);
+            showResultModal(true, 'Registrasi Berhasil!', 'Data Anda telah tersimpan.', responseDetails);
         } else {
             Logger.log('Registration FAILED: ' + result.message);
             Logger.log('=== FORM SUBMISSION FAILED ===');
