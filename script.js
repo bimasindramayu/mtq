@@ -1,5 +1,5 @@
 // ===== CONFIGURATION =====
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwPRwwA972ICs3UJzmAmemzf7ubNBCBHiKkEQnSZMIxadjTBANCw2LzMymcB_t4FoKB/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby451S5eHRQXKIydYT5O4gCfZ7nhZ47YQ83JUB0_H7PbY6-G56lz3H86HAy8jmYYwNL/exec';
 const REGISTRATION_START = new Date('2025-10-22T14:00:00+07:00');
 const REGISTRATION_END = new Date('2025-10-30T23:59:59+07:00');
 const DEVELOPER_MODE = true;

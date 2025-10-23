@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Verifikasi Peserta MTQ</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="header">
+        <h1>Admin Dashboard - Verifikasi Peserta MTQ</h1>
+        <p>Kelola dan verifikasi data peserta lomba</p>
+    </div>
+
+    <div class="container">
+        <div id="alertContainer"></div>
+
+        <div class="search-section">
+            <h3>Cari Data Peserta</h3>
+            <div class="search-row">
+                <div class="form-group">
+                    <label for="searchName">Nama / NIK</label>
+                    <input type="text" id="searchName" placeholder="Ketik nama atau NIK...">
+                </div>
+                <div class="form-group">
+                    <label for="searchTeam">Nama Tim (jika ada)</label>
+                    <input type="text" id="searchTeam" placeholder="Nama tim...">
+                </div>
+                <div class="form-group">
+                    <label for="searchKecamatan">Kecamatan</label>
+                    <input type="text" id="searchKecamatan" placeholder="Kecamatan...">
+                </div>
+                <div class="form-group">
+                    <label for="searchNomor">Nomor Pendaftaran</label>
+                    <input type="text" id="searchNomor" placeholder="Nomor peserta...">
+                </div>
+                <div class="form-group">
+                    <label for="searchStatus">Status</label>
+                    <select id="searchStatus">
+                        <option value="">Semua Status</option>
+                        <option value="Menunggu Verifikasi">Menunggu Verifikasi</option>
+                        <option value="Terverifikasi">Terverifikasi</option>
+                        <option value="Ditolak">Ditolak</option>
+                    </select>
+                </div>
+            </div>
+            <div class="button-group">
+                <button class="btn-primary" onclick="searchData()">Cari</button>
+                <button class="btn-secondary" onclick="resetSearch()">Reset</button>
+            </div>
+        </div>
+
+        <div class="stats-row" id="statsRow"></div>
+
+        <div class="table-container">
+            <div id="loadingIndicator" class="loading" style="display: none;">
+                <div class="spinner"></div>
+                <p>Memuat data...</p>
+            </div>
+            <table id="dataTable" style="display: none;">
+                <thead>
+                    <tr>
+                        <th onclick="sortTable('Nomor Peserta')">No. Peserta <span class="sort-icon">⇅</span></th>
+                        <th onclick="sortTable('Nama')">Nama / Nama Tim <span class="sort-icon">⇅</span></th>
+                        <th onclick="sortTable('Cabang Lomba')">Cabang <span class="sort-icon">⇅</span></th>
+                        <th onclick="sortTable('Kecamatan')">Kecamatan <span class="sort-icon">⇅</span></th>
+                        <th onclick="sortTable('Status')">Status <span class="sort-icon">⇅</span></th>
+                        <th>Aksi</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+            <div id="noData" class="no-data" style="display: none;">
+                <p>Tidak ada data ditemukan</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="detailModal" class="modal">
+        <div class="modal-content">
+            <div id="modalAlertContainer"></div>
+            <div class="modal-header">
+                <span>Detail Peserta</span>
+                <button class="close-btn" onclick="closeDetailModal()">✕</button>
+            </div>
+            <div class="modal-body" id="detailContent"></div>
+            <div class="modal-footer" id="detailFooter">
+                <button class="btn-secondary" onclick="closeDetailModal()">Tutup</button>
+                <button class="btn-primary" onclick="toggleEditMode()">Edit</button>
+                <button class="btn-danger" onclick="confirmDelete()">Hapus</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

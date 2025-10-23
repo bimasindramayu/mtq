@@ -1,29 +1,39 @@
 // ===== KONFIGURASI =====
-const SHEET_ID = '1OO7VUbHhUbsqHc_EbGQVaG2Jq6EkIaTLIbLsmFnAb94';
-const FOLDER_ID = '1FHpgcmKbMrN84R29ZaVvHpNlh-AvA7_y';
+const SHEET_ID = '1_Sj7ehvNrJteModhFkhoYB0ut12Np1zv0SDIknWCn7A';
+const FOLDER_ID = '1AK6rc4VUOJg_wDFed8F2nLzFSaDqf_5o';
 const SHEET_NAME = 'Peserta';
 
 // REGISTRATION TIME WINDOW (WIB = UTC+7)
-const REGISTRATION_START = new Date('2025-10-29T00:00:00+07:00');
+const REGISTRATION_START = new Date('2025-10-22T00:00:00+07:00');
 const REGISTRATION_END = new Date('2025-10-30T23:59:59+07:00');
 
 // MAX PARTICIPANTS PER BRANCH
 const MAX_PARTICIPANTS_PER_BRANCH = 62;
-
-// Document type mapping
-const DOC_TYPES = {
-  1: 'Surat Mandat',
-  2: 'KTP',
-  3: 'Sertifikat',
-  4: 'Rekening',
-  5: 'Pas Photo'
-};
 
 // ===== FUNGSI UTAMA =====
 function doPost(e) {
   try {
     Logger.log('=== START doPost ===');
     Logger.log('Request received at: ' + new Date().toISOString());
+    
+    // Cek action untuk update row lengkap
+    if (e.parameter.action === 'updateRow') {
+      return updateCompleteRow(e);
+    }
+    
+    // Cek action untuk upload files
+    if (e.parameter.action === 'uploadFiles') {
+      return uploadFilesOnly(e);
+    }
+    
+    // Cek jika ada parameter action untuk update/delete
+    if (e.parameter.action === 'updateStatus') {
+      return updateRowStatus(parseInt(e.parameter.rowIndex), e.parameter.status);
+    }
+    
+    if (e.parameter.action === 'deleteRow') {
+      return deleteRowData(parseInt(e.parameter.rowIndex));
+    }
     
     // Validate registration time
     const now = new Date();
@@ -103,18 +113,250 @@ function doPost(e) {
   }
 }
 
+function doGet(e) {
+  const action = e.parameter.action;
+  
+  if (action === 'getData') {
+    return getAllDataAsJSON();
+  } else if (action === 'updateStatus') {
+    const rowIndex = parseInt(e.parameter.rowIndex);
+    const newStatus = e.parameter.status;
+    return updateRowStatus(rowIndex, newStatus);
+  } else if (action === 'deleteRow') {
+    const rowIndex = parseInt(e.parameter.rowIndex);
+    return deleteRowData(rowIndex);
+  }
+  
+  return ContentService.createTextOutput(JSON.stringify({
+    success: false,
+    message: 'Invalid action'
+  })).setMimeType(ContentService.MimeType.JSON);
+}
+
+function getAllDataAsJSON() {
+  try {
+    Logger.log('Getting all data from Peserta sheet');
+    
+    const ss = SpreadsheetApp.openById(SHEET_ID);
+    const sheet = ss.getSheetByName(SHEET_NAME);
+    
+    if (!sheet) {
+      return ContentService.createTextOutput(JSON.stringify({
+        success: false,
+        message: 'Sheet tidak ditemukan'
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    const lastRow = sheet.getLastRow();
+    const lastCol = sheet.getLastColumn();
+    
+    if (lastRow <= 1) {
+      return ContentService.createTextOutput(JSON.stringify({
+        success: true,
+        headers: [],
+        data: []
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    // Ambil header
+    const headerRange = sheet.getRange(1, 1, 1, lastCol);
+    const headers = headerRange.getValues()[0];
+    
+    // Ambil semua data
+    const dataRange = sheet.getRange(2, 1, lastRow - 1, lastCol);
+    const data = dataRange.getValues();
+    
+    Logger.log('Total rows: ' + data.length);
+    Logger.log('Total columns: ' + headers.length);
+    
+    const response = {
+      success: true,
+      headers: headers,
+      data: data,
+      totalRows: data.length
+    };
+    
+    return ContentService.createTextOutput(JSON.stringify(response))
+      .setMimeType(ContentService.MimeType.JSON);
+      
+  } catch (error) {
+    Logger.log('Error in getAllDataAsJSON: ' + error.message);
+    return ContentService.createTextOutput(JSON.stringify({
+      success: false,
+      message: 'Error: ' + error.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+function updateCompleteRow(e) {
+  try {
+    Logger.log('Updating complete row');
+    const rowIndex = parseInt(e.parameter.rowIndex);
+    const updatedData = JSON.parse(e.parameter.updatedData);
+    
+    const ss = SpreadsheetApp.openById(SHEET_ID);
+    const sheet = ss.getSheetByName(SHEET_NAME);
+    
+    if (!sheet) {
+      return ContentService.createTextOutput(JSON.stringify({
+        success: false,
+        message: 'Sheet tidak ditemukan'
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    const actualRow = rowIndex + 2; // Row 1 = Header, Row 2 = Data pertama (rowIndex 0)
+    
+    if (actualRow > sheet.getLastRow()) {
+      return ContentService.createTextOutput(JSON.stringify({
+        success: false,
+        message: 'Row tidak ditemukan'
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    // Get headers
+    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    
+    // Update each field
+    for (let field in updatedData) {
+      const colIndex = headers.indexOf(field);
+      if (colIndex !== -1) {
+        sheet.getRange(actualRow, colIndex + 1).setValue(updatedData[field]);
+      }
+    }
+    
+    Logger.log('Row updated successfully at row ' + actualRow);
+    
+    return ContentService.createTextOutput(JSON.stringify({
+      success: true,
+      message: 'Data berhasil diperbarui'
+    })).setMimeType(ContentService.MimeType.JSON);
+    
+  } catch (error) {
+    Logger.log('Error in updateCompleteRow: ' + error.message);
+    return ContentService.createTextOutput(JSON.stringify({
+      success: false,
+      message: 'Error: ' + error.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+function uploadFilesOnly(e) {
+  try {
+    Logger.log('Uploading files only');
+    const nomorPeserta = e.parameter.nomorPeserta;
+    const fileLinks = processFileUploads(e, e.parameter, nomorPeserta);
+    
+    Logger.log('Files uploaded: ' + Object.keys(fileLinks).length);
+    
+    return ContentService.createTextOutput(JSON.stringify({
+      success: true,
+      message: 'Files berhasil diupload',
+      fileLinks: fileLinks
+    })).setMimeType(ContentService.MimeType.JSON);
+    
+  } catch (error) {
+    Logger.log('Error in uploadFilesOnly: ' + error.message);
+    return ContentService.createTextOutput(JSON.stringify({
+      success: false,
+      message: 'Error: ' + error.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+function updateRowStatus(rowIndex, newStatus) {
+  try {
+    Logger.log('Updating row ' + rowIndex + ' status to ' + newStatus);
+    
+    const ss = SpreadsheetApp.openById(SHEET_ID);
+    const sheet = ss.getSheetByName(SHEET_NAME);
+    
+    if (!sheet) {
+      return ContentService.createTextOutput(JSON.stringify({
+        success: false,
+        message: 'Sheet tidak ditemukan'
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    const lastCol = sheet.getLastColumn();
+    const statusCol = lastCol;
+    const actualRow = rowIndex + 2;
+    
+    if (actualRow > sheet.getLastRow()) {
+      return ContentService.createTextOutput(JSON.stringify({
+        success: false,
+        message: 'Row tidak ditemukan'
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    sheet.getRange(actualRow, statusCol).setValue(newStatus);
+    
+    Logger.log('Status updated successfully at row ' + actualRow);
+    
+    return ContentService.createTextOutput(JSON.stringify({
+      success: true,
+      message: 'Status berhasil diperbarui'
+    })).setMimeType(ContentService.MimeType.JSON);
+    
+  } catch (error) {
+    Logger.log('Error in updateRowStatus: ' + error.message);
+    return ContentService.createTextOutput(JSON.stringify({
+      success: false,
+      message: 'Error: ' + error.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+function deleteRowData(rowIndex) {
+  try {
+    Logger.log('Deleting row ' + rowIndex);
+    
+    const ss = SpreadsheetApp.openById(SHEET_ID);
+    const sheet = ss.getSheetByName(SHEET_NAME);
+    
+    if (!sheet) {
+      return ContentService.createTextOutput(JSON.stringify({
+        success: false,
+        message: 'Sheet tidak ditemukan'
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    const actualRow = rowIndex + 2;
+    
+    if (actualRow > sheet.getLastRow()) {
+      return ContentService.createTextOutput(JSON.stringify({
+        success: false,
+        message: 'Row tidak ditemukan'
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    sheet.deleteRow(actualRow);
+    
+    Logger.log('Row deleted successfully');
+    
+    return ContentService.createTextOutput(JSON.stringify({
+      success: true,
+      message: 'Data berhasil dihapus'
+    })).setMimeType(ContentService.MimeType.JSON);
+    
+  } catch (error) {
+    Logger.log('Error in deleteRowData: ' + error.message);
+    return ContentService.createTextOutput(JSON.stringify({
+      success: false,
+      message: 'Error: ' + error.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
 // ===== GENERATE NOMOR PESERTA =====
 function generateNomorPeserta(sheet, cabangCode, genderCode, isTeam) {
   try {
     const lastRow = sheet.getLastRow();
     
-    // Get existing numbers for this branch
     const existingNumbers = [];
     if (lastRow > 1) {
       const dataRange = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn());
       const data = dataRange.getValues();
       
-      // Column index for Nomor Peserta (column 2, index 1)
       const nomorPesertaCol = 1;
       
       for (let i = 0; i < data.length; i++) {
@@ -130,16 +372,12 @@ function generateNomorPeserta(sheet, cabangCode, genderCode, isTeam) {
     
     Logger.log('Existing numbers for ' + cabangCode + ': ' + existingNumbers.join(', '));
     
-    // For team registration, use even numbers only (regardless of gender)
-    // For personal registration, use odd (female) or even (male)
     const isOdd = isTeam ? false : (genderCode === 'female');
     
-    // Find next available number
     let nextNumber = isOdd ? 1 : 2;
     while (existingNumbers.indexOf(nextNumber) !== -1) {
       nextNumber += 2;
       
-      // Check if we've exceeded the limit
       if (nextNumber > MAX_PARTICIPANTS_PER_BRANCH) {
         return {
           success: false,
@@ -179,7 +417,6 @@ function checkDuplicates(sheet, nikList) {
     
     Logger.log('Checking against ' + data.length + ' existing registrations');
     
-    // Column indices (0-based after getting values)
     const cabangCol = 4;
     const nikCol = 7;
     const member1NikCol = 19;
@@ -335,40 +572,35 @@ function addHeaders(sheet) {
   sheet.appendRow(headers);
 }
 
-// ===== PERBAIKAN #4: PROSES UPLOAD FILE TANPA _type dan _name =====
+// ===== PROSES UPLOAD FILE =====
 function processFileUploads(e, formData, nomorPeserta) {
   const fileLinks = {};
   const folder = DriveApp.getFolderById(FOLDER_ID);
   const timestamp = new Date().getTime();
   
   try {
-    const allBlobs = e.parameters;
+    const allBlobs = e.parameters || e.parameter;
     Logger.log('Processing file blobs: ' + JSON.stringify(Object.keys(allBlobs)));
     
     for (let key in allBlobs) {
-      // SKIP _type dan _name parameters - JANGAN PROCESS
-      if (key.endsWith('_type') || key.endsWith('_name')) {
-        Logger.log('Skipping metadata: ' + key);
+      if (key.endsWith('_type') || key.endsWith('_name') || key === 'action' || key === 'nomorPeserta' || key === 'updatedData' || key === 'rowIndex') {
         continue;
       }
       
-      // Hanya process file yang sebenarnya (doc1, doc2, teamDoc1_1, dll)
-      if (key.startsWith('doc') || key.startsWith('teamDoc')) {
+      if (key.startsWith('doc') || key.startsWith('teamDoc') || key.startsWith('Link')) {
         try {
-          if (allBlobs[key] && allBlobs[key][0]) {
-            // Ambil original name dari metadata
-            const originalName = allBlobs[key + '_name'] ? allBlobs[key + '_name'][0] : key;
-            const mimeType = allBlobs[key + '_type'] ? allBlobs[key + '_type'][0] : 'application/octet-stream';
+          const base64Data = Array.isArray(allBlobs[key]) ? allBlobs[key][0] : allBlobs[key];
+          if (base64Data && base64Data.length > 0) {
+            const originalName = allBlobs[key + '_name'] ? (Array.isArray(allBlobs[key + '_name']) ? allBlobs[key + '_name'][0] : allBlobs[key + '_name']) : key;
+            const mimeType = allBlobs[key + '_type'] ? (Array.isArray(allBlobs[key + '_type']) ? allBlobs[key + '_type'][0] : allBlobs[key + '_type']) : 'application/octet-stream';
             
-            // Extract file extension
             const lastDotIndex = originalName.lastIndexOf('.');
             const extension = lastDotIndex > -1 ? originalName.substring(lastDotIndex) : '';
             
-            // Create unique filename: NomorPeserta_DocType_Timestamp.ext
             const uniqueFileName = nomorPeserta + '_' + key + '_' + timestamp + extension;
             
             const blob = Utilities.newBlob(
-              Utilities.base64Decode(allBlobs[key][0]),
+              Utilities.base64Decode(base64Data),
               mimeType,
               uniqueFileName
             );
@@ -417,7 +649,6 @@ function prepareRowData(formData, fileLinks, sheet, nomorPeserta) {
     formData.noRek || '',
     formData.namaBank || '',
     
-    // Data anggota tim 1
     formData.memberNik1 || '-',
     formData.memberName1 || '-',
     formData.memberJenisKelamin1 || '-',
@@ -431,7 +662,6 @@ function prepareRowData(formData, fileLinks, sheet, nomorPeserta) {
     formData.memberNoRek1 || '-',
     formData.memberNamaBank1 || '-',
     
-    // Data anggota tim 2
     formData.memberNik2 || '-',
     formData.memberName2 || '-',
     formData.memberJenisKelamin2 || '-',
@@ -445,7 +675,6 @@ function prepareRowData(formData, fileLinks, sheet, nomorPeserta) {
     formData.memberNoRek2 || '-',
     formData.memberNamaBank2 || '-',
     
-    // Data anggota tim 3
     formData.memberNik3 || '-',
     formData.memberName3 || '-',
     formData.memberJenisKelamin3 || '-',
@@ -459,35 +688,30 @@ function prepareRowData(formData, fileLinks, sheet, nomorPeserta) {
     formData.memberNoRek3 || '-',
     formData.memberNamaBank3 || '-',
     
-    // Link dokumen personal
     fileLinks['doc1'] || '',
     fileLinks['doc2'] || '',
     fileLinks['doc3'] || '',
     fileLinks['doc4'] || '',
     fileLinks['doc5'] || '',
     
-    // Link dokumen team 1
     fileLinks['teamDoc1_1'] || '',
     fileLinks['teamDoc1_2'] || '',
     fileLinks['teamDoc1_3'] || '',
     fileLinks['teamDoc1_4'] || '',
     fileLinks['teamDoc1_5'] || '',
     
-    // Link dokumen team 2
     fileLinks['teamDoc2_1'] || '',
     fileLinks['teamDoc2_2'] || '',
     fileLinks['teamDoc2_3'] || '',
     fileLinks['teamDoc2_4'] || '',
     fileLinks['teamDoc2_5'] || '',
     
-    // Link dokumen team 3
     fileLinks['teamDoc3_1'] || '',
     fileLinks['teamDoc3_2'] || '',
     fileLinks['teamDoc3_3'] || '',
     fileLinks['teamDoc3_4'] || '',
     fileLinks['teamDoc3_5'] || '',
     
-    // Status
     'Menunggu Verifikasi'
   ];
   
