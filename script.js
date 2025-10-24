@@ -1,7 +1,7 @@
 // script.js
 // ===== CONFIGURATION =====
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyMJ2E2SnBtd3ZhR6GmiGzTea1SVguT-qL6XkWYRjZS1O26q4lM0q-eq4O7e4SRVS-t/exec';
-const REGISTRATION_START = new Date('2025-10-22T00:00:00+07:00');
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzXKfb4UnAk_UZJLwRLyfDluZM3uWtLO3xvS8jjxlq9WVdUtkExn4uWAf_msq3ozd18/exec';
+const REGISTRATION_START = new Date('2025-10-24T09:00:00+07:00');
 const REGISTRATION_END = new Date('2025-10-30T23:59:59+07:00');
 
 // ===== DEVELOPER MODE CONFIG (BARU) =====
