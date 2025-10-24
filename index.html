@@ -1,4 +1,4 @@
-<!-- index.html - UPDATED -->
+<!-- index.html - UPDATED WITH DATA DITOLAK TAB -->
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -35,6 +35,7 @@
         <div class="nav-tabs">
             <button class="nav-btn active" onclick="showTab('informasi')">ℹ️ Informasi</button>
             <button class="nav-btn" onclick="showTab('registrasi')">✏️ Registrasi</button>
+            <button class="nav-btn" onclick="showTab('dataDitolak')">🚫 Data Ditolak</button>
         </div>
 
         <!-- INFORMASI TAB -->
@@ -47,7 +48,7 @@
                     <div class="info-card">
                         <h3>📅 Jadwal Penting</h3>
                         <p><strong>Pendaftaran Online:</strong> 29-30 Oktober 2025</p>
-                        <p><strong>Pelaksanaan Maqra:</strong> 31 Oktober 2025</p>
+                        <p><strong>Masa Sanggah:</strong> 31 Oktober 2025</p>
                         <p><strong>Pengambilan Nomor Peserta & Maqra:</strong> 1 November 2025</p>
                         <p><strong>Pelaksanaan MTQ:</strong> 4-6 November 2025</p>
                     </div>
@@ -59,8 +60,8 @@
                         <h3>📋 Dokumen yang Diperlukan (untuk SETIAP peserta/anggota)</h3>
                         <p>a. <strong>Surat Mandat/Rekomendasi</strong> - Ditandatangani oleh Ketua LPTQ Kecamatan</p>
                         <p>b. <strong>KTP/KK/KIA</strong> - Diterbitkan maksimal 6 bulan sebelum 1 November 2025</p>
-                        <p>c. <strong>Sertifikat Kejuaraan</strong> - Dari MTQ Tingkat Kecamatan</p>
-                        <p>d. <strong>Foto Buku Tabungan</strong> - Menunjukkan nomor rekening atas nama peserta</p>
+                        <p>c. <strong>Sertifikat Kejuaraan (Opsional)</strong> - Dari MTQ Tingkat Kecamatan</p>
+                        <p>d. <strong>Foto Buku Tabungan (Opsional)</strong> - Menunjukkan nomor rekening atas nama peserta</p>
                         <p>e. <strong>Pas Photo Terbaru</strong> - Latar belakang biru</p>
                     </div>
                 </div>
@@ -409,6 +410,59 @@
                         <button type="button" class="btn-reset" onclick="resetForm()">🔄 Bersihkan Form</button>
                     </div>
                 </form>
+            </div>
+        </div>
+
+        <!-- DATA DITOLAK TAB (NEW) -->
+        <div id="dataDitolak" class="content-section">
+            <div id="dataDitolakClosed" class="registration-closed" style="display: none;">
+                <div class="closed-icon">🔒</div>
+                <h2>Data Tidak Tersedia</h2>
+                <p>Data peserta yang ditolak hanya dapat diakses selama periode pendaftaran (29-30 Oktober 2025).</p>
+            </div>
+
+            <div id="dataDitolakOpen" style="display: none;">
+                <h2 class="section-title">🚫 Data Peserta Ditolak</h2>
+                
+                <div class="warning-message" style="background: linear-gradient(135deg, rgba(254, 226, 226, 0.9), rgba(252, 165, 165, 0.9));">
+                    ⚠️ <strong>Informasi:</strong> Berikut adalah daftar peserta yang pendaftarannya ditolak beserta alasan penolakan.
+                </div>
+
+                <div id="rejectedDataLoading" style="text-align: center; padding: 40px;">
+                    <div class="loading-spinner" style="margin: 0 auto 20px;"></div>
+                    <p style="color: var(--primary); font-weight: 600;">Memuat data...</p>
+                </div>
+
+                <div id="rejectedDataContainer" style="display: none;">
+                    <div style="margin-bottom: 20px; padding: 15px; background: rgba(240, 253, 244, 0.8); border-radius: 10px; border-left: 4px solid var(--primary);">
+                        <p style="margin: 0; color: var(--primary); font-weight: 600;">Total Data Ditolak: <span id="totalRejected">0</span></p>
+                    </div>
+
+                    <div style="overflow-x: auto; border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.1);">
+                        <table id="rejectedTable" style="width: 100%; border-collapse: collapse; background: white;">
+                            <thead>
+                                <tr style="background: linear-gradient(135deg, var(--primary), var(--primary-light)); color: white;">
+                                    <th style="padding: 15px; text-align: left; font-weight: 700;">No</th>
+                                    <th style="padding: 15px; text-align: left; font-weight: 700;">Nomor Peserta</th>
+                                    <th style="padding: 15px; text-align: left; font-weight: 700;">Nama Tim/Peserta</th>
+                                    <th style="padding: 15px; text-align: left; font-weight: 700;">Cabang</th>
+                                    <th style="padding: 15px; text-align: left; font-weight: 700;">Kecamatan</th>
+                                    <th style="padding: 15px; text-align: left; font-weight: 700;">Status</th>
+                                    <th style="padding: 15px; text-align: left; font-weight: 700;">Alasan</th>
+                                </tr>
+                            </thead>
+                            <tbody id="rejectedTableBody">
+                                <!-- Data will be populated here -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div id="noRejectedData" style="display: none; text-align: center; padding: 60px 20px; background: linear-gradient(135deg, rgba(240, 253, 244, 0.8), rgba(220, 252, 231, 0.8)); border-radius: 20px; margin-top: 20px;">
+                        <div style="font-size: 4em; margin-bottom: 20px;">✅</div>
+                        <h3 style="color: var(--primary); margin-bottom: 15px;">Tidak Ada Data Ditolak</h3>
+                        <p style="color: #065f46; font-size: 1.1em;">Belum ada peserta yang ditolak saat ini.</p>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

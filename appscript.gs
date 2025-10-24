@@ -7,8 +7,32 @@ const SHEET_NAME = 'Peserta';
 const REGISTRATION_START = new Date('2025-10-22T00:00:00+07:00');
 const REGISTRATION_END = new Date('2025-10-30T23:59:59+07:00');
 
-// MAX PARTICIPANTS PER BRANCH
+// MAX PARTICIPANTS PER BRANCH - UPDATED: 62 per cabang
 const MAX_PARTICIPANTS_PER_BRANCH = 62;
+
+// ===== CABANG ORDER - UNTUK MENENTUKAN RANGE NOMOR =====
+const CABANG_ORDER = {
+  'TA': { start: 1, end: 62, name: 'Tartil Al Qur\'an' },
+  'TLA': { start: 63, end: 124, name: 'Tilawah Anak-anak' },
+  'TLR': { start: 125, end: 186, name: 'Tilawah Remaja' },
+  'TLD': { start: 187, end: 248, name: 'Tilawah Dewasa' },
+  'QM': { start: 249, end: 310, name: 'Qira\'at Mujawwad' },
+  'H1J': { start: 311, end: 372, name: 'Hafalan 1 Juz + Tilawah' },
+  'H5J': { start: 373, end: 434, name: 'Hafalan 5 Juz + Tilawah' },
+  'H10J': { start: 435, end: 496, name: 'Hafalan 10 Juz' },
+  'H20J': { start: 497, end: 558, name: 'Hafalan 20 Juz' },
+  'H30J': { start: 559, end: 620, name: 'Hafalan 30 Juz' },
+  'TFI': { start: 621, end: 682, name: 'Tafsir Indonesia' },
+  'TFA': { start: 683, end: 744, name: 'Tafsir Arab' },
+  'TFE': { start: 745, end: 806, name: 'Tafsir Inggris' },
+  'FAQ': { start: 1, end: 31, name: 'Fahm Al Qur\'an', prefix: 'F' },
+  'SAQ': { start: 1, end: 31, name: 'Syarh Al Qur\'an', prefix: 'S' },
+  'KN': { start: 1, end: 62, name: 'Kaligrafi Naskah', prefix: 'N' },
+  'KH': { start: 63, end: 124, name: 'Kaligrafi Hiasan', prefix: 'H' },
+  'KD': { start: 125, end: 186, name: 'Kaligrafi Dekorasi', prefix: 'D' },
+  'KK': { start: 187, end: 248, name: 'Kaligrafi Kontemporer', prefix: 'K' },
+  'KTIQ': { start: 1, end: 62, name: 'KTIQ', prefix: 'M' }
+};
 
 // ===== FUNGSI UTAMA =====
 function doPost(e) {
@@ -28,7 +52,7 @@ function doPost(e) {
     
     // Cek jika ada parameter action untuk update/delete
     if (e.parameter.action === 'updateStatus') {
-      return updateRowStatus(parseInt(e.parameter.rowIndex), e.parameter.status);
+      return updateRowStatus(parseInt(e.parameter.rowIndex), e.parameter.status, e.parameter.reason || '');
     }
     
     if (e.parameter.action === 'deleteRow') {
@@ -75,7 +99,7 @@ function doPost(e) {
       return createResponse(false, duplicateCheck.message);
     }
     
-    // Generate nomor peserta
+    // Generate nomor peserta - UPDATED LOGIC
     Logger.log('Generating nomor peserta...');
     const isTeam = formData.isTeam === 'true';
     const nomorPeserta = generateNomorPeserta(sheet, formData.cabangCode, formData.genderCode || formData.memberGenderCode1, isTeam);
@@ -118,10 +142,13 @@ function doGet(e) {
   
   if (action === 'getData') {
     return getAllDataAsJSON();
+  } else if (action === 'getRejectedData') {
+    return getRejectedDataAsJSON();
   } else if (action === 'updateStatus') {
     const rowIndex = parseInt(e.parameter.rowIndex);
     const newStatus = e.parameter.status;
-    return updateRowStatus(rowIndex, newStatus);
+    const reason = e.parameter.reason || '';
+    return updateRowStatus(rowIndex, newStatus, reason);
   } else if (action === 'deleteRow') {
     const rowIndex = parseInt(e.parameter.rowIndex);
     return deleteRowData(rowIndex);
@@ -188,6 +215,81 @@ function getAllDataAsJSON() {
   }
 }
 
+// ===== NEW: GET REJECTED DATA =====
+function getRejectedDataAsJSON() {
+  try {
+    Logger.log('Getting rejected data from Peserta sheet');
+    
+    const ss = SpreadsheetApp.openById(SHEET_ID);
+    const sheet = ss.getSheetByName(SHEET_NAME);
+    
+    if (!sheet) {
+      return ContentService.createTextOutput(JSON.stringify({
+        success: false,
+        message: 'Sheet tidak ditemukan'
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    const lastRow = sheet.getLastRow();
+    const lastCol = sheet.getLastColumn();
+    
+    if (lastRow <= 1) {
+      return ContentService.createTextOutput(JSON.stringify({
+        success: true,
+        data: []
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    // Ambil header
+    const headerRange = sheet.getRange(1, 1, 1, lastCol);
+    const headers = headerRange.getValues()[0];
+    
+    // Ambil semua data
+    const dataRange = sheet.getRange(2, 1, lastRow - 1, lastCol);
+    const allData = dataRange.getValues();
+    
+    // Find column indices
+    const nomorPesertaIdx = headers.indexOf('Nomor Peserta');
+    const cabangIdx = headers.indexOf('Cabang Lomba');
+    const kecamatanIdx = headers.indexOf('Kecamatan');
+    const namaReguIdx = headers.indexOf('Nama Regu/Tim');
+    const namaIdx = headers.indexOf('Nama Lengkap');
+    const statusIdx = headers.indexOf('Status');
+    const alasanIdx = headers.indexOf('Alasan Ditolak');
+    
+    // Filter data dengan status "Ditolak"
+    const rejectedData = [];
+    for (let i = 0; i < allData.length; i++) {
+      const row = allData[i];
+      if (row[statusIdx] === 'Ditolak') {
+        rejectedData.push({
+          nomorPeserta: row[nomorPesertaIdx] || '-',
+          namaTimPeserta: row[namaReguIdx] && row[namaReguIdx] !== '-' ? row[namaReguIdx] : row[namaIdx],
+          cabang: row[cabangIdx] || '-',
+          kecamatan: row[kecamatanIdx] || '-',
+          status: row[statusIdx] || '-',
+          alasan: row[alasanIdx] || '-'
+        });
+      }
+    }
+    
+    Logger.log('Rejected data count: ' + rejectedData.length);
+    
+    return ContentService.createTextOutput(JSON.stringify({
+      success: true,
+      data: rejectedData,
+      totalRows: rejectedData.length
+    })).setMimeType(ContentService.MimeType.JSON);
+      
+  } catch (error) {
+    Logger.log('Error in getRejectedDataAsJSON: ' + error.message);
+    return ContentService.createTextOutput(JSON.stringify({
+      success: false,
+      message: 'Error: ' + error.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
 function updateCompleteRow(e) {
   try {
     Logger.log('Updating complete row');
@@ -204,7 +306,7 @@ function updateCompleteRow(e) {
       })).setMimeType(ContentService.MimeType.JSON);
     }
     
-    const actualRow = rowIndex + 2; // Row 1 = Header, Row 2 = Data pertama (rowIndex 0)
+    const actualRow = rowIndex + 2;
     
     if (actualRow > sheet.getLastRow()) {
       return ContentService.createTextOutput(JSON.stringify({
@@ -213,10 +315,8 @@ function updateCompleteRow(e) {
       })).setMimeType(ContentService.MimeType.JSON);
     }
     
-    // Get headers
     const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
     
-    // Update each field
     for (let field in updatedData) {
       const colIndex = headers.indexOf(field);
       if (colIndex !== -1) {
@@ -263,9 +363,10 @@ function uploadFilesOnly(e) {
   }
 }
 
-function updateRowStatus(rowIndex, newStatus) {
+// ===== UPDATED: WITH REASON PARAMETER =====
+function updateRowStatus(rowIndex, newStatus, reason) {
   try {
-    Logger.log('Updating row ' + rowIndex + ' status to ' + newStatus);
+    Logger.log('Updating row ' + rowIndex + ' status to ' + newStatus + ' with reason: ' + reason);
     
     const ss = SpreadsheetApp.openById(SHEET_ID);
     const sheet = ss.getSheetByName(SHEET_NAME);
@@ -277,8 +378,9 @@ function updateRowStatus(rowIndex, newStatus) {
       })).setMimeType(ContentService.MimeType.JSON);
     }
     
-    const lastCol = sheet.getLastColumn();
-    const statusCol = lastCol;
+    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    const statusIdx = headers.indexOf('Status');
+    const alasanIdx = headers.indexOf('Alasan Ditolak');
     const actualRow = rowIndex + 2;
     
     if (actualRow > sheet.getLastRow()) {
@@ -288,7 +390,15 @@ function updateRowStatus(rowIndex, newStatus) {
       })).setMimeType(ContentService.MimeType.JSON);
     }
     
-    sheet.getRange(actualRow, statusCol).setValue(newStatus);
+    // Update status
+    sheet.getRange(actualRow, statusIdx + 1).setValue(newStatus);
+    
+    // Update alasan jika status Ditolak
+    if (newStatus === 'Ditolak' && alasanIdx !== -1) {
+      sheet.getRange(actualRow, alasanIdx + 1).setValue(reason || '-');
+    } else if (alasanIdx !== -1) {
+      sheet.getRange(actualRow, alasanIdx + 1).setValue('-');
+    }
     
     Logger.log('Status updated successfully at row ' + actualRow);
     
@@ -347,24 +457,46 @@ function deleteRowData(rowIndex) {
   }
 }
 
-// ===== GENERATE NOMOR PESERTA =====
+// ===== UPDATED: GENERATE NOMOR PESERTA - 62 PER CABANG =====
 function generateNomorPeserta(sheet, cabangCode, genderCode, isTeam) {
   try {
-    const lastRow = sheet.getLastRow();
+    const cabangInfo = CABANG_ORDER[cabangCode];
+    if (!cabangInfo) {
+      return {
+        success: false,
+        message: 'Kode cabang tidak valid'
+      };
+    }
     
+    const lastRow = sheet.getLastRow();
     const existingNumbers = [];
+    
     if (lastRow > 1) {
       const dataRange = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn());
       const data = dataRange.getValues();
-      
       const nomorPesertaCol = 1;
       
       for (let i = 0; i < data.length; i++) {
         const nomorPeserta = data[i][nomorPesertaCol];
-        if (nomorPeserta && nomorPeserta.toString().startsWith(cabangCode + '-')) {
-          const num = parseInt(nomorPeserta.toString().split('-')[1]);
-          if (!isNaN(num)) {
-            existingNumbers.push(num);
+        if (nomorPeserta) {
+          const nomorStr = nomorPeserta.toString();
+          let num;
+          
+          // Check if this is a prefixed number (F, S, N, H, D, K, M)
+          if (cabangInfo.prefix) {
+            const prefixMatch = nomorStr.match(new RegExp('^' + cabangInfo.prefix + '\\.(\\d+)$'));
+            if (prefixMatch) {
+              num = parseInt(prefixMatch[1]);
+              if (!isNaN(num)) {
+                existingNumbers.push(num);
+              }
+            }
+          } else {
+            // Regular number range (001-806)
+            num = parseInt(nomorStr);
+            if (!isNaN(num) && num >= cabangInfo.start && num <= cabangInfo.end) {
+              existingNumbers.push(num);
+            }
           }
         }
       }
@@ -372,21 +504,31 @@ function generateNomorPeserta(sheet, cabangCode, genderCode, isTeam) {
     
     Logger.log('Existing numbers for ' + cabangCode + ': ' + existingNumbers.join(', '));
     
+    // Determine if odd or even
     const isOdd = isTeam ? false : (genderCode === 'female');
     
-    let nextNumber = isOdd ? 1 : 2;
+    // Find next available number
+    let nextNumber = isOdd ? cabangInfo.start + (cabangInfo.start % 2 === 0 ? 1 : 0) : cabangInfo.start + (cabangInfo.start % 2 === 0 ? 0 : 1);
+    
     while (existingNumbers.indexOf(nextNumber) !== -1) {
       nextNumber += 2;
       
-      if (nextNumber > MAX_PARTICIPANTS_PER_BRANCH) {
+      if (nextNumber > cabangInfo.end) {
         return {
           success: false,
-          message: 'Maaf, kuota peserta untuk cabang ' + cabangCode + ' (' + (isOdd ? 'Putri' : 'Putra') + ') sudah penuh. Maksimal 31 peserta per jenis kelamin.'
+          message: 'Maaf, kuota peserta untuk cabang ' + cabangInfo.name + ' (' + (isOdd ? 'Putri' : 'Putra') + ') sudah penuh.'
         };
       }
     }
     
-    const nomorPeserta = cabangCode + '-' + nextNumber;
+    // Format nomor peserta
+    let nomorPeserta;
+    if (cabangInfo.prefix) {
+      nomorPeserta = cabangInfo.prefix + '. ' + String(nextNumber).padStart(2, '0');
+    } else {
+      nomorPeserta = String(nextNumber).padStart(3, '0');
+    }
+    
     Logger.log('Generated nomor peserta: ' + nomorPeserta);
     
     return {
@@ -489,7 +631,7 @@ function createResponse(success, message, nomorPeserta, details) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
-// ===== TAMBAH HEADER KE SHEET =====
+// ===== UPDATED: ADD HEADERS WITH "ALASAN DITOLAK" =====
 function addHeaders(sheet) {
   const headers = [
     'No',
@@ -567,7 +709,8 @@ function addHeaders(sheet) {
     'Link - Doc Sertifikat Team 3',
     'Link - Doc Rekening Team 3',
     'Link - Doc Pas Photo Team 3',
-    'Status'
+    'Status',
+    'Alasan Ditolak'
   ];
   sheet.appendRow(headers);
 }
@@ -712,7 +855,8 @@ function prepareRowData(formData, fileLinks, sheet, nomorPeserta) {
     fileLinks['teamDoc3_4'] || '',
     fileLinks['teamDoc3_5'] || '',
     
-    'Menunggu Verifikasi'
+    'Menunggu Verifikasi',
+    '-'
   ];
   
   return rowData;

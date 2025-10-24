@@ -1,21 +1,12 @@
-// root/script.js
+// root/script.js - LENGKAP
 
 /* ========== CONFIG SECTION ========== */
 const CONFIG = {
-    // Set ke false untuk matikan logger, true untuk aktifkan
-    DEBUG_MODE: false,
-    
-    // Google Apps Script URL
+    DEBUG_MODE: true,
     APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbzXKfb4UnAk_UZJLwRLyfDluZM3uWtLO3xvS8jjxlq9WVdUtkExn4uWAf_msq3ozd18/exec',
-    
-    // Reference date untuk perhitungan umur
     REFERENCE_DATE: new Date('2025-11-01'),
-    
-    // WIB Timezone offset
     WIB_OFFSET: 7 * 60 * 60 * 1000
 };
-
-/* ========== END CONFIG ========== */
 
 const APPS_SCRIPT_URL = CONFIG.APPS_SCRIPT_URL;
 const REFERENCE_DATE = CONFIG.REFERENCE_DATE;
@@ -27,7 +18,6 @@ const Logger = {
         if (!this.enabled) return;
         const timestamp = new Date().toLocaleTimeString();
         const logMessage = `[${timestamp}] [${category}] ${message}`;
-        
         if (data !== null) {
             console.log(logMessage, data);
         } else {
@@ -70,7 +60,7 @@ function showAlert(message, type = 'success', isModal = false) {
     const container = isModal ? document.getElementById('modalAlertContainer') : document.getElementById('alertContainer');
     const alert = document.createElement('div');
     alert.className = `alert alert-${type}`;
-    const icons = { success: '✓', error: '✕', info: 'ℹ' };
+    const icons = { success: '✔', error: '✕', info: 'ℹ' };
     alert.innerHTML = `<strong>${icons[type] || 'ℹ'}</strong> ${message}`;
     container.appendChild(alert);
     setTimeout(() => alert.remove(), 5000);
@@ -93,7 +83,6 @@ function hideLoading(isModal = false) {
 function loadData() {
     const loadingIndicator = document.getElementById('loadingIndicator');
     loadingIndicator.style.display = 'block';
-
     Logger.log('loadData', '=== START LOADING DATA ===');
 
     fetch(APPS_SCRIPT_URL + '?action=getData')
@@ -102,7 +91,6 @@ function loadData() {
             if (data.success && data.data && data.data.length > 0) {
                 Logger.log('loadData', `Received ${data.data.length} rows`);
                 headers = data.headers;
-                
                 const headerMap = {};
                 data.headers.forEach((header, idx) => {
                     headerMap[header] = idx;
@@ -110,7 +98,6 @@ function loadData() {
                 
                 allData = data.data.map((row, idx) => {
                     const obj = { rowIndex: idx };
-                    
                     data.headers.forEach((header, i) => {
                         let value = row[i] || '';
                         
@@ -118,7 +105,6 @@ function loadData() {
                             if (value && value !== '-' && value !== '') {
                                 Logger.group(`Processing Batas Usia Max (row ${idx})`);
                                 Logger.log('Batas Usia Processing', 'Original value:', value);
-                                
                                 let processedValue = value;
                                 
                                 if (typeof value === 'string' && value.includes('T')) {
@@ -128,48 +114,38 @@ function loadData() {
                                     const year = parseInt(parts[0]);
                                     const month = parts[1];
                                     const day = parts[2];
-                                    
                                     const yearLastTwoDigits = year % 100;
                                     const monthFromISO = parseInt(month);
                                     const dayFromISO = parseInt(day);
-                                    
                                     const originalDay = monthFromISO;
                                     const originalMonth = monthFromISO - 1;
                                     const originalYear = yearLastTwoDigits;
-                                    
                                     processedValue = `${String(originalDay).padStart(2, '0')}-${String(originalMonth).padStart(2, '0')}-${String(originalYear).padStart(2, '0')}`;
                                     Logger.log('Batas Usia Processing', 'Final format DD-MM-YY:', processedValue);
-                                }
-                                else if (typeof value === 'string' && value.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                                } else if (typeof value === 'string' && value.match(/^\d{4}-\d{2}-\d{2}$/)) {
                                     Logger.log('Batas Usia Processing', 'Detected: YYYY-MM-DD format');
                                     const parts = value.split('-');
                                     const year = parseInt(parts[0]);
                                     const month = parts[1];
                                     const day = parts[2];
-                                    
                                     const referenceDate = new Date('2025-11-01T00:00:00Z');
                                     const maxAgeDate = new Date(`${year}-${month}-${day}T00:00:00Z`);
-                                    
                                     let years = referenceDate.getUTCFullYear() - maxAgeDate.getUTCFullYear();
                                     let months = referenceDate.getUTCMonth() - maxAgeDate.getUTCMonth();
                                     let days = referenceDate.getUTCDate() - maxAgeDate.getUTCDate();
-                                    
                                     if (days < 0) {
                                         months--;
                                         const lastMonth = new Date(referenceDate.getUTCFullYear(), referenceDate.getUTCMonth(), 0);
                                         days += lastMonth.getUTCDate();
                                     }
-                                    
                                     if (months < 0) {
                                         years--;
                                         months += 12;
                                     }
-                                    
                                     const yearTwoDigit = years % 100;
                                     processedValue = `${String(yearTwoDigit).padStart(2, '0')}-${String(months).padStart(2, '0')}-${String(days).padStart(2, '0')}`;
                                     Logger.log('Batas Usia Processing', 'Converted to max age format (YY-MM-DD):', processedValue);
                                 }
-                                
                                 value = processedValue;
                                 Logger.log('Batas Usia Processing', 'FINAL VALUE:', value);
                                 Logger.groupEnd();
@@ -180,14 +156,12 @@ function loadData() {
                             if (value && value !== '-' && value !== '') {
                                 Logger.group(`Processing Date: ${header} (row ${idx})`);
                                 Logger.log('Date Processing', 'Original value:', value);
-                                
                                 const dateObj = new Date(value);
                                 if (!isNaN(dateObj.getTime())) {
                                     const adjusted = new Date(dateObj.getTime() + (7 * 60 * 60 * 1000));
                                     const adjYear = adjusted.getUTCFullYear();
                                     const adjMonth = String(adjusted.getUTCMonth() + 1).padStart(2, '0');
                                     const adjDay = String(adjusted.getUTCDate()).padStart(2, '0');
-                                    
                                     value = `${adjYear}-${adjMonth}-${adjDay}`;
                                     Logger.log('Date Processing', 'Adjusted value:', value);
                                 }
@@ -199,10 +173,8 @@ function loadData() {
                             if (value && value !== '-' && value !== '') {
                                 Logger.group(`Processing Age: ${header} (row ${idx})`);
                                 Logger.log('Age Processing', 'Original value:', value);
-                                
                                 if (typeof value === 'string' && (value.includes('T') || value.match(/^\d{4}-\d{2}-\d{2}/))) {
                                     Logger.log('Age Processing', 'DETECTED: Date format, need to recalculate from birth date');
-                                    
                                     let birthDateField = null;
                                     if (header === 'Umur') {
                                         birthDateField = 'Tanggal Lahir';
@@ -212,13 +184,10 @@ function loadData() {
                                             birthDateField = `Anggota Tim #${memberMatch[1]} - Tgl Lahir`;
                                         }
                                     }
-                                    
                                     Logger.log('Age Processing', 'Looking for birth date field:', birthDateField);
-                                    
                                     if (birthDateField && headerMap[birthDateField] !== undefined) {
                                         const birthDateValue = row[headerMap[birthDateField]];
                                         Logger.log('Age Processing', 'Birth date value found:', birthDateValue);
-                                        
                                         if (birthDateValue && birthDateValue !== '-') {
                                             value = calculateAge(birthDateValue);
                                             Logger.log('Age Processing', 'Recalculated age:', value);
@@ -230,7 +199,6 @@ function loadData() {
                                 } else {
                                     const strValue = String(value).trim();
                                     Logger.log('Age Processing', 'String value:', strValue);
-                                    
                                     if (strValue.match(/^\d{1,2}-\d{1,2}-\d{1,2}$/)) {
                                         const parts = strValue.split('-');
                                         value = `${String(parts[0]).padStart(2, '0')}-${String(parts[1]).padStart(2, '0')}-${String(parts[2]).padStart(2, '0')}`;
@@ -240,7 +208,6 @@ function loadData() {
                                 Logger.groupEnd();
                             }
                         }
-                        
                         obj[header] = value;
                     });
                     return obj;
@@ -248,7 +215,6 @@ function loadData() {
                 
                 filteredData = [...allData];
                 Logger.log('loadData', '=== DATA LOADED SUCCESSFULLY ===');
-                
                 renderTable();
                 updateStats();
             } else {
@@ -267,26 +233,21 @@ function loadData() {
 function compareAge(personAgeStr, maxYears, maxMonths, maxDays, personLabel) {
     Logger.log('compareAge', 'Person:', personLabel);
     Logger.log('compareAge', 'Person age:', personAgeStr);
-    
     const ageParts = personAgeStr.split('-');
     if (ageParts.length !== 3) {
         Logger.log('compareAge', 'Invalid age format for comparison');
         return { isValid: true, message: '' };
     }
-    
     const personYears = parseInt(ageParts[0]) || 0;
     const personMonths = parseInt(ageParts[1]) || 0;
     const personDays = parseInt(ageParts[2]) || 0;
-    
     const personTotalDays = (personYears * 365) + (personMonths * 30.44) + personDays;
     const maxTotalDays = (maxYears * 365) + (maxMonths * 30.44) + maxDays;
-    
     if (personTotalDays > maxTotalDays) {
         const message = `⚠️ ${personLabel} melebihi batas usia maksimal!\n\nUmur ${personLabel}: ${personYears} Tahun ${personMonths} Bulan ${personDays} Hari\nBatas Usia Maksimal: ${maxYears} Tahun ${maxMonths} Bulan ${maxDays} Hari\n\nData tidak dapat disimpan sampai umur sesuai dengan ketentuan.`;
         Logger.log('compareAge', 'Age exceeded:', message);
         return { isValid: false, message: message };
     }
-    
     Logger.log('compareAge', 'Age valid');
     return { isValid: true, message: '' };
 }
@@ -294,30 +255,23 @@ function compareAge(personAgeStr, maxYears, maxMonths, maxDays, personLabel) {
 function validateAgeRestriction() {
     const maxAgeStr = currentRowData['Batas Usia Max'] || '';
     const cabang = currentRowData['Cabang Lomba'] || '';
-    
     Logger.log('validateAgeRestriction', '=== START VALIDATION ===');
     Logger.log('validateAgeRestriction', 'Cabang:', cabang);
     Logger.log('validateAgeRestriction', 'Max age from data:', maxAgeStr);
-    
     if (!maxAgeStr || maxAgeStr === '-') {
         Logger.log('validateAgeRestriction', 'No max age found');
         return { isValid: true, message: '' };
     }
-    
     const maxAgeParts = maxAgeStr.split('-');
-    
     if (maxAgeParts.length !== 3) {
         Logger.log('validateAgeRestriction', 'Invalid max age format:', maxAgeStr);
         return { isValid: true, message: '' };
     }
-    
     let maxAgeYears = parseInt(maxAgeParts[0]) || 0;
     let maxAgeMonths = parseInt(maxAgeParts[1]) || 0;
     let maxAgeDays = parseInt(maxAgeParts[2]) || 0;
-    
     const personalAge = currentRowData['Umur'] || '';
     Logger.log('validateAgeRestriction', 'Personal age:', personalAge);
-    
     if (personalAge && personalAge !== '-') {
         const validation = compareAge(personalAge, maxAgeYears, maxAgeMonths, maxAgeDays, 'Peserta Utama');
         if (!validation.isValid) {
@@ -325,11 +279,9 @@ function validateAgeRestriction() {
             return validation;
         }
     }
-    
     for (let i = 1; i <= 3; i++) {
         const memberAge = currentRowData[`Anggota Tim #${i} - Umur`] || '';
         const memberName = currentRowData[`Anggota Tim #${i} - Nama`] || '-';
-        
         if (memberAge && memberAge !== '-' && memberName !== '-') {
             const validation = compareAge(memberAge, maxAgeYears, maxAgeMonths, maxAgeDays, `Anggota Tim #${i}`);
             if (!validation.isValid) {
@@ -338,22 +290,15 @@ function validateAgeRestriction() {
             }
         }
     }
-    
     Logger.log('validateAgeRestriction', '=== ALL VALIDATION PASSED ===');
     return { isValid: true, message: '' };
 }
 
 function formatDate(dateStr) {
-    if (!dateStr || dateStr === '-') {
-        return '-';
-    }
-    
+    if (!dateStr || dateStr === '-') return '-';
     try {
         const date = new Date(dateStr);
-        if (isNaN(date.getTime())) {
-            return dateStr;
-        }
-        
+        if (isNaN(date.getTime())) return dateStr;
         const adjusted = new Date(date.getTime() + (7 * 60 * 60 * 1000));
         const day = String(adjusted.getUTCDate()).padStart(2, '0');
         const month = String(adjusted.getUTCMonth() + 1).padStart(2, '0');
@@ -365,10 +310,7 @@ function formatDate(dateStr) {
 }
 
 function toDateInputValue(dateStr) {
-    if (!dateStr || dateStr === '-') {
-        return '';
-    }
-    
+    if (!dateStr || dateStr === '-') return '';
     try {
         let date;
         if (dateStr instanceof Date) {
@@ -376,11 +318,7 @@ function toDateInputValue(dateStr) {
         } else {
             date = new Date(dateStr);
         }
-        
-        if (isNaN(date.getTime())) {
-            return '';
-        }
-        
+        if (isNaN(date.getTime())) return '';
         const adjusted = new Date(date.getTime() + (7 * 60 * 60 * 1000));
         const year = adjusted.getUTCFullYear();
         const month = String(adjusted.getUTCMonth() + 1).padStart(2, '0');
@@ -392,28 +330,20 @@ function toDateInputValue(dateStr) {
 }
 
 function formatAge(ageStr) {
-    if (!ageStr || ageStr === '-') {
-        return '-';
-    }
-    
+    if (!ageStr || ageStr === '-') return '-';
     const strAge = String(ageStr).trim();
     const parts = strAge.split('-');
-    
     if (parts.length === 3) {
         const years = parseInt(parts[0]) || 0;
         const months = parseInt(parts[1]) || 0;
         const days = parseInt(parts[2]) || 0;
         return `${years} Tahun ${months} Bulan ${days} Hari`;
     }
-    
     return ageStr;
 }
 
 function calculateAge(birthDateStr) {
-    if (!birthDateStr || birthDateStr === '-') {
-        return '-';
-    }
-    
+    if (!birthDateStr || birthDateStr === '-') return '-';
     try {
         let birthDate;
         if (birthDateStr instanceof Date) {
@@ -421,29 +351,21 @@ function calculateAge(birthDateStr) {
         } else {
             birthDate = new Date(birthDateStr);
         }
-        
-        if (isNaN(birthDate.getTime())) {
-            return '-';
-        }
-        
+        if (isNaN(birthDate.getTime())) return '-';
         const adjusted = new Date(birthDate.getTime() + (7 * 60 * 60 * 1000));
         const adjustedRef = new Date(REFERENCE_DATE.getTime() + (7 * 60 * 60 * 1000));
-        
         let years = adjustedRef.getUTCFullYear() - adjusted.getUTCFullYear();
         let months = adjustedRef.getUTCMonth() - adjusted.getUTCMonth();
         let days = adjustedRef.getUTCDate() - adjusted.getUTCDate();
-        
         if (days < 0) {
             months--;
             const lastMonth = new Date(adjustedRef.getUTCFullYear(), adjustedRef.getUTCMonth(), 0);
             days += lastMonth.getUTCDate();
         }
-        
         if (months < 0) {
             years--;
             months += 12;
         }
-        
         return `${String(years).padStart(2, '0')}-${String(months).padStart(2, '0')}-${String(days).padStart(2, '0')}`;
     } catch (e) {
         return '-';
@@ -451,25 +373,30 @@ function calculateAge(birthDateStr) {
 }
 
 function sortTable(column) {
+    Logger.log('sortTable', 'Sorting by column:', column);
     if (sortColumn === column) {
         sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
     } else {
         sortColumn = column;
         sortDirection = 'asc';
     }
-
     filteredData.sort((a, b) => {
-        let valA = a[column] || '';
-        let valB = b[column] || '';
-        
+        let valA, valB;
+        if (column === 'Nama') {
+            valA = (a['Nama Regu/Tim'] && a['Nama Regu/Tim'] !== '-') ? a['Nama Regu/Tim'] : (a['Nama Lengkap'] || '');
+            valB = (b['Nama Regu/Tim'] && b['Nama Regu/Tim'] !== '-') ? b['Nama Regu/Tim'] : (b['Nama Lengkap'] || '');
+        } else {
+            valA = a[column] || '';
+            valB = b[column] || '';
+        }
         if (typeof valA === 'string') valA = valA.toLowerCase();
         if (typeof valB === 'string') valB = valB.toLowerCase();
-
+        Logger.log('sortTable', `Comparing: "${valA}" vs "${valB}"`);
         if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
         if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
         return 0;
     });
-
+    Logger.log('sortTable', `Sorted ${filteredData.length} rows in ${sortDirection} order`);
     renderTable();
 }
 
@@ -525,6 +452,7 @@ function renderTable() {
     if (filteredData.length === 0) {
         dataTable.style.display = 'none';
         noData.style.display = 'block';
+        updateStats();
         return;
     }
 
@@ -551,20 +479,24 @@ function renderTable() {
             <td>
                 <div class="action-buttons">
                     <button class="btn-sm btn-primary" onclick="viewDetail(${idx})">Lihat</button>
-                    <button class="btn-sm btn-danger" onclick="confirmDelete(${idx})">Hapus</button>
                 </div>
             </td>
         `;
         tableBody.appendChild(tr);
     });
+    
+    updateStats();
 }
 
 function updateStats() {
     const statsRow = document.getElementById('statsRow');
-    const total = allData.length;
-    const pending = allData.filter(r => r['Status'] === 'Menunggu Verifikasi').length;
-    const verified = allData.filter(r => r['Status'] === 'Terverifikasi').length;
-    const rejected = allData.filter(r => r['Status'] === 'Ditolak').length;
+    
+    const total = filteredData.length;
+    const pending = filteredData.filter(r => r['Status'] === 'Menunggu Verifikasi').length;
+    const verified = filteredData.filter(r => r['Status'] === 'Terverifikasi').length;
+    const rejected = filteredData.filter(r => r['Status'] === 'Ditolak').length;
+
+    Logger.log('updateStats', `Total: ${total}, Pending: ${pending}, Verified: ${verified}, Rejected: ${rejected}`);
 
     statsRow.innerHTML = `
         <div class="stat-card">
@@ -606,21 +538,28 @@ function viewDetail(idx) {
 }
 
 function renderDetailView() {
+    Logger.log('renderDetailView', '=== START RENDER DETAIL VIEW ===');
+    Logger.log('renderDetailView', 'Edit Mode:', isEditMode);
+    Logger.log('renderDetailView', 'Current Status:', currentRowData['Status']);
+    
     const detailContent = document.getElementById('detailContent');
     const detailFooter = document.getElementById('detailFooter');
 
     if (isEditMode) {
         detailContent.classList.add('edit-mode');
         detailFooter.innerHTML = `
-            <button class="btn-secondary" onclick="cancelEdit()">Batal</button>
-            <button class="btn-success" id="saveButton" onclick="saveEdit()">💾 Simpan Perubahan</button>
+            <button class="btn-danger" onclick="confirmDelete()">🗑️ Hapus</button>
+            <div style="flex: 1;"></div>
+            <button class="btn-success" id="saveButton" onclick="saveEdit()">💾 Simpan</button>
+            <button class="btn-secondary" onclick="cancelEdit()">Tutup</button>
         `;
     } else {
         detailContent.classList.remove('edit-mode');
         detailFooter.innerHTML = `
-            <button class="btn-secondary" onclick="closeDetailModal()">Tutup</button>
-            <button class="btn-primary" onclick="toggleEditMode()">✏️ Edit</button>
             <button class="btn-danger" onclick="confirmDelete()">🗑️ Hapus</button>
+            <div style="flex: 1;"></div>
+            <button class="btn-primary" onclick="toggleEditMode()">✏️ Edit</button>
+            <button class="btn-secondary" onclick="closeDetailModal()">Tutup</button>
         `;
     }
 
@@ -647,7 +586,24 @@ function renderDetailView() {
                 ${isEditMode ? renderStatusSelect() : `<span class="detail-value">${currentRowData['Status'] || 'Menunggu Verifikasi'}</span>`}
             </div>
         </div>
+    `;
+    
+    if (isEditMode) {
+        html += `<div id="reasonFieldContainer"></div>`;
+    }
+    
+    if (!isEditMode && currentRowData['Status'] === 'Ditolak') {
+        html += `
+        <div class="detail-row">
+            <div class="detail-group" style="grid-column: 1/-1;">
+                <span class="detail-label">Alasan Ditolak</span>
+                <span class="detail-value" style="background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(239, 68, 68, 0.1)); border-color: #ef4444;">${currentRowData['Alasan Ditolak'] || '-'}</span>
+            </div>
+        </div>
+        `;
+    }
 
+    html += `
         <div class="detail-row">
             <div class="detail-group">
                 <span class="detail-label">Kecamatan</span>
@@ -738,6 +694,44 @@ function renderDetailView() {
     detailContent.innerHTML = html;
     
     if (isEditMode) {
+        Logger.log('renderDetailView', 'Setting up edit mode event listeners');
+        
+        const statusSelect = document.querySelector('[data-field="Status"]');
+        if (statusSelect) {
+            Logger.log('renderDetailView', 'Status select found, adding event listener');
+            
+            statusSelect.value = currentRowData['Status'] || 'Menunggu Verifikasi';
+            Logger.log('renderDetailView', 'Initial status set to:', statusSelect.value);
+            
+            statusSelect.addEventListener('change', function(e) {
+                const newStatus = e.target.value;
+                Logger.log('renderDetailView', 'Status changed to:', newStatus);
+                
+                currentRowData['Status'] = newStatus;
+                
+                const reasonContainer = document.getElementById('reasonFieldContainer');
+                if (reasonContainer) {
+                    if (newStatus === 'Ditolak') {
+                        Logger.log('renderDetailView', 'Showing reason field');
+                        reasonContainer.innerHTML = renderReasonField();
+                    } else {
+                        Logger.log('renderDetailView', 'Hiding reason field');
+                        reasonContainer.innerHTML = '';
+                        currentRowData['Alasan Ditolak'] = '-';
+                    }
+                }
+            });
+            
+            const initialStatus = statusSelect.value;
+            const reasonContainer = document.getElementById('reasonFieldContainer');
+            if (reasonContainer && initialStatus === 'Ditolak') {
+                Logger.log('renderDetailView', 'Initial status is Ditolak, showing reason field');
+                reasonContainer.innerHTML = renderReasonField();
+            }
+        } else {
+            Logger.log('renderDetailView', 'ERROR: Status select not found!');
+        }
+
         document.querySelectorAll('.file-input').forEach(input => {
             input.addEventListener('change', handleFileChange);
         });
@@ -771,6 +765,18 @@ function renderDetailView() {
         Logger.log('renderDetailView', 'Performing initial age validation');
         performAgeValidation();
     }
+}
+
+function renderReasonField() {
+    const currentReason = currentRowData['Alasan Ditolak'] || '';
+    return `
+        <div class="detail-row">
+            <div class="detail-group" style="grid-column: 1/-1;">
+                <span class="detail-label" style="color: #ef4444;">Alasan Ditolak *</span>
+                <textarea class="edit-textarea" data-field="Alasan Ditolak" rows="3" placeholder="Masukkan alasan penolakan..." required style="border-color: rgba(239, 68, 68, 0.3);">${currentReason}</textarea>
+            </div>
+        </div>
+    `;
 }
 
 function performAgeValidation() {
@@ -1011,6 +1017,7 @@ function renderTextareaField(fieldName) {
 
 function renderStatusSelect() {
     const currentStatus = currentRowData['Status'] || 'Menunggu Verifikasi';
+    Logger.log('renderStatusSelect', 'Current status:', currentStatus);
     return `
         <select class="edit-select" data-field="Status">
             <option value="Menunggu Verifikasi" ${currentStatus === 'Menunggu Verifikasi' ? 'selected' : ''}>Menunggu Verifikasi</option>
@@ -1021,20 +1028,48 @@ function renderStatusSelect() {
 }
 
 function toggleEditMode() {
+    Logger.log('toggleEditMode', 'Entering edit mode');
     isEditMode = true;
     filesToUpload = {};
     renderDetailView();
 }
 
 function cancelEdit() {
+    Logger.log('cancelEdit', 'Cancelling edit mode');
     isEditMode = false;
     filesToUpload = {};
     currentRowData = JSON.parse(JSON.stringify(filteredData.find(r => r.rowIndex === currentRowData.rowIndex)));
+    Logger.log('cancelEdit', 'Restored original data');
     renderDetailView();
 }
 
 async function saveEdit() {
+    Logger.log('saveEdit', '=== START SAVE EDIT ===');
+    
+    const statusSelect = document.querySelector('[data-field="Status"]');
+    const reasonTextarea = document.querySelector('[data-field="Alasan Ditolak"]');
+    
+    Logger.log('saveEdit', 'Status Select Found:', !!statusSelect);
+    Logger.log('saveEdit', 'Status Value:', statusSelect ? statusSelect.value : 'N/A');
+    Logger.log('saveEdit', 'Reason Textarea Found:', !!reasonTextarea);
+    Logger.log('saveEdit', 'Reason Value:', reasonTextarea ? reasonTextarea.value : 'N/A');
+    
+    if (statusSelect && statusSelect.value === 'Ditolak') {
+        Logger.log('saveEdit', 'Status is Ditolak, checking reason...');
+        if (!reasonTextarea || !reasonTextarea.value.trim()) {
+            Logger.log('saveEdit', 'ERROR: Reason is empty!');
+            showAlert('⚠️ Alasan ditolak harus diisi!', 'error', true);
+            if (reasonTextarea) {
+                reasonTextarea.focus();
+                reasonTextarea.style.borderColor = '#ef4444';
+            }
+            return;
+        }
+        Logger.log('saveEdit', 'Reason validation passed');
+    }
+
     if (!confirm('Apakah Anda yakin ingin menyimpan perubahan?')) {
+        Logger.log('saveEdit', 'User cancelled save');
         return;
     }
 
@@ -1044,18 +1079,32 @@ async function saveEdit() {
         const inputs = document.querySelectorAll('.edit-input:not([readonly]), .edit-textarea, .edit-select');
         const updatedData = {};
         
+        Logger.log('saveEdit', 'Found inputs:', inputs.length);
+        
         inputs.forEach(input => {
             const field = input.getAttribute('data-field');
-            updatedData[field] = input.value;
-            currentRowData[field] = input.value;
+            const value = input.value;
+            updatedData[field] = value;
+            currentRowData[field] = value;
+            Logger.log('saveEdit', `Field: ${field} = ${value}`);
         });
+
+        if (updatedData['Status'] !== 'Ditolak') {
+            Logger.log('saveEdit', 'Status is not Ditolak, setting reason to "-"');
+            updatedData['Alasan Ditolak'] = '-';
+            currentRowData['Alasan Ditolak'] = '-';
+        } else {
+            Logger.log('saveEdit', 'Status is Ditolak, reason:', updatedData['Alasan Ditolak']);
+        }
 
         const originalIndex = allData.findIndex(row => row.rowIndex === currentRowData.rowIndex);
         if (originalIndex !== -1) {
             Object.assign(allData[originalIndex], updatedData);
+            Logger.log('saveEdit', 'Updated allData at index:', originalIndex);
         }
 
         if (Object.keys(filesToUpload).length > 0) {
+            Logger.log('saveEdit', 'Uploading files:', Object.keys(filesToUpload).length);
             hideLoading(true);
             showLoading(`Mengupload ${Object.keys(filesToUpload).length} file...`, true);
             const uploadResult = await uploadFiles();
@@ -1064,15 +1113,21 @@ async function saveEdit() {
                 Object.assign(currentRowData, uploadResult.fileLinks);
                 hideLoading(true);
                 showAlert('File berhasil diupload', 'success', true);
+                Logger.log('saveEdit', 'Files uploaded successfully');
             } else {
                 hideLoading(true);
                 showAlert('Gagal mengupload file: ' + uploadResult.message, 'error', true);
+                Logger.log('saveEdit', 'ERROR: File upload failed');
                 return;
             }
         }
 
         hideLoading(true);
         showLoading('Memperbarui data di spreadsheet...', true);
+        
+        Logger.log('saveEdit', 'Sending data to server...');
+        Logger.log('saveEdit', 'Updated Data:', updatedData);
+        
         const formData = new URLSearchParams();
         formData.append('action', 'updateRow');
         formData.append('rowIndex', currentRowData.rowIndex);
@@ -1090,19 +1145,31 @@ async function saveEdit() {
         
         hideLoading(true);
 
+        Logger.log('saveEdit', 'Server response:', result);
+
         if (result.success) {
-            showAlert('✓ Data berhasil diperbarui!', 'success', true);
+            showAlert('✔ Data berhasil diperbarui!', 'success', true);
             isEditMode = false;
             filesToUpload = {};
+            
+            const filteredIndex = filteredData.findIndex(row => row.rowIndex === currentRowData.rowIndex);
+            if (filteredIndex !== -1) {
+                Object.assign(filteredData[filteredIndex], updatedData);
+                Logger.log('saveEdit', 'Updated filteredData at index:', filteredIndex);
+            }
+            
             renderDetailView();
             renderTable();
             updateStats();
+            Logger.log('saveEdit', '=== SAVE EDIT SUCCESS ===');
         } else {
             showAlert('Gagal memperbarui data: ' + result.message, 'error', true);
+            Logger.log('saveEdit', 'ERROR: Server returned failure');
         }
     } catch (error) {
         hideLoading(true);
         console.error('Error updating data:', error);
+        Logger.log('saveEdit', 'ERROR:', error.message);
         showAlert('Error: ' + error.message, 'error', true);
     }
 }
@@ -1157,6 +1224,7 @@ async function uploadFiles() {
 }
 
 function closeDetailModal() {
+    Logger.log('closeDetailModal', 'Closing modal');
     document.getElementById('detailModal').classList.remove('show');
     isEditMode = false;
     filesToUpload = {};
@@ -1177,6 +1245,8 @@ function confirmDelete(idx) {
     const displayName = rowToDelete['Nama Regu/Tim'] && rowToDelete['Nama Regu/Tim'] !== '-' 
         ? rowToDelete['Nama Regu/Tim'] 
         : rowToDelete['Nama Lengkap'] || 'Peserta';
+    
+    Logger.log('confirmDelete', 'Attempting to delete:', displayName);
     
     if (confirm(`⚠️ PERINGATAN!\n\nApakah Anda yakin ingin menghapus data:\n${displayName}\nNomor Peserta: ${rowToDelete['Nomor Peserta']}\n\nTindakan ini tidak dapat dibatalkan!`)) {
         deleteData(rowToDelete);
@@ -1201,27 +1271,21 @@ function deleteData(rowToDelete) {
 
     fetch(APPS_SCRIPT_URL, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-        },
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: formData.toString()
     })
-    .then(response => response.json())
+    .then(r => r.json())
     .then(result => {
         hideLoading(isModal);
         
         if (result.success) {
             const allIdx = allData.findIndex(row => row.rowIndex === rowToDelete.rowIndex);
-            if (allIdx > -1) {
-                allData.splice(allIdx, 1);
-            }
+            if (allIdx > -1) allData.splice(allIdx, 1);
             
             const filteredIdx = filteredData.findIndex(row => row.rowIndex === rowToDelete.rowIndex);
-            if (filteredIdx > -1) {
-                filteredData.splice(filteredIdx, 1);
-            }
+            if (filteredIdx > -1) filteredData.splice(filteredIdx, 1);
             
-            showAlert('✓ Data peserta berhasil dihapus!', 'success', isModal);
+            showAlert('✔ Data peserta berhasil dihapus!', 'success', isModal);
             renderTable();
             updateStats();
             if (isModal) {
