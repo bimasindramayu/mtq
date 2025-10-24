@@ -1,4 +1,4 @@
-<!-- index.html -->
+<!-- index.html - UPDATED -->
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -20,7 +20,11 @@
     <!-- Hero Section -->
     <div class="hero">
         <div class="hero-content">
-            <img src="logomtq.png" alt="Logo MTQ" class="hero-logo">
+            <div class="hero-logos">
+                <img src="logokemenag.png" alt="Logo Kemenag" class="hero-logo hero-logo-kemenag">
+                <img src="logomtq.png" alt="Logo MTQ" class="hero-logo hero-logo-mtq">
+                <img src="logoindramayu.png" alt="Logo Indramayu" class="hero-logo hero-logo-indramayu">
+            </div>
             <h1>Musabaqah Tilawatil Qur'an (MTQ)<br>ke-55</h1>
             <p class="hero-subtitle">Tingkat Kabupaten Indramayu - Tahun 2025</p>
             <p class="hero-date">4-6 November 2025 | Kecamatan Sindang</p>
@@ -29,7 +33,7 @@
 
     <div class="container">
         <div class="nav-tabs">
-            <button class="nav-btn active" onclick="showTab('informasi')">📋 Informasi</button>
+            <button class="nav-btn active" onclick="showTab('informasi')">ℹ️ Informasi</button>
             <button class="nav-btn" onclick="showTab('registrasi')">✏️ Registrasi</button>
         </div>
 
@@ -137,6 +141,7 @@
                     <div class="progress-bar">
                         <div class="progress-fill" id="progressFill">0%</div>
                     </div>
+                    <p id="progressMessage" style="margin-top: 12px; text-align: center; color: var(--primary); font-weight: 600; font-size: 0.95em;">Validasi Data</p>
                 </div>
 
                 <form id="registrationForm" name="registrationForm">
