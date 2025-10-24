@@ -603,7 +603,7 @@ function generateTeamForm(memberCount) {
 function generateTeamMemberHTML(i) {
     const isOptional = i > 2;
     const docs = [
-        { name: 'Surat Mandat', desc: 'Ditandatangani oleh Ketua LPTQ Kecamatan', required: true },
+        { name: 'Surat Mandat/Rekomendasi', desc: 'Ditandatangani oleh Ketua LPTQ Kecamatan', required: true },
         { name: 'KTP/KK/KIA', desc: 'Diterbitkan maksimal 6 bulan sebelum 1 Nov 2025', required: true },
         { name: 'Sertifikat Kejuaraan', desc: 'Dari MTQ Tingkat Kecamatan', required: false },
         { name: 'Foto Buku Tabungan', desc: 'Menunjukkan nomor rekening atas nama peserta', required: true },
