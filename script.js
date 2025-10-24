@@ -334,8 +334,8 @@ function handleCabangChange() {
     }
     
     currentCabang = data;
-    const ageText = data.maxAge.split('-').join(' tahun ') + ' hari';
-    let ageRequirementText = `Batas usia maksimal: ${ageText} (per 1 November 2025)`;
+    const ageTextParts = data.maxAge.split('-');
+    const ageText = ageTextParts[0] + ' tahun ' + ageTextParts[1] + ' bulan ' + ageTextParts[2] + ' hari';    let ageRequirementText = `Batas usia maksimal: ${ageText} (per 1 November 2025)`;
     
     if (data.genderRestriction && data.genderRestriction !== 'any') {
         const genderText = data.genderRestriction === 'male' ? 'Laki-laki' : 'Perempuan';
