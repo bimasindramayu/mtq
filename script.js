@@ -1,6 +1,6 @@
 // script.js
 // ===== CONFIGURATION =====
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzXKfb4UnAk_UZJLwRLyfDluZM3uWtLO3xvS8jjxlq9WVdUtkExn4uWAf_msq3ozd18/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzno0bClsbHVQAKAr1MEUGngYEnlHDFP4CMN64CLi5aN9mKnpWgJKbNKnmHISgER-q3/exec';
 const REGISTRATION_START = new Date('2025-10-24T09:00:00+07:00');
 const REGISTRATION_END = new Date('2025-10-30T23:59:59+07:00');
 
@@ -539,7 +539,7 @@ function generatePersonalDocsForm() {
         { id: 1, name: 'Surat Mandat', desc: 'Ditandatangani oleh Ketua LPTQ Kecamatan', required: true },
         { id: 2, name: 'KTP/KK/KIA', desc: 'Diterbitkan maksimal 6 bulan sebelum 1 Nov 2025', required: true },
         { id: 3, name: 'Sertifikat Kejuaraan', desc: 'Dari MTQ Tingkat Kecamatan', required: false },
-        { id: 4, name: 'Foto Buku Tabungan', desc: 'Menunjukkan nomor rekening', required: true },
+        { id: 4, name: 'Foto Buku Tabungan', desc: 'Menunjukkan nomor rekening', required: false },
         { id: 5, name: 'Pas Photo Terbaru', desc: 'Latar belakang biru', required: true }
     ];
     
@@ -606,7 +606,7 @@ function generateTeamMemberHTML(i) {
         { name: 'Surat Mandat/Rekomendasi', desc: 'Ditandatangani oleh Ketua LPTQ Kecamatan', required: true },
         { name: 'KTP/KK/KIA', desc: 'Diterbitkan maksimal 6 bulan sebelum 1 Nov 2025', required: true },
         { name: 'Sertifikat Kejuaraan', desc: 'Dari MTQ Tingkat Kecamatan', required: false },
-        { name: 'Foto Buku Tabungan', desc: 'Menunjukkan nomor rekening atas nama peserta', required: true },
+        { name: 'Foto Buku Tabungan', desc: 'Menunjukkan nomor rekening atas nama peserta', required: false },
         { name: 'Pas Photo', desc: 'Latar belakang biru', required: true }
     ];
     
@@ -664,17 +664,17 @@ function generateTeamMemberHTML(i) {
             </div>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
                 <div class="form-group">
-                    <label>Nama Rekening ${isOptional ? '' : '*'}</label>
-                    <input type="text" name="memberNamaRek${i}" placeholder="Nama sesuai buku tabungan" ${isOptional ? '' : 'required'}>
+                    <label>Nama Rekening (Opsional)</label>
+                    <input type="text" name="memberNamaRek${i}" placeholder="Nama sesuai buku tabungan">
                 </div>
                 <div class="form-group">
-                    <label>Nomor Rekening ${isOptional ? '' : '*'}</label>
-                    <input type="text" name="memberNoRek${i}" placeholder="Nomor rekening" ${isOptional ? '' : 'required'}>
+                    <label>Nomor Rekening (Opsional)</label>
+                    <input type="text" name="memberNoRek${i}" placeholder="Nomor rekening">
                 </div>
             </div>
             <div class="form-group" style="margin-bottom: 20px;">
-                <label>Nama Bank ${isOptional ? '' : '*'}</label>
-                <input type="text" name="memberNamaBank${i}" placeholder="BNI, BCA, Mandiri, dll" ${isOptional ? '' : 'required'}>
+                <label>Nama Bank  (Opsional)</label>
+                <input type="text" name="memberNamaBank${i}" placeholder="BNI, BCA, Mandiri, dll">
             </div>
             <div style="background: #e6f3ff; padding: 20px; margin-top: 20px; border-radius: 12px; border-left: 4px solid var(--primary);">
                 <h5 style="color: var(--primary); margin-bottom: 15px; font-size: 1.1em;">Dokumen Anggota #${i}</h5>
@@ -912,9 +912,9 @@ function checkPersonalCompletion() {
     const alamat = document.getElementById('alamat').value;
     const telepon = document.getElementById('noTelepon').value;
     const email = document.getElementById('email').value;
-    const namaRek = document.getElementById('namaRek').value;
-    const noRek = document.getElementById('noRek').value;
-    const namaBank = document.getElementById('namaBank').value;
+    // const namaRek = document.getElementById('namaRek').value;
+    // const noRek = document.getElementById('noRek').value;
+    // const namaBank = document.getElementById('namaBank').value;
     
     if (!nik) reasons.push('NIK belum diisi');
     if (!nama) reasons.push('Nama lengkap belum diisi');
@@ -924,9 +924,9 @@ function checkPersonalCompletion() {
     if (!alamat) reasons.push('Alamat belum diisi');
     if (!telepon) reasons.push('Nomor telepon belum diisi');
     if (!email) reasons.push('Email belum diisi');
-    if (!namaRek) reasons.push('Nama rekening belum diisi');
-    if (!noRek) reasons.push('Nomor rekening belum diisi');
-    if (!namaBank) reasons.push('Nama bank belum diisi');
+    // if (!namaRek) reasons.push('Nama rekening belum diisi');
+    // if (!noRek) reasons.push('Nomor rekening belum diisi');
+    // if (!namaBank) reasons.push('Nama bank belum diisi');
     
     if (tglLahir) {
         const ageObj = calculateAge(tglLahir);
@@ -935,8 +935,8 @@ function checkPersonalCompletion() {
         }
     }
     
-    const requiredDocs = [1, 2, 4, 5];
-    const docNames = { 1: 'Surat Mandat', 2: 'KTP/KK/KIA', 4: 'Foto Buku Tabungan', 5: 'Pas Photo' };
+    const requiredDocs = [1, 2, 5];
+    const docNames = { 1: 'Surat Mandat', 2: 'KTP/KK/KIA', 5: 'Pas Photo' };
     for (let i of requiredDocs) {
         if (!uploadedFiles[`doc${i}`]) {
             reasons.push(`Dokumen ${docNames[i]} belum diupload`);
@@ -988,9 +988,9 @@ function checkTeamMember(memberIndex, isRequired) {
     const alamatEl = document.querySelector(`textarea[name="memberAlamat${memberIndex}"]`);
     const telEl = document.querySelector(`input[name="memberNoTelepon${memberIndex}"]`);
     const emailEl = document.querySelector(`input[name="memberEmail${memberIndex}"]`);
-    const rekNamaEl = document.querySelector(`input[name="memberNamaRek${memberIndex}"]`);
-    const rekNoEl = document.querySelector(`input[name="memberNoRek${memberIndex}"]`);
-    const rekBankEl = document.querySelector(`input[name="memberNamaBank${memberIndex}"]`);
+    // const rekNamaEl = document.querySelector(`input[name="memberNamaRek${memberIndex}"]`);
+    // const rekNoEl = document.querySelector(`input[name="memberNoRek${memberIndex}"]`);
+    // const rekBankEl = document.querySelector(`input[name="memberNamaBank${memberIndex}"]`);
     
     if (!nikEl?.value) reasons.push(`${prefix}: NIK belum diisi`);
     if (!nameEl?.value) reasons.push(`${prefix}: Nama belum diisi`);
@@ -1000,9 +1000,9 @@ function checkTeamMember(memberIndex, isRequired) {
     if (!alamatEl?.value) reasons.push(`${prefix}: Alamat belum diisi`);
     if (!telEl?.value) reasons.push(`${prefix}: No telepon belum diisi`);
     if (!emailEl?.value) reasons.push(`${prefix}: Email belum diisi`);
-    if (!rekNamaEl?.value) reasons.push(`${prefix}: Nama rekening belum diisi`);
-    if (!rekNoEl?.value) reasons.push(`${prefix}: No rekening belum diisi`);
-    if (!rekBankEl?.value) reasons.push(`${prefix}: Nama bank belum diisi`);
+    // if (!rekNamaEl?.value) reasons.push(`${prefix}: Nama rekening belum diisi`);
+    // if (!rekNoEl?.value) reasons.push(`${prefix}: No rekening belum diisi`);
+    // if (!rekBankEl?.value) reasons.push(`${prefix}: Nama bank belum diisi`);
     
     if (birthEl?.value) {
         const ageObj = calculateAge(birthEl.value);
@@ -1011,8 +1011,8 @@ function checkTeamMember(memberIndex, isRequired) {
         }
     }
     
-    const requiredDocs = [1, 2, 4, 5];
-    const docNames = { 1: 'Surat Mandat', 2: 'KTP/KK/KIA', 4: 'Foto Buku Tabungan', 5: 'Pas Photo' };
+    const requiredDocs = [1, 2, 5];
+    const docNames = { 1: 'Surat Mandat', 2: 'KTP/KK/KIA', 5: 'Pas Photo' };
     for (let d of requiredDocs) {
         if (!uploadedFiles[`teamDoc${memberIndex}_${d}`]) {
             reasons.push(`${prefix}: Dokumen ${docNames[d]} belum diupload`);
@@ -1424,6 +1424,9 @@ document.getElementById('registrationForm')?.addEventListener('submit', async fu
                         personalInput.removeAttribute('required');
                         Logger.log(`    -> Removed required from optional personalDoc${i}`);
                     }
+                    if (i === 4 && personalInput.hasAttribute('required')) {
+                        personalInput.removeAttribute('required');
+                    }
                 }
             }
         }
@@ -1450,6 +1453,9 @@ document.getElementById('registrationForm')?.addEventListener('submit', async fu
                     if (d === 3 && teamInput.hasAttribute('required')) {
                         teamInput.removeAttribute('required');
                         Logger.log(`    -> Removed required from optional teamDoc${i}_3`);
+                    }
+                    if (d === 4 && teamInput.hasAttribute('required')) {
+                        teamInput.removeAttribute('required');
                     }
                 }
             }
