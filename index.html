@@ -1,4 +1,4 @@
-<!-- index.html - UPDATED -->
+<!-- index.html - UPDATED dengan Tab Data Peserta Ditolak -->
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -34,7 +34,8 @@
     <div class="container">
         <div class="nav-tabs">
             <button class="nav-btn active" onclick="showTab('informasi')">ℹ️ Informasi</button>
-            <button class="nav-btn" onclick="showTab('registrasi')">✏️ Registrasi</button>
+            <button class="nav-btn" onclick="showTab('registrasi')">✍️ Registrasi</button>
+            <button class="nav-btn" onclick="showTab('pesertaDitolak')">📋 Data Peserta Ditolak</button>
         </div>
 
         <!-- INFORMASI TAB -->
@@ -132,7 +133,7 @@
             </div>
 
             <div id="registrationOpen" style="display: none;">
-                <h2 class="section-title">✏️ Form Registrasi Peserta MTQ ke-55</h2>
+                <h2 class="section-title">✍️ Form Registrasi Peserta MTQ ke-55</h2>
 
                 <div class="warning-message">
                     ⚠️ <strong>Perhatian:</strong> Pastikan semua data sudah benar sebelum mengirim. Setiap peserta hanya boleh terdaftar di SATU cabang lomba. Data yang sudah dikirim tidak dapat diubah.
@@ -331,7 +332,6 @@
                             <div class="form-group">
                                 <label for="tglLahir">Tanggal Lahir *</label>
                                 <input type="date" id="tglLahir" name="tglLahir">
-                                <!-- <small style="font-size: 0.85em; color: #666; display: block; margin-top: 5px;">Akan ada Verifikasi antara yang di input dengan Dokumen asli</small> -->
                             </div>
                             <div class="form-group">
                                 <label for="umur">Umur (per 1 November 2025) *</label>
@@ -411,6 +411,62 @@
                         <button type="button" class="btn-reset" onclick="resetForm()">🔄 Bersihkan Form</button>
                     </div>
                 </form>
+            </div>
+        </div>
+
+        <!-- DATA PESERTA DITOLAK TAB -->
+        <div id="pesertaDitolak" class="content-section">
+            <div id="pesertaDitolakClosed" class="registration-closed" style="display: none;">
+                <div class="closed-icon">🔒</div>
+                <h2>Akses Ditutup</h2>
+                <p>Fitur ini hanya dapat diakses ketika pendaftaran sedang dibuka.</p>
+            </div>
+
+            <div id="pesertaDitolakOpen" style="display: none;">
+                <h2 class="section-title">📋 Data Peserta dengan Status Ditolak</h2>
+                <div id="pageLoadingIndicator" class="page-loading-container" style="display: none;">
+                    <div class="page-loading-content">
+                        <div class="page-loading-spinner"></div>
+                        <p class="page-loading-text">⏳ Mengambil data...</p>
+                    </div>
+                </div>
+                
+                <div style="margin-bottom: 30px; display: flex; gap: 15px; flex-wrap: wrap;">
+                    <button type="button" class="btn-submit" onclick="loadRejectedData()" id="refreshBtn">
+                        🔄 Muat Ulang Data
+                    </button>
+                    <div id="loadStatus" style="display: none; padding: 15px 20px; background: #e7f3ff; border-radius: 10px; color: #0056b3; font-weight: 600; flex: 1; min-width: 200px;">
+                        Data sedang dimuat...
+                    </div>
+                </div>
+
+                <div id="rejectedDataContainer" style="display: none;">
+                    <div class="table-wrapper">
+                        <table class="rejected-data-table">
+                            <thead>
+                                <tr>
+                                    <th>No</th>
+                                    <th>Nomor Peserta</th>
+                                    <th>Nama Tim / Peserta</th>
+                                    <th>Cabang</th>
+                                    <th>Kecamatan</th>
+                                    <th>Status</th>
+                                    <th>Alasan Ditolak</th>
+                                </tr>
+                            </thead>
+                            <tbody id="rejectedDataBody">
+                                <!-- DATA AKAN DIISI OLEH JAVASCRIPT -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="noDataMessage" style="text-align: center; padding: 40px; color: #666; font-size: 1.1em; display: none;">
+                        ℹ️ Tidak ada data peserta yang ditolak
+                    </div>
+                </div>
+
+                <div id="emptyState" style="text-align: center; padding: 60px 40px; color: #999;">
+                    <p style="font-size: 1.2em; margin-bottom: 20px;">📋 Tekan tombol "Muat Ulang Data" untuk menampilkan data peserta yang ditolak</p>
+                </div>
             </div>
         </div>
     </div>

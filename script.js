@@ -1,7 +1,7 @@
 // script.js
 // ===== CONFIGURATION =====
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzVSR2P3pcgy9BxFlOzLj1KX_fNhQDMEOr_NI0bToRwEIrAYOVV4FmbyA_MQpQ47pIR/exec';
-const REGISTRATION_START = new Date('2025-10-24T09:00:00+07:00');
+const REGISTRATION_START = new Date('2025-10-25T09:00:00+07:00');
 const REGISTRATION_END = new Date('2025-10-30T23:59:59+07:00');
 
 // ===== DEVELOPER MODE CONFIG (BARU) =====
@@ -57,6 +57,183 @@ const progressTracker = {
         this.filesProcessed = 0;
     }
 };
+
+// ===== REJECTED DATA MANAGEMENT =====
+let rejectedDataInitialized = false;
+
+function updateRejectedDataTabVisibility() {
+    const now = new Date();
+    const isOpen = now >= REGISTRATION_START && now <= REGISTRATION_END;
+    
+    const pesertaDitolakClosed = document.getElementById('pesertaDitolakClosed');
+    const pesertaDitolakOpen = document.getElementById('pesertaDitolakOpen');
+    
+    Logger.log('Checking registration status for rejected data tab - isOpen: ' + isOpen);
+    
+    // Jika registrasi DIBUKA
+    if (isOpen) {
+        if (pesertaDitolakClosed) pesertaDitolakClosed.style.display = 'none';
+        if (pesertaDitolakOpen) pesertaDitolakOpen.style.display = 'block';
+        
+        // ⭐ PERUBAHAN: Tidak lagi auto-load saat page load
+        // Data akan di-load HANYA saat user membuka tab
+    } 
+    // Jika registrasi DITUTUP
+    else {
+        if (pesertaDitolakClosed) pesertaDitolakClosed.style.display = 'block';
+        if (pesertaDitolakOpen) pesertaDitolakOpen.style.display = 'none';
+        Logger.log('Registration closed - hiding rejected data content');
+    }
+}
+
+async function loadRejectedData() {
+    try {
+        Logger.log('📊 Starting to load rejected data from server');
+        
+        // Ambil element
+        const loadStatusDiv = document.getElementById('loadStatus');
+        const rejectedDataContainer = document.getElementById('rejectedDataContainer');
+        const emptyState = document.getElementById('emptyState');
+        const pageLoadingDiv = document.getElementById('pageLoadingIndicator');
+        
+        // PERUBAHAN: Tampilkan loading hanya pada halaman, bukan overlay penuh
+        if (pageLoadingDiv) {
+            pageLoadingDiv.style.display = 'block';
+            Logger.log('Page loading indicator shown');
+        }
+        
+        // Tampilkan status loading
+        if (loadStatusDiv) {
+            loadStatusDiv.style.display = 'block';
+            loadStatusDiv.innerHTML = '⏳ Data sedang dimuat...';
+            loadStatusDiv.style.background = '#e7f3ff';
+            loadStatusDiv.style.color = '#0056b3';
+        }
+        
+        // Sembunyikan content awal
+        if (rejectedDataContainer) rejectedDataContainer.style.display = 'none';
+        if (emptyState) emptyState.style.display = 'none';
+        
+        // FETCH dari Apps Script
+        Logger.log('Fetching from: ' + APPS_SCRIPT_URL + '?action=getRejectedData');
+        const response = await fetch(`${APPS_SCRIPT_URL}?action=getRejectedData`);
+        
+        Logger.log('Response status: ' + response.status);
+        
+        const result = await response.json();
+        Logger.log('Response received: ' + JSON.stringify(result).substring(0, 100) + '...');
+        
+        // HANDLE RESPONSE
+        if (result.success) {
+            Logger.log('✅ Success! Data received');
+            
+            // Ada data peserta ditolak
+            if (result.data && result.data.length > 0) {
+                Logger.log('✅ Found ' + result.data.length + ' rejected participants');
+                
+                // Tampilkan tabel
+                displayRejectedData(result.data);
+                if (rejectedDataContainer) rejectedDataContainer.style.display = 'block';
+                if (emptyState) emptyState.style.display = 'none';
+                
+                // Update status success
+                if (loadStatusDiv) {
+                    loadStatusDiv.innerHTML = `✅ Berhasil dimuat (${result.data.length} peserta ditolak)`;
+                    loadStatusDiv.style.background = '#d4edda';
+                    loadStatusDiv.style.color = '#155724';
+                }
+            } 
+            // Tidak ada data
+            else {
+                Logger.log('ℹ️ No rejected data found');
+                
+                const noDataMsg = document.getElementById('noDataMessage');
+                if (noDataMsg) noDataMsg.style.display = 'block';
+                if (rejectedDataContainer) rejectedDataContainer.style.display = 'block';
+                if (emptyState) emptyState.style.display = 'none';
+                
+                if (loadStatusDiv) {
+                    loadStatusDiv.innerHTML = 'ℹ️ Tidak ada data peserta yang ditolak saat ini';
+                    loadStatusDiv.style.background = '#cce5ff';
+                    loadStatusDiv.style.color = '#004085';
+                }
+            }
+        } 
+        // ERROR
+        else {
+            Logger.error('❌ API Error: ' + result.message);
+            
+            if (loadStatusDiv) {
+                loadStatusDiv.innerHTML = '❌ Gagal: ' + (result.message || 'Error tidak diketahui');
+                loadStatusDiv.style.background = '#ffe7e7';
+                loadStatusDiv.style.color = '#c82333';
+                loadStatusDiv.style.display = 'block';
+            }
+        }
+        
+        // PERUBAHAN: Sembunyikan page loading indicator, bukan overlay
+        if (pageLoadingDiv) {
+            pageLoadingDiv.style.display = 'none';
+            Logger.log('Page loading indicator hidden');
+        }
+        
+        Logger.log('Load rejected data complete');
+        
+    } catch (error) {
+        Logger.error('❌ Fetch Error:', error.message);
+        
+        // PERUBAHAN: Sembunyikan page loading indicator
+        const pageLoadingDiv = document.getElementById('pageLoadingIndicator');
+        if (pageLoadingDiv) {
+            pageLoadingDiv.style.display = 'none';
+        }
+        
+        const loadStatusDiv = document.getElementById('loadStatus');
+        if (loadStatusDiv) {
+            loadStatusDiv.innerHTML = '❌ Kesalahan Network: ' + error.message;
+            loadStatusDiv.style.background = '#ffe7e7';
+            loadStatusDiv.style.color = '#c82333';
+            loadStatusDiv.style.display = 'block';
+        }
+    }
+}
+
+function displayRejectedData(data) {
+    Logger.log('Displaying ' + data.length + ' rows to table');
+    
+    const tbody = document.getElementById('rejectedDataBody');
+    const noDataMsg = document.getElementById('noDataMessage');
+    
+    // Kosongkan tabel
+    if (tbody) tbody.innerHTML = '';
+    
+    // Jika tidak ada data
+    if (!data || data.length === 0) {
+        if (noDataMsg) noDataMsg.style.display = 'block';
+        Logger.log('No data to display');
+        return;
+    }
+    
+    // Sembunyikan no data message
+    if (noDataMsg) noDataMsg.style.display = 'none';
+    
+    // Loop data dan buat row
+    data.forEach((item, index) => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${index + 1}</td>
+            <td><strong>${item.nomorPeserta || '-'}</strong></td>
+            <td>${item.namaTimPeserta || '-'}</td>
+            <td>${item.cabang || '-'}</td>
+            <td>${item.kecamatan || '-'}</td>
+            <td><span class="status-badge status-ditolak">Ditolak</span></td>
+            <td>${item.alasan || '-'}</td>
+        `;
+        if (tbody) tbody.appendChild(row);
+    });
+    
+    Logger.log('✅ ' + data.length + ' rows displayed successfully');
+}
 
 function updateProgressDetailed(percent, message) {
     const fill = document.getElementById('progressFill');
@@ -1023,17 +1200,63 @@ function checkTeamMember(memberIndex, isRequired) {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+    Logger.log('🚀 Page loaded - initializing...');
+    
     checkRegistrationTime();
     setInterval(checkRegistrationTime, 60000);
+    
+    // ⭐ PERUBAHAN: Hanya initialize tab visibility, TIDAK load data
+    Logger.log('Initializing rejected data tab...');
+    updateRejectedDataTabVisibility();
+    
+    // Monitor setiap 60 detik
+    setInterval(() => {
+        updateRejectedDataTabVisibility();
+    }, 60000);
+    
     initDeveloperMode();
-});
+    Logger.log('✅ Page initialization complete');
+}, { once: true });
 
-function showTab(tabName) {
+const originalShowTab = window.showTab || function() {};
+
+window.showTab = function(tabName) {
+    Logger.log('Switching to tab: ' + tabName);
+    
+    // Sembunyikan semua section
     document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
+    
+    // Remove active class dari buttons
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-    document.getElementById(tabName).classList.add('active');
-    event.target.classList.add('active');
-}
+    
+    // Tampilkan section yang dipilih
+    const activeSection = document.getElementById(tabName);
+    if (activeSection) {
+        activeSection.classList.add('active');
+    }
+    
+    // Mark button as active
+    if (event && event.target) {
+        event.target.classList.add('active');
+    }
+    
+    // ⭐ PERUBAHAN: Load data KETIKA user membuka tab peserta ditolak
+    if (tabName === 'pesertaDitolak') {
+        Logger.log('User opened rejected data tab - loading data now');
+        updateRejectedDataTabVisibility();
+        
+        // Check if registration is open
+        const now = new Date();
+        const isOpen = now >= REGISTRATION_START && now <= REGISTRATION_END;
+        
+        // HANYA load data jika registrasi dibuka dan belum pernah di-load
+        if (isOpen && !rejectedDataInitialized) {
+            Logger.log('Registration is open - auto-loading data for first time');
+            rejectedDataInitialized = true;
+            loadRejectedData();
+        }
+    }
+};
 
 function updateProgress(percent) {
     const fill = document.getElementById('progressFill');
