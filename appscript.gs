@@ -457,7 +457,7 @@ function deleteRowData(rowIndex) {
   }
 }
 
-// ===== UPDATED: GENERATE NOMOR PESERTA - 62 PER CABANG =====
+// ===== UPDATED: GENERATE NOMOR PESERTA - GENAP PUTRA, GANJIL PUTRI =====
 function generateNomorPeserta(sheet, cabangCode, genderCode, isTeam) {
   try {
     const cabangInfo = CABANG_ORDER[cabangCode];
@@ -484,7 +484,7 @@ function generateNomorPeserta(sheet, cabangCode, genderCode, isTeam) {
           
           // Check if this is a prefixed number (F, S, N, H, D, K, M)
           if (cabangInfo.prefix) {
-            const prefixMatch = nomorStr.match(new RegExp('^' + cabangInfo.prefix + '\\.(\\d+)$'));
+            const prefixMatch = nomorStr.match(new RegExp('^' + cabangInfo.prefix + '\\.\\s*(\\d+)$'));
             if (prefixMatch) {
               num = parseInt(prefixMatch[1]);
               if (!isNaN(num)) {
@@ -505,11 +505,29 @@ function generateNomorPeserta(sheet, cabangCode, genderCode, isTeam) {
     Logger.log('Existing numbers for ' + cabangCode + ': ' + existingNumbers.join(', '));
     
     // Determine if odd or even
-    const isOdd = isTeam ? false : (genderCode === 'female');
+    // GANJIL untuk Putri (female), GENAP untuk Putra (male)
+    let isOdd;
+    if (genderCode === 'female' || genderCode === 'perempuan') {
+      isOdd = true; // Putri = GANJIL
+    } else {
+      isOdd = false; // Putra = GENAP
+    }
     
-    // Find next available number
-    let nextNumber = isOdd ? cabangInfo.start + (cabangInfo.start % 2 === 0 ? 1 : 0) : cabangInfo.start + (cabangInfo.start % 2 === 0 ? 0 : 1);
+    Logger.log('Gender check - genderCode: ' + genderCode + ', isTeam: ' + isTeam + ', isOdd: ' + isOdd);
     
+    // Find next available number - SEMUA CABANG MENGGUNAKAN LOGIKA GANJIL/GENAP
+    let nextNumber;
+    
+    // Start number berdasarkan ganjil/genap
+    if (isOdd) {
+      // PUTRI: Mulai dari nomor GANJIL pertama di range
+      nextNumber = cabangInfo.start % 2 === 0 ? cabangInfo.start + 1 : cabangInfo.start;
+    } else {
+      // PUTRA: Mulai dari nomor GENAP pertama di range
+      nextNumber = cabangInfo.start % 2 === 0 ? cabangInfo.start : cabangInfo.start + 1;
+    }
+
+    // Cari nomor tersedia dengan increment 2 (untuk maintain ganjil/genap)
     while (existingNumbers.indexOf(nextNumber) !== -1) {
       nextNumber += 2;
       
@@ -529,7 +547,7 @@ function generateNomorPeserta(sheet, cabangCode, genderCode, isTeam) {
       nomorPeserta = String(nextNumber).padStart(3, '0');
     }
     
-    Logger.log('Generated nomor peserta: ' + nomorPeserta);
+    Logger.log('Generated nomor peserta: ' + nomorPeserta + ' (Gender: ' + (isOdd ? 'Putri/Ganjil' : 'Putra/Genap') + ')');
     
     return {
       success: true,

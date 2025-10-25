@@ -1,6 +1,6 @@
 // script.js
 // ===== CONFIGURATION =====
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzno0bClsbHVQAKAr1MEUGngYEnlHDFP4CMN64CLi5aN9mKnpWgJKbNKnmHISgER-q3/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzVSR2P3pcgy9BxFlOzLj1KX_fNhQDMEOr_NI0bToRwEIrAYOVV4FmbyA_MQpQ47pIR/exec';
 const REGISTRATION_START = new Date('2025-10-24T09:00:00+07:00');
 const REGISTRATION_END = new Date('2025-10-30T23:59:59+07:00');
 
