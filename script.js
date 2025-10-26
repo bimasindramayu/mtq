@@ -1,6 +1,6 @@
 // script.js
 // ===== CONFIGURATION =====
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwMoJHkZF2aPRTSL3wevP05DXO2FW2SOEmkdRv7rSARyN5F-SKRDvLzvUe2J0VTRhgA/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxS63KzR9GdMHsTs0uueAGvbTG6PyKzTHNjMzp8bL3Ovis8IicXLg0fyyzWu4oTs3Sy/exec';
 const REGISTRATION_START = new Date('2025-10-25T09:00:00+07:00');
 const REGISTRATION_END = new Date('2025-10-30T23:59:59+07:00');
 const MAX_FILE_SIZE_MB = 5;
@@ -1806,15 +1806,15 @@ function clearAllDevData() {
 document.getElementById('registrationForm')?.addEventListener('submit', async function(e) {
     e.preventDefault();
     
-    Logger.log('=== FORM SUBMISSION START ===');
+    Logger.log('=== FORM SUBMISSION START (OPTIMIZED FLOW) ===');
     Logger.log('Request received at: ' + new Date().toISOString());
     
     try {
         // ===== RESET PROGRESS TRACKER =====
         progressTracker.reset();
         
-        // ===== STEP 1: BERSIHKAN REQUIRED ATTRIBUTE SEBELUM VALIDASI =====
-        Logger.log('STEP 1: Cleaning required attributes from file inputs...');
+        // ===== STEP 0: BERSIHKAN REQUIRED ATTRIBUTE =====
+        Logger.log('STEP 0: Cleaning required attributes from file inputs...');
         
         let personalFilesRemoved = 0;
         let teamFilesRemoved = 0;
@@ -1825,18 +1825,16 @@ document.getElementById('registrationForm')?.addEventListener('submit', async fu
             const personalInput = document.getElementById(`personalDoc${i}`);
             if (personalInput) {
                 const hasUpload = uploadedFiles[`doc${i}`];
-                Logger.log(`  personalDoc${i}: uploaded=${!!hasUpload}, required=${personalInput.hasAttribute('required')}`);
                 
                 if (!hasUpload) {
                     if (personalInput.hasAttribute('required')) {
                         personalInput.removeAttribute('required');
                         personalFilesRemoved++;
-                        Logger.log(`    -> Removed required from personalDoc${i}`);
+                        Logger.log(`  Removed required from personalDoc${i}`);
                     }
                 } else {
                     if (i === 3 && personalInput.hasAttribute('required')) {
                         personalInput.removeAttribute('required');
-                        Logger.log(`    -> Removed required from optional personalDoc${i}`);
                     }
                     if (i === 4 && personalInput.hasAttribute('required')) {
                         personalInput.removeAttribute('required');
@@ -1855,18 +1853,15 @@ document.getElementById('registrationForm')?.addEventListener('submit', async fu
                     const hasUpload = uploadedFiles[`teamDoc${i}_${d}`];
                     
                     if (teamInput.hasAttribute('required')) {
-                        Logger.log(`  teamDoc${i}_${d}: uploaded=${!!hasUpload}, required=true`);
-                        
                         if (!hasUpload) {
                             teamInput.removeAttribute('required');
                             teamFilesRemoved++;
-                            Logger.log(`    -> Removed required (NO UPLOAD)`);
+                            Logger.log(`  Removed required from teamDoc${i}_${d}`);
                         }
                     }
                     
                     if (d === 3 && teamInput.hasAttribute('required')) {
                         teamInput.removeAttribute('required');
-                        Logger.log(`    -> Removed required from optional teamDoc${i}_3`);
                     }
                     if (d === 4 && teamInput.hasAttribute('required')) {
                         teamInput.removeAttribute('required');
@@ -1876,21 +1871,20 @@ document.getElementById('registrationForm')?.addEventListener('submit', async fu
         }
         Logger.log(`Team files cleaned: ${teamFilesRemoved} removed required`);
         
-        // ===== STEP 2: CEK REGISTRATION TIME =====
-        Logger.log('STEP 2: Checking registration time...');
+        // ===== STEP 1: CHECK REGISTRATION TIME (TANPA LOCK) =====
+        Logger.log('STEP 1: Checking registration time...');
         progressTracker.currentStep = 0;
         updateProgressDetailed(8, 'Memvalidasi Waktu Pendaftaran...');
         
         if (!checkRegistrationTime()) {
             Logger.log('ERROR: Registration time is closed');
-            Logger.log('=== END doPost - REGISTRATION CLOSED ===');
             showResultModal(false, 'Pendaftaran Ditutup', 'Mohon maaf, waktu pendaftaran telah berakhir atau belum dimulai.');
             return;
         }
         Logger.log('Registration time: VALID');
         
-        // ===== STEP 3: MINTA KONFIRMASI USER =====
-        Logger.log('STEP 3: Waiting for user confirmation...');
+        // ===== STEP 2: MINTA KONFIRMASI USER =====
+        Logger.log('STEP 2: Waiting for user confirmation...');
         updateProgressDetailed(12, 'Menunggu Konfirmasi Anda...');
         
         const confirmed = await showConfirmModal(
@@ -1900,21 +1894,20 @@ document.getElementById('registrationForm')?.addEventListener('submit', async fu
         
         if (!confirmed) {
             Logger.log('User cancelled registration');
-            Logger.log('=== END doPost - USER CANCELLED ===');
             return;
         }
         Logger.log('User confirmed registration');
         
-        // ===== STEP 4: TAMPILKAN LOADING & PROGRESS =====
-        Logger.log('STEP 4: Showing loading overlay...');
-        showLoadingOverlay(true, 'Memvalidasi data...');
+        // ===== STEP 3: TAMPILKAN LOADING & PROGRESS =====
+        Logger.log('STEP 3: Showing loading overlay...');
+        showLoadingOverlay(true, 'Memvalidasi data & menyimpan...');
         document.getElementById('progressContainer').style.display = 'block';
         
         progressTracker.currentStep = 0;
-        updateProgressDetailed(15, 'Validasi Data');
+        updateProgressDetailed(15, 'Validasi & Penyimpanan Data');
         
-        // ===== STEP 5: SIAPKAN FORMDATA =====
-        Logger.log('STEP 5: Preparing form data...');
+        // ===== STEP 4: SIAPKAN FORMDATA UNTUK STEP PERTAMA =====
+        Logger.log('STEP 4: Preparing form data for server submission...');
         
         const formData = new FormData();
         const kecamatan = document.getElementById('kecamatan').value;
@@ -1936,9 +1929,9 @@ document.getElementById('registrationForm')?.addEventListener('submit', async fu
         Logger.log('Cabang: ' + currentCabang.name);
         Logger.log('Kecamatan: ' + kecamatan);
         
-        // ===== STEP 6A: JIKA INDIVIDU =====
+        // ===== STEP 5A: JIKA INDIVIDU =====
         if (!currentCabang.isTeam) {
-            Logger.log('STEP 6A: Processing PERSONAL registration...');
+            Logger.log('STEP 5A: Processing PERSONAL registration...');
             updateProgressDetailed(20, 'Memproses Data Pribadi...');
             
             const nik = document.getElementById('nik').value;
@@ -1962,9 +1955,9 @@ document.getElementById('registrationForm')?.addEventListener('submit', async fu
             
             Logger.log('Personal data: NIK=' + nik + ', Nama=' + responseDetails.nama);
         } 
-        // ===== STEP 6B: JIKA TIM =====
+        // ===== STEP 5B: JIKA TIM =====
         else {
-            Logger.log('STEP 6B: Processing TEAM registration...');
+            Logger.log('STEP 5B: Processing TEAM registration...');
             Logger.log('Team members to process: ' + currentTeamMemberCount);
             updateProgressDetailed(20, 'Memproses Data Tim...');
             
@@ -2013,54 +2006,14 @@ document.getElementById('registrationForm')?.addEventListener('submit', async fu
         formData.append('nikList', JSON.stringify(nikList));
         Logger.log('NIK list: ' + JSON.stringify(nikList));
         
-        updateProgressDetailed(25, 'Data Siap Dikonversi');
+        updateProgressDetailed(25, 'Mengirim Data ke Server...');
         
-        // ===== STEP 7: KONVERSI FILE KE BASE64 =====
-        Logger.log('STEP 7: Converting files to base64...');
-        showLoadingOverlay(true, 'Mengkonversi file...');
+        // ===== STEP 6: KIRIM DATA PERTAMA KE SERVER (VALIDASI + SIMPAN DATA) =====
+        Logger.log('STEP 6: Sending data to server for validation & data storage...');
+        showLoadingOverlay(true, 'Menyimpan data ke server...');
         
-        progressTracker.currentStep = 1;
-        progressTracker.filesTotal = Object.keys(uploadedFiles).length;
-        progressTracker.filesProcessed = 0;
-        
-        Logger.log('Total files to convert: ' + progressTracker.filesTotal);
-        
-        const uploadedFilesList = Object.keys(uploadedFiles);
-        for (let idx = 0; idx < uploadedFilesList.length; idx++) {
-            const key = uploadedFilesList[idx];
-            if (uploadedFiles[key]) {
-                try {
-                    const file = uploadedFiles[key];
-                    Logger.log(`Converting file ${idx + 1}/${uploadedFilesList.length}: ${key} (${file.name})`);
-                    
-                    const base64 = await fileToBase64(file);
-                    formData.append(key, base64);
-                    formData.append(key + '_name', file.name);
-                    
-                    // UPDATE PROGRESS DENGAN DETAIL
-                    progressTracker.filesProcessed = idx + 1;
-                    const currentProgress = progressTracker.calculateProgress();
-                    const message = progressTracker.getDetailedMessage();
-                    updateProgressDetailed(currentProgress, message);
-                    
-                    Logger.log(`File converted: ${key} (${currentProgress}%)`);
-                } catch (fileError) {
-                    Logger.error('Error converting file ' + key, fileError);
-                    throw fileError;
-                }
-            }
-        }
-        
-        Logger.log(`File conversion complete: ${progressTracker.filesProcessed}/${progressTracker.filesTotal} files converted`);
-        updateProgressDetailed(60, 'Semua File Siap');
-        
-        // ===== STEP 8: KIRIM DATA KE SERVER =====
-        Logger.log('STEP 8: Sending data to server...');
-        showLoadingOverlay(true, 'Mengirim data ke server...');
-        
-        progressTracker.currentStep = 2;
-        progressTracker.filesProcessed = 0;
-        updateProgressDetailed(65, 'Upload ke Server...');
+        progressTracker.currentStep = 0;
+        updateProgressDetailed(30, 'Upload Data Registrasi...');
         
         const response = await fetch(APPS_SCRIPT_URL, {
             method: 'POST',
@@ -2068,36 +2021,115 @@ document.getElementById('registrationForm')?.addEventListener('submit', async fu
         });
         
         Logger.log('Server response status: ' + response.status);
-        updateProgressDetailed(80, 'Memproses Respons Server...');
+        updateProgressDetailed(50, 'Data Registrasi Tersimpan!');
         
         const result = await response.json();
         Logger.log('Server response: ' + JSON.stringify(result));
         
-        updateProgressDetailed(90, 'Menyelesaikan...');
-        
-        // ===== STEP 9: HANDLE RESPONSE =====
-        Logger.log('STEP 9: Handling server response...');
-        
-        if (result.success) {
-            responseDetails.nomorPeserta = result.nomorPeserta;
-            Logger.log('Registration SUCCESS! Nomor Peserta: ' + result.nomorPeserta);
-            
-            updateProgressDetailed(100, '✅ Selesai!');
-            setTimeout(() => {
-                showLoadingOverlay(false);
-                showResultModal(true, 'Registrasi Berhasil!', 'Data Anda telah tersimpan.', responseDetails);
-                Logger.log('=== FORM SUBMISSION SUCCESS ===');
-            }, 500);
-        } else {
+        if (!result.success) {
             Logger.log('Registration FAILED: ' + result.message);
-            Logger.log('=== FORM SUBMISSION FAILED ===');
             showLoadingOverlay(false);
             showResultModal(false, 'Registrasi Ditolak', result.message || 'Terjadi kesalahan');
+            return;
         }
+        
+        responseDetails.nomorPeserta = result.nomorPeserta;
+        Logger.log('Registration data saved! Nomor Peserta: ' + result.nomorPeserta);
+        
+        // ===== STEP 7: UPLOAD FILES (JIKA ADA) =====
+        Logger.log('STEP 7: Processing file uploads...');
+        showLoadingOverlay(true, 'Mengupload dokumen...');
+        
+        progressTracker.currentStep = 1;
+        progressTracker.filesTotal = Object.keys(uploadedFiles).length;
+        progressTracker.filesProcessed = 0;
+        
+        Logger.log('Total files to upload: ' + progressTracker.filesTotal);
+        
+        if (progressTracker.filesTotal > 0) {
+            // Siapkan FormData untuk file upload
+            const fileFormData = new FormData();
+            const uploadedFilesList = Object.keys(uploadedFiles);
+            
+            // ===== PENTING: TAMBAHKAN nomor peserta =====
+            fileFormData.append('nomorPeserta', result.nomorPeserta);
+            fileFormData.append('action', 'uploadFiles');
+            Logger.log('Added nomorPeserta: ' + result.nomorPeserta);
+            
+            for (let idx = 0; idx < uploadedFilesList.length; idx++) {
+                const key = uploadedFilesList[idx];
+                if (uploadedFiles[key]) {
+                    try {
+                        const file = uploadedFiles[key];
+                        Logger.log(`Converting file ${idx + 1}/${uploadedFilesList.length}: ${key} (${file.name})`);
+                        
+                        const base64 = await fileToBase64(file);
+                        fileFormData.append(key, base64);
+                        fileFormData.append(key + '_name', file.name);
+                        fileFormData.append(key + '_type', file.type);
+                        
+                        // UPDATE PROGRESS
+                        progressTracker.filesProcessed = idx + 1;
+                        const currentProgress = progressTracker.calculateProgress();
+                        const message = progressTracker.getDetailedMessage();
+                        updateProgressDetailed(currentProgress, message);
+                        
+                        Logger.log(`File converted: ${key} (${currentProgress}%)`);
+                    } catch (fileError) {
+                        Logger.error('Error converting file ' + key, fileError);
+                        throw fileError;
+                    }
+                }
+            }
+            
+            Logger.log(`File conversion complete: ${progressTracker.filesProcessed}/${progressTracker.filesTotal} files converted`);
+            updateProgressDetailed(70, 'Mengirim File...');
+            
+            // ===== KIRIM FILES KE SERVER =====
+            Logger.log('Sending files to server...');
+            Logger.log('File FormData keys: ' + Array.from(fileFormData.keys()).join(', '));
+            
+            const fileResponse = await fetch(APPS_SCRIPT_URL, {
+                method: 'POST',
+                body: fileFormData
+            });
+            
+            Logger.log('File upload response status: ' + fileResponse.status);
+            const fileResult = await fileResponse.json();
+            Logger.log('File upload response: ' + JSON.stringify(fileResult));
+            
+            if (!fileResult.success) {
+                Logger.log('File upload failed: ' + fileResult.message);
+                // Tetap tampilkan sukses karena data sudah tersimpan
+                Logger.log('Note: Data sudah tersimpan meski file upload gagal');
+                // Optional: Tampilkan warning ke user
+                const warningDiv = document.getElementById('submitStatusInfo');
+                if (warningDiv) {
+                    warningDiv.innerHTML = '⚠️ Beberapa file mungkin gagal terupload. Data registrasi tetap tersimpan.';
+                    warningDiv.style.display = 'block';
+                    warningDiv.style.background = '#fff3cd';
+                    warningDiv.style.color = '#856404';
+                }
+            }
+            
+            updateProgressDetailed(85, 'File Terupload!');
+        } else {
+            Logger.log('No files to upload, skipping file upload step');
+            updateProgressDetailed(75, 'Tidak ada file untuk diupload');
+        }
+        
+        Logger.log('Registration process COMPLETE!');
+        updateProgressDetailed(100, '✅ Selesai!');
+        
+        setTimeout(() => {
+            showLoadingOverlay(false);
+            showResultModal(true, 'Registrasi Berhasil!', 'Data Anda telah tersimpan' + (progressTracker.filesTotal > 0 ? ' dan dokumen telah diupload.' : '.'), responseDetails);
+            Logger.log('=== FORM SUBMISSION SUCCESS ===');
+        }, 500);
+        
     } 
-    // ===== STEP 10: HANDLE ERROR =====
     catch (error) {
-        Logger.error('STEP 10: Submission error occurred', error);
+        Logger.error('Submission error occurred', error);
         Logger.log('Error name: ' + error.name);
         Logger.log('Error message: ' + error.message);
         Logger.log('Error stack: ' + error.stack);
@@ -2107,9 +2139,8 @@ document.getElementById('registrationForm')?.addEventListener('submit', async fu
         showResultModal(false, 'Kesalahan Sistem', 'Terjadi kesalahan: ' + error.message);
         Logger.log('=== FORM SUBMISSION ERROR ===');
     } 
-    // ===== STEP 11: CLEANUP =====
     finally {
-        Logger.log('STEP 11: Cleanup...');
+        Logger.log('STEP FINAL: Cleanup...');
         document.getElementById('progressContainer').style.display = 'none';
         progressTracker.reset();
         Logger.log('=== FORM SUBMISSION COMPLETE ===');
