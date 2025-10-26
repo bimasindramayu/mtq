@@ -614,7 +614,8 @@ function checkDuplicates(sheet, nikList) {
     
     Logger.log('Checking against ' + data.length + ' existing registrations');
     
-    const cabangCol = 4;
+    const kecamatanCol = 3;  // Kecamatan column
+    const cabangCol = 4;      // Cabang column
     const nikCol = 7;
     const member1NikCol = 19;
     const member2NikCol = 31;
@@ -622,6 +623,7 @@ function checkDuplicates(sheet, nikList) {
     
     for (let i = 0; i < data.length; i++) {
       const row = data[i];
+      const rowKecamatan = row[kecamatanCol];
       const rowCabang = row[cabangCol];
       const rowNum = i + 2;
       
@@ -640,7 +642,7 @@ function checkDuplicates(sheet, nikList) {
             const trimmedExistingNik = existingNik.toString().trim();
             
             if (trimmedExistingNik === trimmedNewNik) {
-              const message = `NIK ${trimmedNewNik} sudah terdaftar di cabang "${rowCabang}". Setiap peserta hanya boleh mendaftar satu kali di seluruh cabang lomba.`;
+              const message = `NIK ${trimmedNewNik} sudah terdaftar di Kecamatan "${rowKecamatan}", Cabang "${rowCabang}". Setiap peserta hanya boleh mendaftar satu kali di seluruh cabang lomba.`;
               Logger.log('DUPLICATE NIK FOUND: ' + message);
               return {
                 isValid: false,

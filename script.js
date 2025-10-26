@@ -1,6 +1,6 @@
 // script.js
 // ===== CONFIGURATION =====
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwi1KnYcS2bekarfmHjIW1hCsgu6LMuOBk9byfA_e0DCt4AacW6jmttPX4aNz9-y5lG/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxIoT34WstnrBZruOdUr0XNpsoC4n37-yb0JznR5WT03CAJdiCvWJxfXB2v2pPff7ke/exec';
 const REGISTRATION_START = new Date('2025-10-25T09:00:00+07:00');
 const REGISTRATION_END = new Date('2025-10-30T23:59:59+07:00');
 const MAX_FILE_SIZE_MB = 5;
@@ -1423,8 +1423,24 @@ function closeConfirmModal(result) {
 }
 
 function showResultModal(success, title, message, details = null) {
+    // SIMPAN STATUS KE FLAG
+    lastRegistrationWasSuccessful = success;
+    Logger.log('showResultModal - Setting lastRegistrationWasSuccessful: ' + success);
+    
     const modal = document.getElementById('resultModal');
-    document.getElementById('resultIcon').textContent = success ? '✅' : '❌';
+    
+    // ===== PERBAIKAN: GUNAKAN UNICODE ESCAPE SEQUENCES =====
+    // Sebelumnya: ✓ dan ✗ (plain emoji - sering error)
+    // Sekarang: \u2705 (✅) dan \u274C (❌) (unicode - always work)
+    
+    if (success) {
+        document.getElementById('resultIcon').textContent = '\u2705'; // ✅
+        Logger.log('Success icon set: ✅');
+    } else {
+        document.getElementById('resultIcon').textContent = '\u274C'; // ❌
+        Logger.log('Error icon set: ❌');
+    }
+    
     document.getElementById('resultTitle').textContent = title;
     
     let messageText = message;
@@ -1455,28 +1471,34 @@ function showResultModal(success, title, message, details = null) {
 
 function closeResultModal() {
     const resultModal = document.getElementById('resultModal');
-    const wasSuccess = document.getElementById('resultIcon').textContent === '✅"';
     
-    Logger.log('closeResultModal - Success: ' + wasSuccess);
+    Logger.log('closeResultModal - lastRegistrationWasSuccessful: ' + lastRegistrationWasSuccessful);
     
     resultModal.classList.remove('show');
     
     // ===== HANYA CLEAR JIKA BERHASIL =====
-    if (wasSuccess) {
-        Logger.log('Registration successful - clearing form');
+    if (lastRegistrationWasSuccessful === true) {
+        Logger.log('✅ Registration SUCCESSFUL - CLEARING form');
         
         // Clear form fields
-        document.getElementById('registrationForm').reset();
+        const registrationForm = document.getElementById('registrationForm');
+        if (registrationForm) {
+            registrationForm.reset();
+            Logger.log('Form reset executed');
+        }
         
         // Clear file input values
+        Logger.log('Clearing personal file inputs...');
         for (let i = 1; i <= 5; i++) {
             const personalInput = document.getElementById(`personalDoc${i}`);
             if (personalInput) {
                 personalInput.value = '';
                 personalInput.removeAttribute('required');
+                Logger.log(`  Cleared personalDoc${i}`);
             }
         }
         
+        Logger.log('Clearing team file inputs...');
         for (let i = 1; i <= 3; i++) {
             for (let d = 1; d <= 5; d++) {
                 const teamInput = document.getElementById(`teamDoc${i}_${d}`);
@@ -1486,11 +1508,13 @@ function closeResultModal() {
                 }
             }
         }
+        Logger.log('All team files cleared');
         
         // Clear variables
         uploadedFiles = {};
         savedPersonalData = null;
         savedTeamData = {};
+        Logger.log('Cleared: uploadedFiles, savedPersonalData, savedTeamData');
         
         // Reset display
         document.getElementById('cabang').value = '';
@@ -1506,13 +1530,18 @@ function closeResultModal() {
         document.getElementById('personalDocs').innerHTML = '';
         document.getElementById('submitStatusInfo').style.display = 'none';
         
+        Logger.log('Display sections hidden');
+        
         currentCabang = null;
         currentTeamMemberCount = 2;
         
-        Logger.log('Form cleared successfully');
+        // RESET FLAG
+        lastRegistrationWasSuccessful = false;
+        
+        Logger.log('✅ Form cleared successfully');
+        
     } else {
-        Logger.log('Registration failed - KEEPING form data');
-        // Data tetap, user bisa langsung retry
+        Logger.log('❌ Registration FAILED - KEEPING form data for retry');
     }
     
     updateSubmitButtonState();
