@@ -1,0 +1,1284 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Juknis MTQ ke-55 TK. Kab. Indramayu Tahun 2025</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.7;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+            border-bottom: 5px solid #667eea;
+        }
+        
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+        
+        .header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        
+        .meta-info {
+            background: #f8f9fa;
+            padding: 20px 30px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .meta-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 15px;
+        }
+        
+        .meta-row:last-child {
+            margin-bottom: 0;
+        }
+        
+        .meta-item {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .meta-label {
+            font-weight: 600;
+            color: #667eea;
+            font-size: 12px;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+        
+        .meta-value {
+            font-size: 14px;
+            color: #333;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .section {
+            margin-bottom: 40px;
+        }
+        
+        .section-title {
+            font-size: 22px;
+            font-weight: 700;
+            color: #1e3c72;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 3px solid #667eea;
+            display: flex;
+            align-items: center;
+        }
+        
+        .section-title::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            background: #667eea;
+            border-radius: 50%;
+            margin-right: 12px;
+        }
+        
+        .subsection {
+            margin-left: 0;
+            margin-bottom: 20px;
+        }
+        
+        .subsection-title {
+            font-weight: 600;
+            color: #2a5298;
+            font-size: 16px;
+            margin-bottom: 12px;
+            margin-top: 15px;
+        }
+        
+        .content-text {
+            font-size: 14px;
+            line-height: 1.8;
+            margin-bottom: 15px;
+            color: #555;
+        }
+        
+        .list-item {
+            margin-left: 20px;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        
+        .list-item::marker {
+            color: #667eea;
+        }
+        
+        .golongan-box {
+            background: #f0f4ff;
+            padding: 15px;
+            margin-bottom: 12px;
+            border-left: 4px solid #667eea;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .golongan-box strong {
+            color: #1e3c72;
+        }
+        
+        .age-badge {
+            display: inline-block;
+            background: #764ba2;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            margin-left: 10px;
+            font-weight: 600;
+        }
+        
+        .sub-golongan {
+            margin-left: 30px;
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+        
+        .note-box {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+            font-size: 14px;
+            color: #856404;
+        }
+        
+        .info-box {
+            background: #e7f3ff;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+            font-size: 14px;
+            color: #004085;
+        }
+        
+        .highlight-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 6px;
+            margin: 15px 0;
+            font-size: 15px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            font-size: 14px;
+        }
+        
+        th {
+            background: #1e3c72;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+        }
+        
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+        
+        .tema-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .tema-card {
+            background: #f0f4ff;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 4px solid #667eea;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+        
+        .tema-card ol {
+            margin-left: 20px;
+            margin-top: 10px;
+        }
+        
+        .tema-card li {
+            margin-bottom: 8px;
+        }
+        
+        .footer {
+            background: #f8f9fa;
+            padding: 25px 30px;
+            border-top: 1px solid #e9ecef;
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .footer p {
+            margin-bottom: 8px;
+        }
+        
+        .toc {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 6px;
+            margin-bottom: 30px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .toc-title {
+            font-weight: 600;
+            color: #1e3c72;
+            margin-bottom: 15px;
+            font-size: 15px;
+        }
+        
+        .toc-list {
+            list-style: none;
+            columns: 2;
+            gap: 20px;
+        }
+        
+        .toc-list li {
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+        
+        .toc-list a {
+            color: #667eea;
+            text-decoration: none;
+        }
+        
+        .toc-list a:hover {
+            text-decoration: underline;
+        }
+        
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 20px;
+            }
+            
+            .meta-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .tema-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .toc-list {
+                columns: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📋 Petunjuk Teknis (Juknis)</h1>
+            <p>Pelaksanaan MTQ ke-55 Tingkat Kabupaten Indramayu Tahun 2025</p>
+        </div>
+        
+        <div class="meta-info">
+            <div class="meta-row">
+                <div class="meta-item">
+                    <span class="meta-label">Dari</span>
+                    <span class="meta-value">LPTQ Kabupaten Indramayu</span>
+                </div>
+                <div class="meta-item">
+                    <span class="meta-label">Nomor Surat</span>
+                    <span class="meta-value">07/LPTQ-IM/X/2025</span>
+                </div>
+                <div class="meta-item">
+                    <span class="meta-label">Sifat</span>
+                    <span class="meta-value">Penting</span>
+                </div>
+            </div>
+            <div class="meta-row">
+                <div class="meta-item">
+                    <span class="meta-label">Tanggal</span>
+                    <span class="meta-value">8 Oktober 2025</span>
+                </div>
+                <div class="meta-item">
+                    <span class="meta-label">Tujuan</span>
+                    <span class="meta-value">Ketua LPTQ Kecamatan se-Kabupaten Indramayu</span>
+                </div>
+                <div class="meta-item">
+                    <span class="meta-label">Alamat</span>
+                    <span class="meta-value">Jl. Gatot Subroto Kompleks Islamic Centre</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="content">
+            <!-- Daftar Isi -->
+            <div class="toc">
+                <div class="toc-title">📑 Daftar Isi</div>
+                <ul class="toc-list">
+                    <li><a href="#nama-kegiatan">I. Nama Kegiatan</a></li>
+                    <li><a href="#waktu-penyelenggaraan">II. Waktu Penyelenggaraan</a></li>
+                    <li><a href="#ketentuan-peserta">III. Ketentuan Peserta</a></li>
+                    <li><a href="#cabang-golongan">IV. Cabang/Golongan Musabaqah</a></li>
+                    <li><a href="#sistem-musabaqah">V. Sistem Musabaqah</a></li>
+                    <li><a href="#materi-musabaqah">VI. Materi Musabaqah & Waktu Tampil</a></li>
+                    <li><a href="#pendaftaran">VII. Pendaftaran Peserta</a></li>
+                    <li><a href="#penentuan-juara">VIII. Penentuan Finalis & Kejuaraan</a></li>
+                </ul>
+            </div>
+            
+            <!-- I. Nama Kegiatan -->
+            <div class="section" id="nama-kegiatan">
+                <div class="section-title">I. Nama Kegiatan</div>
+                <div class="content-text">
+                    <strong>Musabaqah Tilawatil Qur'an (MTQ) Tingkat Kabupaten Indramayu ke-55 Tahun 2025</strong>
+                </div>
+                <div class="info-box">
+                    Musabaqah ini diselenggarakan sesuai dengan Program Kerja LPTQ Kabupaten Indramayu Tahun 2025 serta menindaklanjuti Surat Bupati Indramayu nomor: 400.8/2738/Kesra, tanggal 9 September 2025 tentang Pemberitahuan Pelaksanaan MTQ ke-55 Tahun 2025 dan Surat Bupati Indramayu nomor: 400.8.1/1781/Kesra, tanggal 23 Juni 2025 tentang Himbauan Indramayu Religius.
+                </div>
+            </div>
+            
+            <!-- II. Waktu Penyelenggaraan -->
+            <div class="section" id="waktu-penyelenggaraan">
+                <div class="section-title">II. Waktu Penyelenggaraan</div>
+                <div class="highlight-box">
+                    <strong>📅 Tanggal: 4 - 6 November 2025</strong><br>
+                    <strong>📍 Lokasi: Kecamatan Sindang</strong>
+                </div>
+            </div>
+            
+            <!-- III. Ketentuan Peserta -->
+            <div class="section" id="ketentuan-peserta">
+                <div class="section-title">III. Ketentuan Peserta</div>
+                <div class="subsection">
+                    <ul style="list-style: none; padding: 0;">
+                        <li class="list-item"><strong>a. Peserta hasil MTQ Tingkat Kecamatan;</strong> Peserta merupakan pemenang/juara dari musabaqah tingkat kecamatan yang diselenggarakan sebelumnya.</li>
+                        <li class="list-item"><strong>b. Batas usia maksimal peserta</strong> pada cabang/golongan MTQ ke-55 Tingkat Kabupaten Indramayu dihitung per 1 November tahun 2025. Usia peserta harus sesuai dengan kategori golongan yang diikuti pada saat pendaftaran.</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- IV. Cabang/Golongan Musabaqah -->
+            <div class="section" id="cabang-golongan">
+                <div class="section-title">IV. Cabang/Golongan Musabaqah dan Peserta</div>
+                
+                <div class="subsection">
+                    <div class="subsection-title">A. Cabang Seni Baca Al-Qur'an</div>
+                    <div class="golongan-box">
+                        <strong>1. Golongan Tartil Al-Qur'an</strong> (Putera dan Puteri)
+                        <span class="age-badge">Umur ≤ 12 th 11 bl 29 hr</span>
+                        <div class="sub-golongan">Golongan ini untuk peserta yang ingin menampilkan bacaan Al-Qur'an dengan tartil (perlahan dan benar).</div>
+                    </div>
+                    <div class="golongan-box">
+                        <strong>2. Golongan Tilawah Anak-anak</strong> (Putera dan Puteri)
+                        <span class="age-badge">Umur ≤ 14 th 11 bl 29 hr</span>
+                        <div class="sub-golongan">Golongan untuk anak-anak dengan bacaan yang lebih ekspresif dan merdu.</div>
+                    </div>
+                    <div class="golongan-box">
+                        <strong>3. Golongan Tilawah Remaja</strong> (Putera dan Puteri)
+                        <span class="age-badge">Umur ≤ 24 th 11 bl 29 hr</span>
+                        <div class="sub-golongan">Golongan untuk remaja dengan standar tilawah yang lebih tinggi dan variatif.</div>
+                    </div>
+                    <div class="golongan-box">
+                        <strong>4. Golongan Tilawah Dewasa</strong> (Putera dan Puteri)
+                        <span class="age-badge">Umur ≤ 40 th 11 bl 29 hr</span>
+                        <div class="sub-golongan">Golongan untuk peserta dewasa dengan hafalan dan kemampuan tilawah yang komprehensif.</div>
+                    </div>
+                </div>
+                
+                <div class="subsection">
+                    <div class="subsection-title">B. Cabang Qira'at Al-Qur'an</div>
+                    <div class="golongan-box">
+                        <strong>1. Golongan Qira'at Al-Qur'an Mujawwad Dewasa</strong> (Putera dan Puteri)
+                        <span class="age-badge">Umur ≤ 40 th 11 bl 29 hr</span>
+                        <div class="sub-golongan">Membaca Al-Qur'an dengan Martabat Mujawwad menggunakan qira'at pilihan yang ditentukan (Nafi', Ibnu Katsir, Abu Amr).</div>
+                    </div>
+                </div>
+                
+                <div class="subsection">
+                    <div class="subsection-title">C. Cabang Hafalan Al-Qur'an</div>
+                    <div class="golongan-box">
+                        <strong>1. Golongan 1 Juz dan Tilawah</strong> (Putera dan Puteri)
+                        <span class="age-badge">Umur ≤ 15 th 11 bl 29 hr</span>
+                        <div class="sub-golongan">Peserta hafal 1 Juz (Juz 1 atau Juz 30) dan ditampilkan dengan tilawah dan pertanyaan hafalan.</div>
+                    </div>
+                    <div class="golongan-box">
+                        <strong>2. Golongan 5 Juz dan Tilawah</strong> (Putera dan Puteri)
+                        <span class="age-badge">Umur ≤ 20 th 11 bl 29 hr</span>
+                        <div class="sub-golongan">Peserta hafal 5 Juz (Juz 1-5 atau Juz 26-30) dengan tilawah dan pertanyaan hafalan.</div>
+                    </div>
+                    <div class="golongan-box">
+                        <strong>3. Golongan 10 Juz</strong> (Putera dan Puteri)
+                        <span class="age-badge">Umur ≤ 20 th 11 bl 29 hr</span>
+                        <div class="sub-golongan">Peserta hafal Juz 1 s.d 10 dengan pertanyaan hafalan berupa 4 pertanyaan dengan jawaban 12-15 baris.</div>
+                    </div>
+                    <div class="golongan-box">
+                        <strong>4. Golongan 20 Juz</strong> (Putera dan Puteri)
+                        <span class="age-badge">Umur ≤ 22 th 11 bl 29 hr</span>
+                        <div class="sub-golongan">Peserta hafal Juz 1 s.d 20 dengan pertanyaan hafalan 4 pertanyaan dengan jawaban 12-15 baris.</div>
+                    </div>
+                    <div class="golongan-box">
+                        <strong>5. Golongan 30 Juz</strong> (Putera dan Puteri)
+                        <span class="age-badge">Umur ≤ 22 th 11 bl 29 hr</span>
+                        <div class="sub-golongan">Peserta hafal seluruh Al-Qur'an (Juz 1-30) dengan pertanyaan hafalan 4 pertanyaan dengan jawaban 12-15 baris.</div>
+                    </div>
+                </div>
+                
+                <div class="subsection">
+                    <div class="subsection-title">D. Cabang Tafsir Al-Qur'an</div>
+                    <div class="golongan-box">
+                        <strong>1. Golongan Bahasa Arab</strong> (Putera dan Puteri)
+                        <span class="age-badge">Umur ≤ 22 th 11 bl 29 hr</span>
+                        <div class="sub-golongan">Hafalan 30 Juz dan Tafsir Juz ke-15 dalam bahasa Arab.</div>
+                    </div>
+                    <div class="golongan-box">
+                        <strong>2. Golongan Bahasa Indonesia</strong> (Putera dan Puteri)
+                        <span class="age-badge">Umur ≤ 34 th 11 bl 29 hr</span>
+                        <div class="sub-golongan">Hafalan 30 Juz dan Tafsir Juz ke-15 dalam bahasa Indonesia.</div>
+                    </div>
+                    <div class="golongan-box">
+                        <strong>3. Golongan Bahasa Inggris</strong> (Putera dan Puteri)
+                        <span class="age-badge">Umur ≤ 34 th 11 bl 29 hr</span>
+                        <div class="sub-golongan">Hafalan 17 Juz pertama (Juz 1 s.d 17) dan Tafsir Juz ke-13 dalam bahasa Inggris.</div>
+                    </div>
+                </div>
+                
+                <div class="subsection">
+                    <div class="subsection-title">E. Cabang Fahm Al-Qur'an</div>
+                    <div class="golongan-box">
+                        <strong>Golongan Putera dan Puteri Beregu</strong>
+                        <span class="age-badge">Umur ≤ 18 th 11 bl 29 hr</span>
+                        <div class="sub-golongan">
+                            • 1 regu putera terdiri dari 3 orang (atau 2 orang jika tidak memungkinkan)<br>
+                            • 1 regu puteri terdiri dari 3 orang (atau 2 orang jika tidak memungkinkan)<br>
+                            • Dinilai berdasarkan pemahaman dan wawasan terhadap Al-Qur'an
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="subsection">
+                    <div class="subsection-title">F. Cabang Syarh Al-Qur'an</div>
+                    <div class="golongan-box">
+                        <strong>Golongan Putera dan Puteri Beregu</strong>
+                        <span class="age-badge">Umur ≤ 18 th 11 bl 29 hr</span>
+                        <div class="sub-golongan">
+                            • 1 regu putera terdiri dari 3 orang (atau 2 orang jika tidak memungkinkan)<br>
+                            • 1 regu puteri terdiri dari 3 orang (atau 2 orang jika tidak memungkinkan)<br>
+                            • Penampilan terdiri dari tilawah, terjemahan, dan penyampaian dengan teknik berpidato
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="subsection">
+                    <div class="subsection-title">G. Cabang Seni Kaligrafi Al-Qur'an</div>
+                    <div class="golongan-box">
+                        <strong>1. Golongan Naskah (Penulisan Buku)</strong> (Putera dan Puteri)
+                        <span class="age-badge">Umur ≤ 34 th 11 bl 29 hr</span>
+                    </div>
+                    <div class="golongan-box">
+                        <strong>2. Golongan Hiasan Mushaf</strong> (Putera dan Puteri)
+                        <span class="age-badge">Umur ≤ 34 th 11 bl 29 hr</span>
+                    </div>
+                    <div class="golongan-box">
+                        <strong>3. Golongan Dekorasi</strong> (Putera dan Puteri)
+                        <span class="age-badge">Umur ≤ 34 th 11 bl 29 hr</span>
+                    </div>
+                    <div class="golongan-box">
+                        <strong>4. Golongan Kontemporer</strong> (Putera dan Puteri)
+                        <span class="age-badge">Umur ≤ 34 th 11 bl 29 hr</span>
+                    </div>
+                </div>
+                
+                <div class="subsection">
+                    <div class="subsection-title">H. Cabang Karya Tulis Ilmiah Al-Qur'an (KTIQ)</div>
+                    <div class="golongan-box">
+                        <strong>Putera dan Puteri</strong>
+                        <span class="age-badge">Umur ≤ 24 th 11 bl 29 hr</span>
+                        <div class="sub-golongan">Menghasilkan karya tulis ilmiah yang menganalisis topik-topik sesuai tema yang telah ditentukan.</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- V. Sistem Musabaqah -->
+            <div class="section" id="sistem-musabaqah">
+                <div class="section-title">V. Sistem Musabaqah</div>
+                <div class="subsection">
+                    <div class="subsection-title">a. Struktur Babak</div>
+                    <div class="info-box">
+                        <strong>Untuk sebagian besar cabang:</strong> Musabaqah diselenggarakan dalam 2 (dua) babak, yaitu babak penyisihan dan babak final.
+                    </div>
+                    <div class="info-box">
+                        <strong>Untuk cabang khusus:</strong> Cabang Fahm Al-Qur'an (MFQ), Karya Tulis Ilmiah Al-Qur'an (KTIQ), dan Karya Tulis Ilmiah Hadits (KTIH) diselenggarakan dalam 3 (tiga) babak, yaitu Penyisihan, Semi Final, dan Final.
+                    </div>
+                </div>
+                
+                <div class="subsection">
+                    <div class="subsection-title">b. Ketentuan Pakaian Peserta</div>
+                    <div class="content-text">
+                        Pada waktu tampil, peserta harus berpakaian:
+                    </div>
+                    <ul style="margin-left: 20px; margin-bottom: 15px;">
+                        <li class="list-item">Rapih dan sopan</li>
+                        <li class="list-item">Menutup aurat</li>
+                        <li class="list-item">Memperlihatkan seluruh wajah dengan jelas</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- VI. Materi Musabaqah -->
+            <div class="section" id="materi-musabaqah">
+                <div class="section-title">VI. Materi Musabaqah, Waktu Tampil pada Babak Penyisihan dan Babak Final</div>
+                
+                <div class="subsection">
+                    <div class="subsection-title">A. Cabang Seni Baca Al-Qur'an</div>
+                    
+                    <div class="subsection">
+                        <div class="subsection-title">1. Golongan Tartil Al-Qur'an</div>
+                        <table>
+                            <tr>
+                                <th>Kriteria</th>
+                                <th>Keterangan</th>
+                            </tr>
+                            <tr>
+                                <td><strong>Materi Bacaan</strong></td>
+                                <td>Juz 1 s.d Juz 10</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Durasi Penampilan</strong></td>
+                                <td>5 - 7 menit (Babak Penyisihan dan Final)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Penentuan Maqra - Penyisihan</strong></td>
+                                <td> 2 Hari sebelum penampilan</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Penentuan Maqra - Final</strong></td>
+                                <td>1 jam sebelum naik mimbar</td>
+                            </tr>
+                        </table>
+                    </div>
+
+                    <div class="subsection">
+                        <div class="subsection-title">2. Golongan Tilawah Anak-anak</div>
+                        <table>
+                            <tr>
+                                <th>Kriteria</th>
+                                <th>Keterangan</th>
+                            </tr>
+                            <tr>
+                                <td><strong>Materi Bacaan</strong></td>
+                                <td>Juz 1 s.d Juz 10</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Durasi Penampilan</strong></td>
+                                <td>6 - 8 menit (Babak Penyisihan dan Final)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Penentuan Maqra - Penyisihan</strong></td>
+                                <td>16 jam sebelum penampilan</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Penentuan Maqra - Final</strong></td>
+                                <td>1 jam sebelum naik mimbar</td>
+                            </tr>
+                        </table>
+                    </div>
+
+                    <div class="subsection">
+                        <div class="subsection-title">3. Golongan Tilawah Remaja</div>
+                        <table>
+                            <tr>
+                                <th>Kriteria</th>
+                                <th>Keterangan</th>
+                            </tr>
+                            <tr>
+                                <td><strong>Materi Bacaan</strong></td>
+                                <td>Juz 1 s.d Juz 20</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Durasi Penampilan</strong></td>
+                                <td>7 - 9 menit (Babak Penyisihan dan Final)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Penentuan Maqra - Penyisihan</strong></td>
+                                <td>16 jam sebelum penampilan</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Penentuan Maqra - Final</strong></td>
+                                <td>1 jam sebelum naik mimbar</td>
+                            </tr>
+                        </table>
+                    </div>
+                    
+                    <div class="subsection">
+                        <div class="subsection-title">4. Golongan Tilawah Dewasa</div>
+                        <table>
+                            <tr>
+                                <th>Kriteria</th>
+                                <th>Keterangan</th>
+                            </tr>
+                            <tr>
+                                <td><strong>Materi Bacaan</strong></td>
+                                <td>Juz 1 s.d Juz 30</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Durasi Babak Penyisihan</strong></td>
+                                <td>10 menit</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Durasi Babak Final</strong></td>
+                                <td>10 - 12 menit</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Penentuan Maqra - Penyisihan</strong></td>
+                                <td>Ketika peserta akan naik mimbar</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Penentuan Maqra & Lagu - Final</strong></td>
+                                <td>1 jam sebelum naik mimbar</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+                
+                <div class="subsection">
+                    <div class="subsection-title">B. Cabang Qira'at Al-Qur'an</div>
+                    
+                    <div class="subsection">
+                        <div class="subsection-title">1. Golongan Qira'at Mujawwad Al-Qur'an Dewasa</div>
+                        <div class="content-text">
+                            Membaca Al-Qur'an dengan Martabat Mujawwad dengan ketentuan sebagai berikut:
+                        </div>
+                        
+                        <div class="info-box">
+                            <strong>Qira'at yang Dimusabaqahkan:</strong><br>
+                            • Qira'at Imam Nafi' (riwayat Qalun dan Warsy)<br>
+                            • Qira'at Imam Ibnu Katsir (riwayat Al-Bazzi dan Qunbul)<br>
+                            • Qira'at Imam Abu Amr (riwayat Ad-Duri dan As-Susi)<br>
+                            Menurut Thariq Asy-Syatibiyah
+                        </div>
+                        
+                        <div class="note-box">
+                            Jika dalam satu riwayat ada lebih dari satu wajah bacaan, peserta boleh membawakan satu wajah saja.
+                        </div>
+                        
+                        <table>
+                            <tr>
+                                <th>Kriteria</th>
+                                <th>Keterangan</th>
+                            </tr>
+                            <tr>
+                                <td><strong>Materi/Maqra</strong></td>
+                                <td>Juz 1 - 30</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Durasi Babak Penyisihan</strong></td>
+                                <td>10 - 12 menit</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Durasi Babak Final</strong></td>
+                                <td>12 - 15 menit</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Penentuan Maqra - Penyisihan</strong></td>
+                                <td>16 jam sebelum penampilan</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Penentuan Qira'at & Riwayat - Penyisihan</strong></td>
+                                <td>15 menit sebelum tampil</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Penentuan Maqra - Final</strong></td>
+                                <td>10 jam sebelum penampilan</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Penentuan Qira'at & Riwayat - Final</strong></td>
+                                <td>15 menit sebelum tampil</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+                
+                <div class="subsection">
+                    <div class="subsection-title">C. Cabang Hafalan Al-Qur'an</div>
+                    
+                    <div class="subsection">
+                        <div class="subsection-title">1. Golongan 1 Juz dan Tilawah</div>
+                        <table>
+                            <tr>
+                                <th>Kriteria</th>
+                                <th>Keterangan</th>
+                            </tr>
+                            <tr>
+                                <td><strong>Materi Tilawah</strong></td>
+                                <td>Juz 1 s.d 10</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Hafalan</strong></td>
+                                <td>Salah satu dari Juz 1 atau Juz 30</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Durasi Tilawah</strong></td>
+                                <td>Minimal 3 lagu</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Hafalan (Pertanyaan & Jawaban)</strong></td>
+                                <td>3 pertanyaan, setiap jawaban 5-8 baris Al-Qur'an Bahriyyah</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Penentuan Maqra Tilawah - Penyisihan</strong></td>
+                                <td>16 jam sebelum penampilan</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Penentuan Maqra Tilawah - Final</strong></td>
+                                <td>1 jam sebelum penampilan</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Penentuan Maqra Hafalan - Penyisihan & Final</strong></td>
+                                <td>Ketika peserta akan naik mimbar</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Teknis Penampilan</strong></td>
+                                <td>Dimulai dengan tilawah dilanjutkan dengan hafalan (tahfizh)</td>
+                            </tr>
+                        </table>
+                    </div>
+                    
+                    <div class="subsection">
+                        <div class="subsection-title">2. Golongan 5 Juz dan Tilawah</div>
+                        <table>
+                            <tr>
+                                <th>Kriteria</th>
+                                <th>Keterangan</th>
+                            </tr>
+                            <tr>
+                                <td><strong>Materi Tilawah</strong></td>
+                                <td>Juz 1 s.d 20</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Hafalan</strong></td>
+                                <td>5 Juz dimulai dari Juz 1-5 atau Juz 26-30</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Durasi Penampilan</strong></td>
+                                <td>7 - 8 menit</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Durasi Tilawah</strong></td>
+                                <td>Minimal 3 lagu</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Hafalan (Pertanyaan & Jawaban)</strong></td>
+                                <td>3 pertanyaan, setiap jawaban 6-10 baris Al-Qur'an Bahriyyah</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Penentuan Maqra Tilawah - Penyisihan</strong></td>
+                                <td>16 jam sebelum penampilan</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Penentuan Maqra Tilawah - Final</strong></td>
+                                <td>1 jam sebelum penampilan</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Teknis Penampilan</strong></td>
+                                <td>Dimulai dengan tilawah dilanjutkan dengan hafalan</td>
+                            </tr>
+                        </table>
+                    </div>
+                    
+                    <div class="subsection">
+                        <div class="subsection-title">3. Golongan 10, 20, dan 30 Juz</div>
+                        <table>
+                            <tr>
+                                <th>Kriteria</th>
+                                <th>Keterangan</th>
+                            </tr>
+                            <tr>
+                                <td><strong>Hafalan Golongan 10 Juz</strong></td>
+                                <td>Juz 1 s.d Juz 10</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Hafalan Golongan 20 Juz</strong></td>
+                                <td>Juz 1 s.d Juz 20</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Hafalan Golongan 30 Juz</strong></td>
+                                <td>Juz 1 s.d Juz 30 (Seluruh Al-Qur'an)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Jumlah Pertanyaan</strong></td>
+                                <td>4 pertanyaan untuk setiap golongan</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Jawaban Setiap Pertanyaan</strong></td>
+                                <td>12 - 15 baris Al-Qur'an Bahriyyah</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Qira'at</strong></td>
+                                <td>Qira'at Imam Ashim riwayat Hafsh menurut Thariq Asy-Syathibiyah</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Penentuan Maqra - Penyisihan & Final</strong></td>
+                                <td>Ketika peserta akan naik mimbar</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+                
+                <div class="subsection">
+                    <div class="subsection-title">D. Cabang Tafsir Al-Qur'an</div>
+                    
+                    <div class="subsection">
+                        <div class="subsection-title">Teknis Penampilan untuk Semua Golongan</div>
+                        <div class="info-box">
+                            Penampilan dimulai dengan <strong>hafalan</strong> dilanjutkan dengan <strong>tafsir</strong>
+                        </div>
+                    </div>
+                    
+                    <div class="subsection">
+                        <div class="subsection-title">Materi Hafalan</div>
+                        <ul style="margin-left: 20px; margin-bottom: 15px;">
+                            <li class="list-item"><strong>Golongan Bahasa Arab:</strong> Hafalan 30 Juz dan Tafsir Juz ke 15</li>
+                            <li class="list-item"><strong>Golongan Bahasa Indonesia:</strong> Hafalan 30 Juz dan Tafsir Juz ke 15</li>
+                            <li class="list-item"><strong>Golongan Bahasa Inggris:</strong> Hafalan 16 Juz pertama (Juz 1 s.d 17) dan Tafsir Juz ke 13</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="subsection">
+                        <div class="subsection-title">Durasi Penampilan untuk Semua Golongan</div>
+                        <div class="info-box">
+                            • <strong>Hafalan:</strong> 8 - 10 baris untuk setiap pertanyaan<br>
+                            • <strong>Pertanyaan Tafsir:</strong> Kurang lebih 15 menit
+                        </div>
+                    </div>
+                    
+                    <div class="subsection">
+                        <div class="subsection-title">Penentuan Maqra</div>
+                        <div class="info-box">
+                            Penentuan/acak maqra materi hafalan dan materi tafsir pada Babak Penyisihan dan Babak Final dilakukan ketika peserta naik mimbar.
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="subsection">
+                    <div class="subsection-title">E. Cabang Fahm Al-Qur'an</div>
+                    
+                    <div class="subsection">
+                        <div class="subsection-title">Materi Soal</div>
+                        <div class="content-text">
+                            Materi soal adalah perpaduan antara:
+                        </div>
+                        <ul style="margin-left: 20px; margin-bottom: 15px;">
+                            <li class="list-item">Kurikulum Madrasah Aliyah</li>
+                            <li class="list-item">Kurikulum Pondok Pesantren</li>
+                            <li class="list-item">Wawasan Al-Qur'an</li>
+                            <li class="list-item">Wawasan umum yang meliputi wawasan dan dun fa Islam</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="subsection">
+                        <div class="subsection-title">Peserta Setiap Babak</div>
+                        <div class="info-box">
+                            • <strong>Babak Penyisihan:</strong> Diikuti 3 atau 4 regu<br>
+                            • <strong>Babak Semifinal:</strong> Diikuti 3 atau 4 regu<br>
+                            • <strong>Babak Final:</strong> Hanya diikuti 3 regu
+                        </div>
+                    </div>
+                    
+                    <div class="subsection">
+                        <div class="subsection-title">Paket Soal</div>
+                        <div class="info-box">
+                            <strong>Paket Soal Regu:</strong> Masing-masing regu mendapat 10 - 12 pertanyaan<br>
+                            <strong>Paket Soal Rebutan:</strong> Pertanyaan untuk semua regu yang dijawab secara rebutan, sebanyak 10 - 15 pertanyaan
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="subsection">
+                    <div class="subsection-title">F. Cabang Syarh Al-Qur'an</div>
+                    
+                    <div class="subsection">
+                        <div class="subsection-title">Elemen Penampilan</div>
+                        <div class="info-box">
+                            <strong>1. Tilawah Al-Qur'an:</strong> Pembacaan ayat-ayat sesuai dengan materi yang disampaikan.<br>
+                            <strong>2. Terjemahan Ayat:</strong> Secara deklamasi sesuai dengan konteks.<br>
+                            <strong>3. Penyampaian:</strong> Dengan teknik berpidato (retorika dakwah) yang natural dan tanpa teks.
+                        </div>
+                    </div>
+                    
+                    <div class="subsection">
+                        <div class="subsection-title">Durasi Penampilan</div>
+                        <div class="highlight-box">
+                            <strong>15 - 20 menit</strong>
+                        </div>
+                    </div>
+                    
+                    <div class="subsection">
+                        <div class="subsection-title">Tema dan Judul</div>
+                        <div class="info-box">
+                            <strong>• Peserta memilih 2 dari 9 tema</strong> syarahan yang ditentukan LPTQ dan melaporkan 2 judul yang dipilih pada saat pendaftaran ulang.<br>
+                            <strong>• Setiap tema hanya boleh diambil</strong> satu kali menjadi judul syarahan.<br>
+                            <strong>• Babak Penyisihan:</strong> Peserta memperoleh satu dari 2 judul syarahan yang dilaporkan pada pendaftaran, 24 jam sebelum penampilan.<br>
+                            <strong>• Babak Final:</strong> Finalis menyerahkan 1 judul syarahan selain yang sudah ditampilkan di penyisihan, paling lambat 3 jam sebelum acara dimulai. Peserta memperoleh salah satu dari 2 judul yang diserahkan 60 menit sebelum Final dimulai.
+                        </div>
+                    </div>
+                    
+                    <div class="subsection">
+                        <div class="subsection-title">10 Tema Cabang Syarh Al-Qur'an MTQ ke-55 Tahun 2025</div>
+                        <div class="tema-grid">
+                            <div class="tema-card">
+                                <strong>1.</strong> Membangun Budaya Literasi Qur'ani di Kalangan Generasi Muda
+                            </div>
+                            <div class="tema-card">
+                                <strong>2.</strong> Al-Qur'an sebagai spirit Kebangkitan Umat Islam
+                            </div>
+                            <div class="tema-card">
+                                <strong>3.</strong> Mencegah Hoaks dan Ujaran Kebencian dalam Cahaya Al-Qur'an
+                            </div>
+                            <div class="tema-card">
+                                <strong>4.</strong> Menghadirkan Kedamaian Dunia melalui Nilai-Nilai Qur'ani
+                            </div>
+                            <div class="tema-card">
+                                <strong>5.</strong> Menumbuhkan Akhlak Mulia sebagai Cermin Insan Qur'ani
+                            </div>
+                            <div class="tema-card">
+                                <strong>6.</strong> Al-Qur'an sebagai Petunjuk dalam Menjaga Kesehatan Jasmani dan Rohani
+                            </div>
+                            <div class="tema-card">
+                                <strong>7.</strong> Peran Perempuan dalam Membangun Peradaban Qur'ani
+                            </div>
+                            <div class="tema-card">
+                                <strong>8.</strong> Al-Qur'an dan Tanggung Jawab Sosial di Tengah Masyarakat
+                            </div>
+                            <div class="tema-card">
+                                <strong>9.</strong> Mewujudkan Generasi Anti Narkoba melalui Nilai Al-Qur'an
+                            </div>
+                            <div class="tema-card">
+                                <strong>10.</strong> Menata Kehidupan Ekonomi Berkeadilan dengan Prinsip Qur'ani
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="subsection">
+                    <div class="subsection-title">G. Cabang Seni Kaligrafi Al-Qur'an</div>
+                    
+                    <div class="subsection">
+                        <div class="subsection-title">1. Golongan Naskah (Penulisan Ayat Al-Qur'an)</div>
+                        <div class="content-text">
+                            Penulisan ayat Al-Qur'an sebagaimana terdapat pada teks mushaf, dengan ketentuan sebagai berikut:
+                        </div>
+                        <div class="info-box">
+                            <strong>• Kaligrafi Wajib:</strong> Naskhi<br>
+                            <strong>• Kaligrafi Pilihan:</strong> 4 jenis kaligrafi (selain Naskhi) yang ditentukan dengan cara diundi pada saat musabaqah<br>
+                            <strong>• Teks Ayat Wajib:</strong> 5 - 10 baris ukuran Mushaf Standar Kementerian Agama RI terbitan tahun terakhir (Babak Penyisihan & Final)<br>
+                            <strong>• Teks Ayat Pilihan:</strong> 4 - 5 baris (Babak Penyisihan & Final)<br>
+                            <strong>• Alokasi Waktu:</strong> 480 menit (8 jam) termasuk istirahat
+                        </div>
+                    </div>
+                    
+                    <div class="subsection">
+                        <div class="subsection-title">2. Golongan Hiasan Mushaf</div>
+                        <div class="content-text">
+                            Penulisan ayat Al-Qur'an dengan hiasan tepi yang bisa menjadi dekorasi dinding, dengan ketentuan:
+                        </div>
+                        <div class="info-box">
+                            <strong>• Babak Penyisihan:</strong> Kaligrafi Naskhi khusus untuk teks pokok<br>
+                            <strong>• Babak Final:</strong> Selain Naskhi, jenis khath ditentukan dengan cara diundi<br>
+                            <strong>• Teks Ayat Penyisihan:</strong> 4 - 5 baris ukuran mushaf<br>
+                            <strong>• Alokasi Waktu:</strong> 480 menit (8 jam) termasuk istirahat<br>
+                            <strong>• Desain Hiasan/Iluminasi & Ornamen:</strong> Harus menggambarkan hafaman pertama mushaf Al-Qur'an sebagaimana tercermin pada halaman surah Al-Fatihah dan halaman awal surah Al-Baqarah
+                        </div>
+                    </div>
+                    
+                    <div class="subsection">
+                        <div class="subsection-title">3. Golongan Dekorasi</div>
+                        <div class="content-text">
+                            Penulisan ayat-ayat Al-Qur'an yang diberi hiasan tepi yang bisa menjadi dekorasi dinding, dengan ketentuan:
+                        </div>
+                        <div class="info-box">
+                            <strong>• Jenis Kaligrafi:</strong> 5 dari 7 jenis kaligrafi yang ditentukan dengan cara diundi pada saat musabaqah<br>
+                            <strong>• Teks Ayat:</strong> 4 - 5 baris ukuran mushaf (Babak Penyisihan & Final)<br>
+                            <strong>• Babak Penyisihan:</strong> Salah satu kaligrafi yang ditampilkan adalah khath tsulus<br>
+                            <strong>• Babak Final:</strong> Diantara kaligrafi yang ditampilkan adalah diwani jali dan kufi tanpa tsulus<br>
+                            <strong>• Desain & Latar Belakang Ornamen:</strong> Berbeda dengan hasil karya di babak penyisihan<br>
+                            <strong>• Alokasi Waktu:</strong> 480 menit (8 jam) termasuk istirahat
+                        </div>
+                    </div>
+                    
+                    <div class="subsection">
+                        <div class="subsection-title">4. Golongan Kaligrafi Kontemporer</div>
+                        <div class="content-text">
+                            Salah satu dari 4 gaya khat kontemporer yang dimusabaqahkan, yaitu: kontemporer tradisional, figural, simbolik, dan ekspresionis, dengan ketentuan:
+                        </div>
+                        <div class="info-box">
+                            <strong>• Pilihan:</strong> Peserta dapat memilih salah satu atau kombinasi dari jenis-jenis khath yang dimusabaqah dengan mengkombinasikan kreasi individu dalam pembentukan karakter huruf<br>
+                            <strong>• Aliran Lukisan:</strong> Diserahkan kepada peserta<br>
+                            <strong>• Teks Ayat:</strong> 0,5 - 1,5 ayat penuh atau potongan ayat ukuran mushaf (Babak Penyisihan & Final)<br>
+                            <strong>• Media:</strong> Kanvas berspanram ukuran 60 x 80 cm<br>
+                            <strong>• Alokasi Waktu:</strong> 480 menit (8 jam) termasuk istirahat
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="subsection">
+                    <div class="subsection-title">H. Cabang Karya Tulis Ilmiah Al-Qur'an (KTIQ)</div>
+                    
+                    <div class="subsection">
+                        <div class="subsection-title">Tema-Tema Karya Tulis</div>
+                        <div class="tema-grid">
+                            <div class="tema-card">
+                                <strong>Tema: Ketahanan Keluarga</strong>
+                                <ol>
+                                    <li>Nilai-Nilai Al-Qur'an sebagai Fondasi Ketahanan Keluarga di Era Modern</li>
+                                    <li>Peran Al-Qur'an dalam Membangun Generasi Tangguh dan Berkarakter</li>
+                                    <li>Ketahanan Keluarga Perspektif Qur'ani: Antara Spiritualitas, Akhlak, dan Sosial</li>
+                                    <li>Implementasi Prinsip Al-Qur'an dalam Menghadapi Krisis Ketahanan Keluarga</li>
+                                    <li>Membangun Keluarga Qur'ani sebagai Pilar Ketahanan Bangsa</li>
+                                </ol>
+                            </div>
+                            <div class="tema-card">
+                                <strong>Tema: Transformasi Digital</strong>
+                                <ol>
+                                    <li>Al-Qur'an dan Tantangan Transformasi Digital di Era Revolusi Industri 5.0</li>
+                                    <li>Digitalisasi dalam Perspektif Qur'ani: Peluang dan Tantangan</li>
+                                    <li>Etika Bermedia Digital Menurut Al-Qur'an</li>
+                                    <li>Transformasi Digital sebagai Sarana Dakwah Qur'ani di Era Global</li>
+                                    <li>Peran Al-Qur'an dalam Mengarahkan Transformasi Digital yang Beretika dan Humanis</li>
+                                </ol>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="subsection">
+                        <div class="subsection-title">Sistem Tiga Babak</div>
+                        <table>
+                            <tr>
+                                <th>Babak</th>
+                                <th>Peserta</th>
+                                <th>Topik</th>
+                                <th>Waktu Pengerjaan</th>
+                            </tr>
+                            <tr>
+                                <td><strong>Babak Penyisihan</strong></td>
+                                <td>Seluruh peserta</td>
+                                <td>Topik tulisan bebas mengacu salah satu tema besar</td>
+                                <td>08.00 - 17.00 (setempat)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Babak Semifinal</strong></td>
+                                <td>12 orang (6 putra, 6 putri) dengan nilai tertinggi penyisihan</td>
+                                <td>Topik berbeda dengan penyisihan, tetap mengacu tema besar</td>
+                                <td>08.00 - 16.00 (setempat)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Babak Final</strong></td>
+                                <td>6 orang (3 putra, 3 putri) dengan nilai tertinggi semifinal</td>
+                                <td>Presentasi karya tulis</td>
+                                <td>15 menit presentasi + tanya jawab</td>
+                            </tr>
+                        </table>
+                    </div>
+                    
+                    <div class="subsection">
+                        <div class="subsection-title">Ketentuan Teknis</div>
+                        <div class="info-box">
+                            <strong>• Alat:</strong> Laptop yang dibawa oleh peserta dan harus disterilkan sehari sebelum musabaqah<br>
+                            <strong>• Panjang Tulisan:</strong> 10 - 15 halaman kertas A4<br>
+                            <strong>• Spasi:</strong> 1,5<br>
+                            <strong>• Ukuran Huruf:</strong> 12<br>
+                            <strong>• Jenis Font:</strong> Times New Roman
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- VII. Pendaftaran Peserta -->
+            <div class="section" id="pendaftaran">
+                <div class="section-title">VII. Pendaftaran Peserta</div>
+                
+                <div class="subsection">
+                    <div class="subsection-title">A. Pendaftaran</div>
+                    
+                    <div class="subsection">
+                        <div class="subsection-title">Jadwal Pendaftaran</div>
+                        <div class="highlight-box">
+                            <strong>20 - 23 Oktober 2025</strong><br>
+                            Pendaftaran dilakukan secara offline
+                        </div>
+                    </div>
+                    
+                    <div class="subsection">
+                        <div class="subsection-title">Dokumen Peserta yang Diperlukan</div>
+                        <div class="info-box">
+                            <strong>a. Surat Mandat</strong> yang ditandatangani oleh Ketua LPTQ Kecamatan<br><br>
+                            <strong>b. Identitas</strong> (pilih salah satu):<br>
+                            &nbsp;&nbsp;&nbsp;&nbsp;• Kartu Tanda Penduduk (KTP), atau<br>
+                            &nbsp;&nbsp;&nbsp;&nbsp;• Kartu Keluarga (KK), atau<br>
+                            &nbsp;&nbsp;&nbsp;&nbsp;• Kartu Identitas Anak (KIA) bagi yang belum ber-KTP<br>
+                            &nbsp;&nbsp;&nbsp;&nbsp;<em>Catatan: Diterbitkan maksimal 6 bulan sebelum tanggal 01 November 2025</em><br><br>
+                            <strong>c. Sertifikat Kejuaraan</strong> dari musabaqah tingkat kecamatan<br><br>
+                            <strong>d. Data Rekening</strong> (Nama, Nomor Rekening, dan Foto Buku Tabungan atas nama peserta yang terdaftar)<br><br>
+                            <strong>e. Pas Photo</strong> terakhir dengan latar belakang biru
+                        </div>
+                    </div>
+                    
+                    <div class="subsection">
+                        <div class="subsection-title">Persyaratan Dokumen</div>
+                        <ul style="margin-left: 20px; margin-bottom: 15px;">
+                            <li class="list-item">Dokumen persyaratan (KTP/KK/KIA) harus discan dari aslinya</li>
+                            <li class="list-item">Setiap Kecamatan diharuskan melakukan validasi NIK calon peserta melalui Diedukcapil</li>
+                            <li class="list-item">Pengisian form calon peserta harus lengkap</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="subsection">
+                    <div class="subsection-title">B. Sanggah</div>
+                    
+                    <div class="subsection">
+                        <div class="subsection-title">Jadwal Masa Sanggah</div>
+                        <div class="highlight-box">
+                            <strong>24 - 25 Oktober 2025</strong>
+                        </div>
+                    </div>
+                    
+                    <div class="subsection">
+                        <div class="subsection-title">Prosedur Penyampaian Sanggahan</div>
+                        <div class="info-box">
+                            <strong>a. Pengirim:</strong> LPTQ Kecamatan diberikan waktu untuk menyampaikan sanggahan terhadap daftar calon peserta dari kecamatan lain yang terindikasi melakukan pemalsuan data<br><br>
+                            <strong>b. Format Sanggahan:</strong> Surat yang ditandatangani Ketua LPTQ Kecamatan<br><br>
+                            <strong>c. Lampiran:</strong> Dokumen/bukti otentik peserta yang disanggah<br><br>
+                            <strong>d. Pengiriman:</strong> Surat sanggahan dikirim ke SEKSI BIMAS ISLAM Kantor Kementerian Agama Kabupaten Indramayu<br><br>
+                            <strong>e. Setelah Masa Sanggah Ditutup:</strong> LPTQ Kecamatan tidak dapat lagi melakukan gugatan<br><br>
+                            <strong>f. Jika Sanggahan Diterima:</strong> Dokumen/kelengkapan lainnya dapat dikirim pada tanggal 28 - 29 Oktober 2025
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- VIII. Penentuan Finalis & Kejuaraan -->
+            <div class="section" id="penentuan-juara">
+                <div class="section-title">VIII. Penentuan Finalis dan Kejuaraan</div>
+                
+                <div class="subsection">
+                    <div class="subsection-title">Kriteria Penilaian</div>
+                    <div class="info-box">
+                        <strong>• Peserta Terbaik:</strong> Adalah urutan tertinggi perolehan nilai pada babak final<br><br>
+                        <strong>• Finalis:</strong> Adalah 3 orang/group peserta yang memperoleh nilai tertinggi pada babak penyisihan (untuk melanjutkan ke babak final)<br><br>
+                        <strong>• Juara Umum:</strong> Adalah daerah/kecamatan yang memperoleh nilai kejuaraan tertinggi dari hasil musabaqah keseluruhan
+                    </div>
+                </div>
+                
+                <div class="subsection">
+                    <div class="subsection-title">Sistem Penilaian Juara Umum</div>
+                    <table>
+                        <tr>
+                            <th>Peringkat</th>
+                            <th>Nilai Kejuaraan</th>
+                            <th>Keterangan</th>
+                        </tr>
+                        <tr>
+                            <td><strong>Juara Pertama</strong></td>
+                            <td>20</td>
+                            <td>Daerah dengan nilai tertinggi</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Juara Kedua</strong></td>
+                            <td>15</td>
+                            <td>Daerah peringkat kedua</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Juara Ketiga</strong></td>
+                            <td>10</td>
+                            <td>Daerah peringkat ketiga</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Juara Harapan I</strong></td>
+                            <td>3</td>
+                            <td>Daerah peringkat keempat</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Juara Harapan II</strong></td>
+                            <td>2</td>
+                            <td>Daerah peringkat kelima</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Juara Harapan III</strong></td>
+                            <td>1</td>
+                            <td>Daerah peringkat keenam</td>
+                        </tr>
+                    </table>
+                </div>
+                
+                <div class="note-box">
+                    <strong>Catatan Penting:</strong> Nilai kejuaraan dihitung berdasarkan hasil perolehan juara di setiap cabang/golongan. Daerah/kecamatan dengan total nilai kejuaraan tertinggi akan dinobatkan sebagai Juara Umum MTQ ke-55 Tahun 2025.
+                </div>
+            </div>
+            
+            <!-- Penutup -->
+            <div class="section">
+                <div class="highlight-box">
+                    <strong>Demikian, untuk diperhatikan dan dipatuhi sebagaimana mestinya.</strong><br><br>
+                    <strong>Wassalamu'alaikum Wr. Wb.</strong>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p><strong>LPTQ Kabupaten Indramayu</strong></p>
+            <p>Jl. Gatot Subroto Kompleks Islamic Centre<br>
+            Telp. (0234)274868<br>
+            Indramayu</p>
+            <p style="margin-top: 15px; font-size: 11px; opacity: 0.8;">
+                📄 Dokumen Juknis MTQ ke-55 Tingkat Kabupaten Indramayu Tahun 2025<br>
+                Nomor Surat: 07/LPTQ-IM/X/2025 | Tanggal: 8 Oktober 2025
+            </p>
+        </div>
+    </div>
+</body>
+</html>
