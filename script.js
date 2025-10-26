@@ -1,8 +1,10 @@
 // script.js
 // ===== CONFIGURATION =====
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzVSR2P3pcgy9BxFlOzLj1KX_fNhQDMEOr_NI0bToRwEIrAYOVV4FmbyA_MQpQ47pIR/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwi1KnYcS2bekarfmHjIW1hCsgu6LMuOBk9byfA_e0DCt4AacW6jmttPX4aNz9-y5lG/exec';
 const REGISTRATION_START = new Date('2025-10-25T09:00:00+07:00');
 const REGISTRATION_END = new Date('2025-10-30T23:59:59+07:00');
+const MAX_FILE_SIZE_MB = 5;
+const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 
 // ===== DEVELOPER MODE CONFIG (BARU) =====
 const DEV_CONFIG = {
@@ -727,6 +729,7 @@ function generatePersonalDocsForm() {
         div.innerHTML = `
             <label>${doc.id}. ${doc.name} ${doc.required ? '*' : '(Opsional)'}</label>
             <small style="font-size: 0.85em; color: #666; display: block; margin-bottom: 10px;">${doc.desc}</small>
+            <small style="font-size: 0.8em; color: #999; display: block; margin-bottom: 10px;">Max 5MB</small>
             <div style="display: flex; gap: 10px; align-items: center;">
                 <label for="personalDoc${doc.id}" style="display: inline-block; padding: 10px 20px; background: linear-gradient(135deg, var(--secondary), #228b22); color: white; border-radius: 10px; cursor: pointer; font-weight: 600; transition: all 0.3s; white-space: nowrap;">Pilih File</label>
                 <button type="button" id="clearPersonalDoc${doc.id}" style="display: none; padding: 10px 20px; background: linear-gradient(135deg, var(--danger), #c82333); color: white; border-radius: 10px; cursor: pointer; font-weight: 600; transition: all 0.3s; white-space: nowrap;">Hapus</button>
@@ -969,6 +972,7 @@ function setupTeamFormListeners(memberCount) {
 function handleFileUpload(input, labelId, fileKey, clearBtnId) {
     const label = document.getElementById(labelId);
     const clearBtn = document.getElementById(clearBtnId);
+    const statusDiv = document.getElementById('submitStatusInfo');
     
     if (!input.files || input.files.length === 0) {
         label.textContent = 'Belum ada file';
@@ -980,20 +984,41 @@ function handleFileUpload(input, labelId, fileKey, clearBtnId) {
     }
     
     const file = input.files[0];
-    if (file.size > 5 * 1024 * 1024) {
-        label.textContent = 'File terlalu besar (Max 5MB)';
+    
+    // ===== VALIDASI UKURAN FILE =====
+    Logger.log(`File selected: ${file.name}, Size: ${(file.size / 1024 / 1024).toFixed(2)} MB`);
+    
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+        Logger.log(`⚠️ File terlalu besar: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB > ${MAX_FILE_SIZE_MB} MB)`);
+        // Update label dengan error
+        label.textContent = `File terlalu besar (${(file.size / 1024 / 1024).toFixed(2)} MB > ${MAX_FILE_SIZE_MB} MB)`;
         label.style.color = '#dc3545';
+        // Update status info
+        if (statusDiv) {
+            statusDiv.innerHTML = `⚠️ File "${file.name}" terlalu besar! Max ${MAX_FILE_SIZE_MB}MB per file`;
+            statusDiv.style.display = 'block';
+            statusDiv.style.background = '#ffe7e7';
+            statusDiv.style.color = '#c82333';
+        }
+        // Clear file input
         input.value = '';
         if (clearBtn) clearBtn.style.display = 'none';
         delete uploadedFiles[fileKey];
         updateSubmitButtonState();
         return;
     }
+    // ===== FILE VALID =====
+    Logger.log(`✅ File valid: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`);
     
     label.textContent = file.name;
     label.style.color = '#28a745';
     if (clearBtn) clearBtn.style.display = 'inline-block';
     uploadedFiles[fileKey] = file;
+    
+    // Clear status error jika file ini sebelumnya error
+    if (statusDiv && statusDiv.innerHTML.includes(file.name)) {
+        statusDiv.style.display = 'none';
+    }    
     updateSubmitButtonState();
 }
 
@@ -1028,6 +1053,32 @@ function isAgeValid(ageObj, maxAgeStr) {
     return true;
 }
 
+function checkFileSizes() {
+    Logger.log('Validating all uploaded file sizes...');
+    
+    const fileSizeIssues = [];
+    
+    for (let fileKey in uploadedFiles) {
+        const file = uploadedFiles[fileKey];
+        if (file && file.size > MAX_FILE_SIZE_BYTES) {
+            const sizeMB = (file.size / 1024 / 1024).toFixed(2);
+            fileSizeIssues.push(`${file.name} (${sizeMB}MB > ${MAX_FILE_SIZE_MB}MB)`);
+            Logger.log(`⚠️ File size issue: ${fileKey} - ${file.name} (${sizeMB}MB)`);
+        }
+    }
+    
+    if (fileSizeIssues.length > 0) {
+        return {
+            isValid: false,
+            message: `File terlalu besar: ${fileSizeIssues.join(', ')}`
+        };
+    }
+    
+    Logger.log('✅ All file sizes valid');
+    return { isValid: true };
+}
+
+
 function updateSubmitButtonState() {
     const submitBtn = document.getElementById('submitBtn');
     const statusDiv = document.getElementById('submitStatusInfo');
@@ -1056,6 +1107,19 @@ function updateSubmitButtonState() {
         return;
     }
     
+    // ===== NEW: CHECK FILE SIZES =====
+    Logger.log('Checking file sizes...');
+    const fileSizeCheck = checkFileSizes();
+    if (!fileSizeCheck.isValid) {
+        Logger.log('⚠️ File size issue: ' + fileSizeCheck.message);
+        submitBtn.disabled = true;
+        statusDiv.innerHTML = '⚠️ ' + fileSizeCheck.message;
+        statusDiv.style.display = 'block';
+        statusDiv.style.background = '#ffe7e7';
+        statusDiv.style.color = '#c82333';
+        return;
+    }
+    
     let isComplete = false;
     let reasons = [];
     
@@ -1076,6 +1140,8 @@ function updateSubmitButtonState() {
         submitBtn.disabled = true;
         statusDiv.innerHTML = '⚠️ ' + reasons.join('<br>⚠️ ');
         statusDiv.style.display = 'block';
+        statusDiv.style.background = '#fff3cd';
+        statusDiv.style.color = '#856404';
     }
 }
 
@@ -1285,7 +1351,7 @@ function closeConfirmModal(result) {
 
 function showResultModal(success, title, message, details = null) {
     const modal = document.getElementById('resultModal');
-    document.getElementById('resultIcon').textContent = success ? '✓' : '✗';
+    document.getElementById('resultIcon').textContent = success ? '✅' : '❌';
     document.getElementById('resultTitle').textContent = title;
     
     let messageText = message;
@@ -1315,44 +1381,67 @@ function showResultModal(success, title, message, details = null) {
 }
 
 function closeResultModal() {
-    document.getElementById('resultModal').classList.remove('show');
-    document.getElementById('registrationForm').reset();
+    const resultModal = document.getElementById('resultModal');
+    const wasSuccess = document.getElementById('resultIcon').textContent === '✅"';
     
-    // Clear semua file input values
-    for (let i = 1; i <= 5; i++) {
-        const personalInput = document.getElementById(`personalDoc${i}`);
-        if (personalInput) {
-            personalInput.value = '';
-            personalInput.removeAttribute('required');
-        }
-    }
+    Logger.log('closeResultModal - Success: ' + wasSuccess);
     
-    for (let i = 1; i <= 3; i++) {
-        for (let d = 1; d <= 5; d++) {
-            const teamInput = document.getElementById(`teamDoc${i}_${d}`);
-            if (teamInput) {
-                teamInput.value = '';
-                teamInput.removeAttribute('required');
+    resultModal.classList.remove('show');
+    
+    // ===== HANYA CLEAR JIKA BERHASIL =====
+    if (wasSuccess) {
+        Logger.log('Registration successful - clearing form');
+        
+        // Clear form fields
+        document.getElementById('registrationForm').reset();
+        
+        // Clear file input values
+        for (let i = 1; i <= 5; i++) {
+            const personalInput = document.getElementById(`personalDoc${i}`);
+            if (personalInput) {
+                personalInput.value = '';
+                personalInput.removeAttribute('required');
             }
         }
+        
+        for (let i = 1; i <= 3; i++) {
+            for (let d = 1; d <= 5; d++) {
+                const teamInput = document.getElementById(`teamDoc${i}_${d}`);
+                if (teamInput) {
+                    teamInput.value = '';
+                    teamInput.removeAttribute('required');
+                }
+            }
+        }
+        
+        // Clear variables
+        uploadedFiles = {};
+        savedPersonalData = null;
+        savedTeamData = {};
+        
+        // Reset display
+        document.getElementById('cabang').value = '';
+        document.getElementById('kecamatan').value = '';
+        document.getElementById('umur').value = '';
+        document.getElementById('ageRequirement').innerHTML = '';
+        document.getElementById('ageRequirement').style.display = 'none';
+        document.getElementById('dataDiriSection').style.display = 'none';
+        document.getElementById('rekeningPersonalSection').style.display = 'none';
+        document.getElementById('teamSection').style.display = 'none';
+        document.getElementById('personalSection').style.display = 'none';
+        document.getElementById('teamMembers').innerHTML = '';
+        document.getElementById('personalDocs').innerHTML = '';
+        document.getElementById('submitStatusInfo').style.display = 'none';
+        
+        currentCabang = null;
+        currentTeamMemberCount = 2;
+        
+        Logger.log('Form cleared successfully');
+    } else {
+        Logger.log('Registration failed - KEEPING form data');
+        // Data tetap, user bisa langsung retry
     }
     
-    uploadedFiles = {};
-    savedPersonalData = null;
-    savedTeamData = {};
-    document.getElementById('cabang').value = '';
-    document.getElementById('kecamatan').value = '';
-    document.getElementById('umur').value = '';
-    document.getElementById('ageRequirement').innerHTML = '';
-    document.getElementById('ageRequirement').style.display = 'none';
-    document.getElementById('dataDiriSection').style.display = 'none';
-    document.getElementById('rekeningPersonalSection').style.display = 'none';
-    document.getElementById('teamSection').style.display = 'none';
-    document.getElementById('personalSection').style.display = 'none';
-    document.getElementById('teamMembers').innerHTML = '';
-    document.getElementById('personalDocs').innerHTML = '';
-    currentCabang = null;
-    currentTeamMemberCount = 2;
     updateSubmitButtonState();
 }
 

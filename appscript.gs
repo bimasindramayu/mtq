@@ -7,6 +7,11 @@ const SHEET_NAME = 'Peserta';
 const REGISTRATION_START = new Date('2025-10-22T00:00:00+07:00');
 const REGISTRATION_END = new Date('2025-10-30T23:59:59+07:00');
 
+// ===== CONCURRENCY PROTECTION =====
+const lock = LockService.getScriptLock();
+const LOCK_TIMEOUT_MS = 30000; // 30 detik timeout
+const LOCK_WAIT_TIME_MS = 500; // Tunggu 0.5 detik sebelum retry
+
 // MAX PARTICIPANTS PER BRANCH - UPDATED: 62 per cabang
 const MAX_PARTICIPANTS_PER_BRANCH = 62;
 
@@ -36,21 +41,23 @@ const CABANG_ORDER = {
 
 // ===== FUNGSI UTAMA =====
 function doPost(e) {
+  let lockAcquired = false;
+  
   try {
     Logger.log('=== START doPost ===');
     Logger.log('Request received at: ' + new Date().toISOString());
     
-    // Cek action untuk update row lengkap
+    // Check action untuk update row lengkap
     if (e.parameter.action === 'updateRow') {
       return updateCompleteRow(e);
     }
     
-    // Cek action untuk upload files
+    // Check action untuk upload files
     if (e.parameter.action === 'uploadFiles') {
       return uploadFilesOnly(e);
     }
     
-    // Cek jika ada parameter action untuk update/delete
+    // Check jika ada parameter action untuk update/delete
     if (e.parameter.action === 'updateStatus') {
       return updateRowStatus(parseInt(e.parameter.rowIndex), e.parameter.status, e.parameter.reason || '');
     }
@@ -58,6 +65,17 @@ function doPost(e) {
     if (e.parameter.action === 'deleteRow') {
       return deleteRowData(parseInt(e.parameter.rowIndex));
     }
+    
+    // ===== ACQUIRE LOCK UNTUK REGISTRATION =====
+    Logger.log('Attempting to acquire lock for registration...');
+    lockAcquired = lock.tryLock(LOCK_TIMEOUT_MS);
+    
+    if (!lockAcquired) {
+      Logger.log('ERROR: Could not acquire lock after ' + LOCK_TIMEOUT_MS + 'ms');
+      return createResponse(false, 'Server sedang sibuk. Mohon coba lagi dalam beberapa detik.');
+    }
+    
+    Logger.log('âœ… Lock acquired successfully');
     
     // Validate registration time
     const now = new Date();
@@ -89,8 +107,8 @@ function doPost(e) {
       addHeaders(sheet);
     }
     
-    // Check for duplicates
-    Logger.log('Checking for duplicate NIK across ALL cabang');
+    // ===== CRITICAL: CHECK DUPLICATES DALAM LOCK =====
+    Logger.log('Checking for duplicate NIK across ALL cabang (dalam LOCK)');
     const nikList = formData.nikList ? JSON.parse(formData.nikList) : [];
     
     const duplicateCheck = checkDuplicates(sheet, nikList);
@@ -99,8 +117,8 @@ function doPost(e) {
       return createResponse(false, duplicateCheck.message);
     }
     
-    // Generate nomor peserta - UPDATED LOGIC
-    Logger.log('Generating nomor peserta...');
+    // ===== CRITICAL: GENERATE NOMOR PESERTA DALAM LOCK =====
+    Logger.log('Generating nomor peserta (dalam LOCK untuk mencegah collision)...');
     const isTeam = formData.isTeam === 'true';
     const nomorPeserta = generateNomorPeserta(sheet, formData.cabangCode, formData.genderCode || formData.memberGenderCode1, isTeam);
     if (!nomorPeserta.success) {
@@ -120,7 +138,12 @@ function doPost(e) {
     sheet.appendRow(rowData);
     Logger.log('Data successfully appended to row: ' + sheet.getLastRow());
     
+    // ===== RELEASE LOCK SETELAH DATA TERSIMPAN =====
+    Logger.log('âœ… Data saved successfully. Releasing lock...');
+    lock.releaseLock();
+    lockAcquired = false;
     Logger.log('=== END doPost SUCCESS ===');
+    
     return createResponse(true, 'Registrasi berhasil!', nomorPeserta.number, {
       nik: formData.nik || '',
       nama: formData.nama || '',
@@ -134,6 +157,18 @@ function doPost(e) {
     Logger.log('Error message: ' + error.message);
     Logger.log('Error stack: ' + error.stack);
     return createResponse(false, 'Error: ' + error.toString());
+  } 
+  finally {
+    // ===== ENSURE LOCK IS RELEASED =====
+    if (lockAcquired) {
+      try {
+        Logger.log('Finally block: Releasing lock...');
+        lock.releaseLock();
+        Logger.log('Lock released successfully');
+      } catch (e) {
+        Logger.log('Error releasing lock: ' + e.message);
+      }
+    }
   }
 }
 
@@ -460,6 +495,8 @@ function deleteRowData(rowIndex) {
 // ===== UPDATED: GENERATE NOMOR PESERTA - GENAP PUTRA, GANJIL PUTRI =====
 function generateNomorPeserta(sheet, cabangCode, genderCode, isTeam) {
   try {
+    Logger.log('[LOCK] Generating nomor peserta for cabang: ' + cabangCode);
+    
     const cabangInfo = CABANG_ORDER[cabangCode];
     if (!cabangInfo) {
       return {
@@ -472,6 +509,7 @@ function generateNomorPeserta(sheet, cabangCode, genderCode, isTeam) {
     const existingNumbers = [];
     
     if (lastRow > 1) {
+      Logger.log('[LOCK] Reading existing numbers from rows 2 to ' + lastRow);
       const dataRange = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn());
       const data = dataRange.getValues();
       const nomorPesertaCol = 1;
@@ -482,7 +520,6 @@ function generateNomorPeserta(sheet, cabangCode, genderCode, isTeam) {
           const nomorStr = nomorPeserta.toString();
           let num;
           
-          // Check if this is a prefixed number (F, S, N, H, D, K, M)
           if (cabangInfo.prefix) {
             const prefixMatch = nomorStr.match(new RegExp('^' + cabangInfo.prefix + '\\.\\s*(\\d+)$'));
             if (prefixMatch) {
@@ -492,7 +529,6 @@ function generateNomorPeserta(sheet, cabangCode, genderCode, isTeam) {
               }
             }
           } else {
-            // Regular number range (001-806)
             num = parseInt(nomorStr);
             if (!isNaN(num) && num >= cabangInfo.start && num <= cabangInfo.end) {
               existingNumbers.push(num);
@@ -502,36 +538,37 @@ function generateNomorPeserta(sheet, cabangCode, genderCode, isTeam) {
       }
     }
     
-    Logger.log('Existing numbers for ' + cabangCode + ': ' + existingNumbers.join(', '));
+    Logger.log('[LOCK] Found ' + existingNumbers.length + ' existing numbers: ' + existingNumbers.join(', '));
     
     // Determine if odd or even
-    // GANJIL untuk Putri (female), GENAP untuk Putra (male)
     let isOdd;
     if (genderCode === 'female' || genderCode === 'perempuan') {
-      isOdd = true; // Putri = GANJIL
+      isOdd = true;
     } else {
-      isOdd = false; // Putra = GENAP
+      isOdd = false;
     }
     
-    Logger.log('Gender check - genderCode: ' + genderCode + ', isTeam: ' + isTeam + ', isOdd: ' + isOdd);
+    Logger.log('[LOCK] Gender: ' + genderCode + ', isOdd: ' + isOdd);
     
-    // Find next available number - SEMUA CABANG MENGGUNAKAN LOGIKA GANJIL/GENAP
+    // Find next available number
     let nextNumber;
     
-    // Start number berdasarkan ganjil/genap
     if (isOdd) {
-      // PUTRI: Mulai dari nomor GANJIL pertama di range
       nextNumber = cabangInfo.start % 2 === 0 ? cabangInfo.start + 1 : cabangInfo.start;
     } else {
-      // PUTRA: Mulai dari nomor GENAP pertama di range
       nextNumber = cabangInfo.start % 2 === 0 ? cabangInfo.start : cabangInfo.start + 1;
     }
 
-    // Cari nomor tersedia dengan increment 2 (untuk maintain ganjil/genap)
+    // Cari nomor tersedia dengan increment 2
+    let attempts = 0;
+    const maxAttempts = (cabangInfo.end - cabangInfo.start) / 2 + 1;
+    
     while (existingNumbers.indexOf(nextNumber) !== -1) {
       nextNumber += 2;
+      attempts++;
       
-      if (nextNumber > cabangInfo.end) {
+      if (attempts > maxAttempts || nextNumber > cabangInfo.end) {
+        Logger.log('[LOCK] ERROR: Kuota penuh setelah ' + attempts + ' attempts');
         return {
           success: false,
           message: 'Maaf, kuota peserta untuk cabang ' + cabangInfo.name + ' (' + (isOdd ? 'Putri' : 'Putra') + ') sudah penuh.'
@@ -547,7 +584,7 @@ function generateNomorPeserta(sheet, cabangCode, genderCode, isTeam) {
       nomorPeserta = String(nextNumber).padStart(3, '0');
     }
     
-    Logger.log('Generated nomor peserta: ' + nomorPeserta + ' (Gender: ' + (isOdd ? 'Putri/Ganjil' : 'Putra/Genap') + ')');
+    Logger.log('[LOCK] âœ… Generated nomor peserta: ' + nomorPeserta + ' (Gender: ' + (isOdd ? 'Putri/Ganjil' : 'Putra/Genap') + ')');
     
     return {
       success: true,
@@ -555,7 +592,7 @@ function generateNomorPeserta(sheet, cabangCode, genderCode, isTeam) {
     };
     
   } catch (error) {
-    Logger.log('Error in generateNomorPeserta: ' + error.message);
+    Logger.log('[LOCK] Error in generateNomorPeserta: ' + error.message);
     return {
       success: false,
       message: 'Terjadi kesalahan saat membuat nomor peserta. Silakan coba lagi.'
@@ -595,8 +632,6 @@ function checkDuplicates(sheet, nikList) {
         row[member3NikCol]
       ].filter(nik => nik && nik !== '-' && nik.toString().trim() !== '');
       
-      Logger.log('Row ' + rowNum + ' (' + rowCabang + '): Found ' + existingNiks.length + ' NIKs');
-      
       for (let newNik of nikList) {
         if (newNik && newNik.trim() !== '') {
           const trimmedNewNik = newNik.trim();
@@ -622,7 +657,6 @@ function checkDuplicates(sheet, nikList) {
     
   } catch (error) {
     Logger.log('Error in checkDuplicates: ' + error.message);
-    Logger.log('Error stack: ' + error.stack);
     return { 
       isValid: false, 
       message: 'Terjadi kesalahan saat validasi data. Silakan coba lagi atau hubungi admin.' 
@@ -652,83 +686,28 @@ function createResponse(success, message, nomorPeserta, details) {
 // ===== UPDATED: ADD HEADERS WITH "ALASAN DITOLAK" =====
 function addHeaders(sheet) {
   const headers = [
-    'No',
-    'Nomor Peserta',
-    'Timestamp',
-    'Kecamatan',
-    'Cabang Lomba',
-    'Batas Usia Max',
-    'Nama Regu/Tim',
-    'NIK',
-    'Nama Lengkap',
-    'Jenis Kelamin',
-    'Tempat Lahir',
-    'Tanggal Lahir',
-    'Umur',
-    'Alamat',
-    'No Telepon',
-    'Email',
-    'Nama Rekening',
-    'No Rekening',
-    'Nama Bank',
-    'Anggota Tim #1 - NIK',
-    'Anggota Tim #1 - Nama',
-    'Anggota Tim #1 - Jenis Kelamin',
-    'Anggota Tim #1 - Tempat Lahir',
-    'Anggota Tim #1 - Tgl Lahir',
-    'Anggota Tim #1 - Umur',
-    'Anggota Tim #1 - Alamat',
-    'Anggota Tim #1 - No Telepon',
-    'Anggota Tim #1 - Email',
-    'Anggota Tim #1 - Nama Rekening',
-    'Anggota Tim #1 - No Rekening',
-    'Anggota Tim #1 - Nama Bank',
-    'Anggota Tim #2 - NIK',
-    'Anggota Tim #2 - Nama',
-    'Anggota Tim #2 - Jenis Kelamin',
-    'Anggota Tim #2 - Tempat Lahir',
-    'Anggota Tim #2 - Tgl Lahir',
-    'Anggota Tim #2 - Umur',
-    'Anggota Tim #2 - Alamat',
-    'Anggota Tim #2 - No Telepon',
-    'Anggota Tim #2 - Email',
-    'Anggota Tim #2 - Nama Rekening',
-    'Anggota Tim #2 - No Rekening',
-    'Anggota Tim #2 - Nama Bank',
-    'Anggota Tim #3 - NIK',
-    'Anggota Tim #3 - Nama',
-    'Anggota Tim #3 - Jenis Kelamin',
-    'Anggota Tim #3 - Tempat Lahir',
-    'Anggota Tim #3 - Tgl Lahir',
-    'Anggota Tim #3 - Umur',
-    'Anggota Tim #3 - Alamat',
-    'Anggota Tim #3 - No Telepon',
-    'Anggota Tim #3 - Email',
-    'Anggota Tim #3 - Nama Rekening',
-    'Anggota Tim #3 - No Rekening',
-    'Anggota Tim #3 - Nama Bank',
-    'Link - Doc Surat Mandat Personal',
-    'Link - Doc KTP Personal',
-    'Link - Doc Sertifikat Personal',
-    'Link - Doc Rekening Personal',
-    'Link - Doc Pas Photo Personal',
-    'Link - Doc Surat Mandat Team 1',
-    'Link - Doc KTP Team 1',
-    'Link - Doc Sertifikat Team 1',
-    'Link - Doc Rekening Team 1',
-    'Link - Doc Pas Photo Team 1',
-    'Link - Doc Surat Mandat Team 2',
-    'Link - Doc KTP Team 2',
-    'Link - Doc Sertifikat Team 2',
-    'Link - Doc Rekening Team 2',
-    'Link - Doc Pas Photo Team 2',
-    'Link - Doc Surat Mandat Team 3',
-    'Link - Doc KTP Team 3',
-    'Link - Doc Sertifikat Team 3',
-    'Link - Doc Rekening Team 3',
-    'Link - Doc Pas Photo Team 3',
-    'Status',
-    'Alasan Ditolak'
+    'No', 'Nomor Peserta', 'Timestamp', 'Kecamatan', 'Cabang Lomba', 'Batas Usia Max',
+    'Nama Regu/Tim', 'NIK', 'Nama Lengkap', 'Jenis Kelamin', 'Tempat Lahir', 'Tanggal Lahir',
+    'Umur', 'Alamat', 'No Telepon', 'Email', 'Nama Rekening', 'No Rekening', 'Nama Bank',
+    'Anggota Tim #1 - NIK', 'Anggota Tim #1 - Nama', 'Anggota Tim #1 - Jenis Kelamin',
+    'Anggota Tim #1 - Tempat Lahir', 'Anggota Tim #1 - Tgl Lahir', 'Anggota Tim #1 - Umur',
+    'Anggota Tim #1 - Alamat', 'Anggota Tim #1 - No Telepon', 'Anggota Tim #1 - Email',
+    'Anggota Tim #1 - Nama Rekening', 'Anggota Tim #1 - No Rekening', 'Anggota Tim #1 - Nama Bank',
+    'Anggota Tim #2 - NIK', 'Anggota Tim #2 - Nama', 'Anggota Tim #2 - Jenis Kelamin',
+    'Anggota Tim #2 - Tempat Lahir', 'Anggota Tim #2 - Tgl Lahir', 'Anggota Tim #2 - Umur',
+    'Anggota Tim #2 - Alamat', 'Anggota Tim #2 - No Telepon', 'Anggota Tim #2 - Email',
+    'Anggota Tim #2 - Nama Rekening', 'Anggota Tim #2 - No Rekening', 'Anggota Tim #2 - Nama Bank',
+    'Anggota Tim #3 - NIK', 'Anggota Tim #3 - Nama', 'Anggota Tim #3 - Jenis Kelamin',
+    'Anggota Tim #3 - Tempat Lahir', 'Anggota Tim #3 - Tgl Lahir', 'Anggota Tim #3 - Umur',
+    'Anggota Tim #3 - Alamat', 'Anggota Tim #3 - No Telepon', 'Anggota Tim #3 - Email',
+    'Anggota Tim #3 - Nama Rekening', 'Anggota Tim #3 - No Rekening', 'Anggota Tim #3 - Nama Bank',
+    'Link - Doc Surat Mandat Personal', 'Link - Doc KTP Personal', 'Link - Doc Sertifikat Personal',
+    'Link - Doc Rekening Personal', 'Link - Doc Pas Photo Personal', 'Link - Doc Surat Mandat Team 1',
+    'Link - Doc KTP Team 1', 'Link - Doc Sertifikat Team 1', 'Link - Doc Rekening Team 1',
+    'Link - Doc Pas Photo Team 1', 'Link - Doc Surat Mandat Team 2', 'Link - Doc KTP Team 2',
+    'Link - Doc Sertifikat Team 2', 'Link - Doc Rekening Team 2', 'Link - Doc Pas Photo Team 2',
+    'Link - Doc Surat Mandat Team 3', 'Link - Doc KTP Team 3', 'Link - Doc Sertifikat Team 3',
+    'Link - Doc Rekening Team 3', 'Link - Doc Pas Photo Team 3', 'Status', 'Alasan Ditolak'
   ];
   sheet.appendRow(headers);
 }
@@ -790,91 +769,34 @@ function prepareRowData(formData, fileLinks, sheet, nomorPeserta) {
   const timestamp = new Date().toLocaleString('id-ID');
   
   const rowData = [
-    no,
-    nomorPeserta,
-    timestamp,
-    formData.kecamatan || '',
-    formData.cabang || '',
-    formData.maxAge || '',
-    formData.namaRegu || '-',
-    formData.nik || '',
-    formData.nama || '',
-    formData.jenisKelamin || '',
-    formData.tempatLahir || '',
-    formData.tglLahir || '',
-    formData.umur || '',
-    formData.alamat || '',
-    formData.noTelepon || '',
-    formData.email || '',
-    formData.namaRek || '',
-    formData.noRek || '',
-    formData.namaBank || '',
+    no, nomorPeserta, timestamp, formData.kecamatan || '', formData.cabang || '',
+    formData.maxAge || '', formData.namaRegu || '-', formData.nik || '', formData.nama || '',
+    formData.jenisKelamin || '', formData.tempatLahir || '', formData.tglLahir || '',
+    formData.umur || '', formData.alamat || '', formData.noTelepon || '', formData.email || '',
+    formData.namaRek || '', formData.noRek || '', formData.namaBank || '',
     
-    formData.memberNik1 || '-',
-    formData.memberName1 || '-',
-    formData.memberJenisKelamin1 || '-',
-    formData.memberTempatLahir1 || '-',
-    formData.memberBirthDate1 || '-',
-    formData.memberUmur1 || '-',
-    formData.memberAlamat1 || '-',
-    formData.memberNoTelepon1 || '-',
-    formData.memberEmail1 || '-',
-    formData.memberNamaRek1 || '-',
-    formData.memberNoRek1 || '-',
-    formData.memberNamaBank1 || '-',
+    formData.memberNik1 || '-', formData.memberName1 || '-', formData.memberJenisKelamin1 || '-',
+    formData.memberTempatLahir1 || '-', formData.memberBirthDate1 || '-', formData.memberUmur1 || '-',
+    formData.memberAlamat1 || '-', formData.memberNoTelepon1 || '-', formData.memberEmail1 || '-',
+    formData.memberNamaRek1 || '-', formData.memberNoRek1 || '-', formData.memberNamaBank1 || '-',
     
-    formData.memberNik2 || '-',
-    formData.memberName2 || '-',
-    formData.memberJenisKelamin2 || '-',
-    formData.memberTempatLahir2 || '-',
-    formData.memberBirthDate2 || '-',
-    formData.memberUmur2 || '-',
-    formData.memberAlamat2 || '-',
-    formData.memberNoTelepon2 || '-',
-    formData.memberEmail2 || '-',
-    formData.memberNamaRek2 || '-',
-    formData.memberNoRek2 || '-',
-    formData.memberNamaBank2 || '-',
+    formData.memberNik2 || '-', formData.memberName2 || '-', formData.memberJenisKelamin2 || '-',
+    formData.memberTempatLahir2 || '-', formData.memberBirthDate2 || '-', formData.memberUmur2 || '-',
+    formData.memberAlamat2 || '-', formData.memberNoTelepon2 || '-', formData.memberEmail2 || '-',
+    formData.memberNamaRek2 || '-', formData.memberNoRek2 || '-', formData.memberNamaBank2 || '-',
     
-    formData.memberNik3 || '-',
-    formData.memberName3 || '-',
-    formData.memberJenisKelamin3 || '-',
-    formData.memberTempatLahir3 || '-',
-    formData.memberBirthDate3 || '-',
-    formData.memberUmur3 || '-',
-    formData.memberAlamat3 || '-',
-    formData.memberNoTelepon3 || '-',
-    formData.memberEmail3 || '-',
-    formData.memberNamaRek3 || '-',
-    formData.memberNoRek3 || '-',
-    formData.memberNamaBank3 || '-',
+    formData.memberNik3 || '-', formData.memberName3 || '-', formData.memberJenisKelamin3 || '-',
+    formData.memberTempatLahir3 || '-', formData.memberBirthDate3 || '-', formData.memberUmur3 || '-',
+    formData.memberAlamat3 || '-', formData.memberNoTelepon3 || '-', formData.memberEmail3 || '-',
+    formData.memberNamaRek3 || '-', formData.memberNoRek3 || '-', formData.memberNamaBank3 || '-',
     
-    fileLinks['doc1'] || '',
-    fileLinks['doc2'] || '',
-    fileLinks['doc3'] || '',
-    fileLinks['doc4'] || '',
-    fileLinks['doc5'] || '',
-    
-    fileLinks['teamDoc1_1'] || '',
-    fileLinks['teamDoc1_2'] || '',
-    fileLinks['teamDoc1_3'] || '',
-    fileLinks['teamDoc1_4'] || '',
-    fileLinks['teamDoc1_5'] || '',
-    
-    fileLinks['teamDoc2_1'] || '',
-    fileLinks['teamDoc2_2'] || '',
-    fileLinks['teamDoc2_3'] || '',
-    fileLinks['teamDoc2_4'] || '',
-    fileLinks['teamDoc2_5'] || '',
-    
-    fileLinks['teamDoc3_1'] || '',
-    fileLinks['teamDoc3_2'] || '',
-    fileLinks['teamDoc3_3'] || '',
-    fileLinks['teamDoc3_4'] || '',
-    fileLinks['teamDoc3_5'] || '',
-    
-    'Menunggu Verifikasi',
-    '-'
+    fileLinks['doc1'] || '', fileLinks['doc2'] || '', fileLinks['doc3'] || '',
+    fileLinks['doc4'] || '', fileLinks['doc5'] || '', fileLinks['teamDoc1_1'] || '',
+    fileLinks['teamDoc1_2'] || '', fileLinks['teamDoc1_3'] || '', fileLinks['teamDoc1_4'] || '',
+    fileLinks['teamDoc1_5'] || '', fileLinks['teamDoc2_1'] || '', fileLinks['teamDoc2_2'] || '',
+    fileLinks['teamDoc2_3'] || '', fileLinks['teamDoc2_4'] || '', fileLinks['teamDoc2_5'] || '',
+    fileLinks['teamDoc3_1'] || '', fileLinks['teamDoc3_2'] || '', fileLinks['teamDoc3_3'] || '',
+    fileLinks['teamDoc3_4'] || '', fileLinks['teamDoc3_5'] || '', 'Menunggu Verifikasi', '-'
   ];
   
   return rowData;
