@@ -95,6 +95,11 @@ function doPost(e) {
     if (e.parameter.action === 'deleteRow') {
       return deleteRowData(parseInt(e.parameter.rowIndex));
     }
+
+    // ===== HANDLE UPDATE ROW ACTION =====
+    if (e.parameter.action === 'updateRow') {
+      return updateCompleteRow(e);
+    }
     
     // ===== MAIN REGISTRATION FLOW =====
     // STEP 0: VALIDATE REGISTRATION TIME (TANPA LOCK)
@@ -839,7 +844,10 @@ function prepareRowData(formData, fileLinks, sheet, nomorPeserta) {
 
 function updateRowStatus(rowIndex, newStatus, reason) {
   try {
-    Logger.log('Updating row ' + rowIndex + ' status to ' + newStatus + ' with reason: ' + reason);
+    Logger.log('=== UPDATE ROW STATUS ===');
+    Logger.log('Row Index: ' + rowIndex);
+    Logger.log('New Status: ' + newStatus);
+    Logger.log('Reason: ' + reason);
     
     const ss = SpreadsheetApp.openById(SHEET_ID);
     const sheet = ss.getSheetByName(SHEET_NAME);
@@ -856,6 +864,10 @@ function updateRowStatus(rowIndex, newStatus, reason) {
     const alasanIdx = headers.indexOf('Alasan Ditolak');
     const actualRow = rowIndex + 2;
     
+    Logger.log('Status Column: ' + statusIdx);
+    Logger.log('Reason Column: ' + alasanIdx);
+    Logger.log('Actual Row: ' + actualRow);
+    
     if (actualRow > sheet.getLastRow()) {
       return ContentService.createTextOutput(JSON.stringify({
         success: false,
@@ -863,15 +875,20 @@ function updateRowStatus(rowIndex, newStatus, reason) {
       })).setMimeType(ContentService.MimeType.JSON);
     }
     
+    // Update status
     sheet.getRange(actualRow, statusIdx + 1).setValue(newStatus);
+    Logger.log('✓ Status updated to: ' + newStatus);
     
+    // Update reason jika ditolak
     if (newStatus === 'Ditolak' && alasanIdx !== -1) {
       sheet.getRange(actualRow, alasanIdx + 1).setValue(reason || '-');
+      Logger.log('✓ Reason updated to: ' + (reason || '-'));
     } else if (alasanIdx !== -1) {
       sheet.getRange(actualRow, alasanIdx + 1).setValue('-');
+      Logger.log('✓ Reason cleared');
     }
     
-    Logger.log('Status updated successfully at row ' + actualRow);
+    Logger.log('=== UPDATE SUCCESS ===');
     
     return ContentService.createTextOutput(JSON.stringify({
       success: true,
@@ -889,7 +906,138 @@ function updateRowStatus(rowIndex, newStatus, reason) {
 
 function deleteRowData(rowIndex) {
   try {
-    Logger.log('Deleting row ' + rowIndex);
+    Logger.log('=== DELETE ROW DATA ===');
+    Logger.log('Row Index: ' + rowIndex);
+    
+    const ss = SpreadsheetApp.openById(SHEET_ID);
+    const sheet = ss.getSheetByName(SHEET_NAME);
+    
+    if (!sheet) {
+      return ContentService.createTextOutput(JSON.stringify({
+        success: false,
+        message: 'Sheet tidak ditemukan'
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    const actualRow = rowIndex + 2;
+    
+    Logger.log('Actual Row: ' + actualRow);
+    
+    if (actualRow > sheet.getLastRow()) {
+      return ContentService.createTextOutput(JSON.stringify({
+        success: false,
+        message: 'Row tidak ditemukan'
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    sheet.deleteRow(actualRow);
+    Logger.log('✓ Row deleted');
+    
+    Logger.log('=== DELETE SUCCESS ===');
+    
+    return ContentService.createTextOutput(JSON.stringify({
+      success: true,
+      message: 'Data berhasil dihapus'
+    })).setMimeType(ContentService.MimeType.JSON);
+    
+  } catch (error) {
+    Logger.log('Error in deleteRowData: ' + error.message);
+    return ContentService.createTextOutput(JSON.stringify({
+      success: false,
+      message: 'Error: ' + error.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+function doGet(e) {
+  const action = e.parameter.action;
+  
+  if (action === 'getData') {
+    return getAllDataAsJSON();
+  } else if (action === 'getRejectedData') {
+    return getRejectedDataAsJSON();
+  } else if (action === 'updateStatus') {
+    const rowIndex = parseInt(e.parameter.rowIndex);
+    const newStatus = e.parameter.status;
+    const reason = e.parameter.reason || '';
+    return updateRowStatus(rowIndex, newStatus, reason);
+  } else if (action === 'deleteRow') {
+    const rowIndex = parseInt(e.parameter.rowIndex);
+    return deleteRowData(rowIndex);
+  }
+  
+  return ContentService.createTextOutput(JSON.stringify({
+    success: false,
+    message: 'Invalid action'
+  })).setMimeType(ContentService.MimeType.JSON);
+}
+
+function getAllDataAsJSON() {
+  try {
+    Logger.log('=== GET ALL DATA ===');
+    
+    const ss = SpreadsheetApp.openById(SHEET_ID);
+    const sheet = ss.getSheetByName(SHEET_NAME);
+    
+    if (!sheet) {
+      return ContentService.createTextOutput(JSON.stringify({
+        success: false,
+        message: 'Sheet tidak ditemukan'
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    const lastRow = sheet.getLastRow();
+    const lastCol = sheet.getLastColumn();
+    
+    Logger.log('Last Row: ' + lastRow + ', Last Col: ' + lastCol);
+    
+    if (lastRow <= 1) {
+      return ContentService.createTextOutput(JSON.stringify({
+        success: true,
+        headers: [],
+        data: []
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    // Get headers
+    const headerRange = sheet.getRange(1, 1, 1, lastCol);
+    const headers = headerRange.getValues()[0];
+    
+    Logger.log('Headers: ' + headers.length);
+    
+    // Get all data
+    const dataRange = sheet.getRange(2, 1, lastRow - 1, lastCol);
+    const data = dataRange.getValues();
+    
+    Logger.log('Total rows: ' + data.length);
+    
+    const response = {
+      success: true,
+      headers: headers,
+      data: data,
+      totalRows: data.length
+    };
+    
+    return ContentService.createTextOutput(JSON.stringify(response))
+      .setMimeType(ContentService.MimeType.JSON);
+      
+  } catch (error) {
+    Logger.log('Error: ' + error.message);
+    return ContentService.createTextOutput(JSON.stringify({
+      success: false,
+      message: 'Error: ' + error.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+function updateCompleteRow(e) {
+  try {
+    Logger.log('=== UPDATE COMPLETE ROW ===');
+    const rowIndex = parseInt(e.parameter.rowIndex);
+    const updatedData = JSON.parse(e.parameter.updatedData);
+    
+    Logger.log('Row Index: ' + rowIndex);
+    Logger.log('Updated Fields: ' + Object.keys(updatedData).length);
     
     const ss = SpreadsheetApp.openById(SHEET_ID);
     const sheet = ss.getSheetByName(SHEET_NAME);
@@ -910,17 +1058,97 @@ function deleteRowData(rowIndex) {
       })).setMimeType(ContentService.MimeType.JSON);
     }
     
-    sheet.deleteRow(actualRow);
+    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
     
-    Logger.log('Row deleted successfully');
+    for (let field in updatedData) {
+      const colIndex = headers.indexOf(field);
+      if (colIndex !== -1) {
+        sheet.getRange(actualRow, colIndex + 1).setValue(updatedData[field]);
+        Logger.log(`✓ Updated ${field} at row ${actualRow}, col ${colIndex + 1}`);
+      } else {
+        Logger.log(`WARNING: Column not found for field: ${field}`);
+      }
+    }
+    
+    Logger.log('=== UPDATE COMPLETE SUCCESS ===');
     
     return ContentService.createTextOutput(JSON.stringify({
       success: true,
-      message: 'Data berhasil dihapus'
+      message: 'Data berhasil diperbarui'
     })).setMimeType(ContentService.MimeType.JSON);
     
   } catch (error) {
-    Logger.log('Error in deleteRowData: ' + error.message);
+    Logger.log('Error in updateCompleteRow: ' + error.message);
+    return ContentService.createTextOutput(JSON.stringify({
+      success: false,
+      message: 'Error: ' + error.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+function getRejectedDataAsJSON() {
+  try {
+    Logger.log('Getting rejected data from Peserta sheet');
+    
+    const ss = SpreadsheetApp.openById(SHEET_ID);
+    const sheet = ss.getSheetByName(SHEET_NAME);
+    
+    if (!sheet) {
+      return ContentService.createTextOutput(JSON.stringify({
+        success: false,
+        message: 'Sheet tidak ditemukan'
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    const lastRow = sheet.getLastRow();
+    const lastCol = sheet.getLastColumn();
+    
+    if (lastRow <= 1) {
+      return ContentService.createTextOutput(JSON.stringify({
+        success: true,
+        data: []
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    const headerRange = sheet.getRange(1, 1, 1, lastCol);
+    const headers = headerRange.getValues()[0];
+    
+    const dataRange = sheet.getRange(2, 1, lastRow - 1, lastCol);
+    const allData = dataRange.getValues();
+    
+    const nomorPesertaIdx = headers.indexOf('Nomor Peserta');
+    const cabangIdx = headers.indexOf('Cabang Lomba');
+    const kecamatanIdx = headers.indexOf('Kecamatan');
+    const namaReguIdx = headers.indexOf('Nama Regu/Tim');
+    const namaIdx = headers.indexOf('Nama Lengkap');
+    const statusIdx = headers.indexOf('Status');
+    const alasanIdx = headers.indexOf('Alasan Ditolak');
+    
+    const rejectedData = [];
+    for (let i = 0; i < allData.length; i++) {
+      const row = allData[i];
+      if (row[statusIdx] === 'Ditolak') {
+        rejectedData.push({
+          nomorPeserta: row[nomorPesertaIdx] || '-',
+          namaTimPeserta: row[namaReguIdx] && row[namaReguIdx] !== '-' ? row[namaReguIdx] : row[namaIdx],
+          cabang: row[cabangIdx] || '-',
+          kecamatan: row[kecamatanIdx] || '-',
+          status: row[statusIdx] || '-',
+          alasan: row[alasanIdx] || '-'
+        });
+      }
+    }
+    
+    Logger.log('Rejected data count: ' + rejectedData.length);
+    
+    return ContentService.createTextOutput(JSON.stringify({
+      success: true,
+      data: rejectedData,
+      totalRows: rejectedData.length
+    })).setMimeType(ContentService.MimeType.JSON);
+      
+  } catch (error) {
+    Logger.log('Error: ' + error.message);
     return ContentService.createTextOutput(JSON.stringify({
       success: false,
       message: 'Error: ' + error.toString()
