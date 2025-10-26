@@ -729,27 +729,61 @@ function generatePersonalDocsForm() {
         div.innerHTML = `
             <label>${doc.id}. ${doc.name} ${doc.required ? '*' : '(Opsional)'}</label>
             <small style="font-size: 0.85em; color: #666; display: block; margin-bottom: 10px;">${doc.desc}</small>
-            <small style="font-size: 0.8em; color: #999; display: block; margin-bottom: 10px;">Max 5MB</small>
-            <div style="display: flex; gap: 10px; align-items: center;">
-                <label for="personalDoc${doc.id}" style="display: inline-block; padding: 10px 20px; background: linear-gradient(135deg, var(--secondary), #228b22); color: white; border-radius: 10px; cursor: pointer; font-weight: 600; transition: all 0.3s; white-space: nowrap;">Pilih File</label>
-                <button type="button" id="clearPersonalDoc${doc.id}" style="display: none; padding: 10px 20px; background: linear-gradient(135deg, var(--danger), #c82333); color: white; border-radius: 10px; cursor: pointer; font-weight: 600; transition: all 0.3s; white-space: nowrap;">Hapus</button>
+            <small style="font-size: 0.8em; color: #999; display: block; margin-bottom: 15px;">Max 5MB</small>
+            <div style="display: flex; gap: 12px; align-items: center; justify-content: flex-start; flex-wrap: nowrap;">
+                <label for="personalDoc${doc.id}" style="display: inline-flex; align-items: center; justify-content: center; padding: 0 25px; background: linear-gradient(135deg, #34d399, #10b981); color: white; border-radius: 25px; cursor: pointer; font-weight: 700; transition: all 0.3s ease; white-space: nowrap; height: 50px; font-size: 1em; border: none; flex-shrink: 0; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);">
+                    📁 Pilih File
+                </label>
+                <button type="button" id="clearPersonalDoc${doc.id}" style="display: none; padding: 0 25px; background: linear-gradient(135deg, #ef4444, #dc2626); color: white; border-radius: 25px; cursor: pointer; font-weight: 700; transition: all 0.3s ease; white-space: nowrap; height: 50px; font-size: 1em; border: none; flex-shrink: 0; box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);">
+                    🗑️ Hapus
+                </button>
             </div>
-            <input type="file" id="personalDoc${doc.id}" name="personalDoc${doc.id}" accept=".pdf,.jpg,.jpeg,.png" style="display: none;" ${doc.required ? 'required' : ''}>
-            <span class="file-name" id="personalDoc${doc.id}Name" style="color: #666; font-weight: 600;">Belum ada file</span>
+            <input type="file" id="personalDoc${doc.id}" name="personalDoc${doc.id}" accept=".pdf,.jpg,.jpeg,.png" style="display: none;">
+            <span class="file-name" id="personalDoc${doc.id}Name" style="color: #666; font-weight: 600; display: block; margin-top: 12px;">Belum ada file</span>
         `;
         container.appendChild(div);
     });
     
+    // ===== SETUP FILE INPUT LISTENERS DENGAN CANCEL HANDLING =====
     for (let i = 1; i <= 5; i++) {
         const input = document.getElementById(`personalDoc${i}`);
         const clearBtn = document.getElementById(`clearPersonalDoc${i}`);
+        const label = document.getElementById(`personalDoc${i}Name`);
+        
         if (input) {
             input.addEventListener('change', function() {
-                handleFileUpload(this, `personalDoc${i}Name`, `doc${i}`, `clearPersonalDoc${i}`);
+                Logger.log(`personalDoc${i} change event - files: ${this.files.length}`);
+                
+                if (this.files && this.files.length > 0) {
+                    Logger.log(`File selected: ${this.files[0].name}`);
+                    handleFileUpload(this, `personalDoc${i}Name`, `doc${i}`, `clearPersonalDoc${i}`);
+                } 
+                else {
+                    Logger.log('Cancel clicked - restoring previous file (if any)');
+                    
+                    if (uploadedFiles[`doc${i}`]) {
+                        const existingFile = uploadedFiles[`doc${i}`];
+                        label.textContent = existingFile.name;
+                        label.style.color = '#28a745';
+                        if (clearBtn) clearBtn.style.display = 'inline-flex';
+                        Logger.log(`Restored previous file: ${existingFile.name}`);
+                    } else {
+                        label.textContent = 'Belum ada file';
+                        label.style.color = '#666';
+                        if (clearBtn) clearBtn.style.display = 'none';
+                        Logger.log('No previous file, showing "Belum ada file"');
+                    }
+                    
+                    updateSubmitButtonState();
+                }
             });
         }
+        
         if (clearBtn) {
-            clearBtn.addEventListener('click', function() {
+            clearBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                Logger.log(`Clear button clicked for personalDoc${i}`);
+                
                 document.getElementById(`personalDoc${i}`).value = '';
                 document.getElementById(`personalDoc${i}Name`).textContent = 'Belum ada file';
                 document.getElementById(`personalDoc${i}Name`).style.color = '#666';
@@ -859,15 +893,20 @@ function generateTeamMemberHTML(i) {
             <div style="background: #e6f3ff; padding: 20px; margin-top: 20px; border-radius: 12px; border-left: 4px solid var(--primary);">
                 <h5 style="color: var(--primary); margin-bottom: 15px; font-size: 1.1em;">Dokumen Anggota #${i}</h5>
                 ${docs.map((doc, d) => `
-                    <div style="margin-bottom: 15px;">
+                    <div style="margin-bottom: 20px;">
                         <label>${d+1}. ${doc.name} ${doc.required ? '*' : '(Opsional)'}</label>
                         <small style="font-size: 0.85em; color: #666; display: block; margin-bottom: 8px;">${doc.desc}</small>
-                        <div style="display: flex; gap: 10px; align-items: center;">
-                            <label for="teamDoc${i}_${d+1}" style="display: inline-block; padding: 10px 20px; background: linear-gradient(135deg, var(--secondary), #228b22); color: white; border-radius: 10px; cursor: pointer; font-weight: 600; transition: all 0.3s; white-space: nowrap;">Pilih</label>
-                            <button type="button" id="clearTeamDoc${i}_${d+1}" style="display: none; padding: 10px 20px; background: linear-gradient(135deg, var(--danger), #c82333); color: white; border-radius: 10px; cursor: pointer; font-weight: 600; transition: all 0.3s; white-space: nowrap;">Hapus</button>
+                        <small style="font-size: 0.8em; color: #999; display: block; margin-bottom: 12px;">Max 5MB</small>
+                        <div style="display: flex; gap: 12px; align-items: center; justify-content: flex-start; flex-wrap: nowrap;">
+                            <label for="teamDoc${i}_${d+1}" style="display: inline-flex; align-items: center; justify-content: center; padding: 0 25px; background: linear-gradient(135deg, #34d399, #10b981); color: white; border-radius: 25px; cursor: pointer; font-weight: 700; transition: all 0.3s ease; white-space: nowrap; height: 50px; font-size: 1em; border: none; flex-shrink: 0; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);">
+                                📁 Pilih
+                            </label>
+                            <button type="button" id="clearTeamDoc${i}_${d+1}" style="display: none; padding: 0 25px; background: linear-gradient(135deg, #ef4444, #dc2626); color: white; border-radius: 25px; cursor: pointer; font-weight: 700; transition: all 0.3s ease; white-space: nowrap; height: 50px; font-size: 1em; border: none; flex-shrink: 0; box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);">
+                                🗑️ Hapus
+                            </button>
                         </div>
                         <input type="file" id="teamDoc${i}_${d+1}" name="teamDoc${i}_${d+1}" accept=".pdf,.jpg,.jpeg,.png" style="display: none;" ${doc.required ? 'required' : ''}>
-                        <span class="file-name" id="teamDoc${i}_${d+1}Name" style="color: #666; font-weight: 600;">Belum ada</span>
+                        <span class="file-name" id="teamDoc${i}_${d+1}Name" style="color: #666; font-weight: 600; display: block; margin-top: 12px;">Belum ada</span>
                     </div>
                 `).join('')}
             </div>
@@ -907,13 +946,47 @@ function setupTeamFormListeners(memberCount) {
         for (let d = 1; d <= 5; d++) {
             const input = document.getElementById(`teamDoc${i}_${d}`);
             const clearBtn = document.getElementById(`clearTeamDoc${i}_${d}`);
+            const label = document.getElementById(`teamDoc${i}_${d}Name`);
+            
             if (input) {
+                // ===== FIX #2: STORE FILE SEBELUM OPEN DIALOG =====
                 input.addEventListener('change', function() {
-                    handleFileUpload(this, `teamDoc${i}_${d}Name`, `teamDoc${i}_${d}`, `clearTeamDoc${i}_${d}`);
+                    Logger.log(`teamDoc${i}_${d} change event - files: ${this.files.length}`);
+                    
+                    // Jika user pilih file baru
+                    if (this.files && this.files.length > 0) {
+                        Logger.log(`File selected: ${this.files[0].name}`);
+                        handleFileUpload(this, `teamDoc${i}_${d}Name`, `teamDoc${i}_${d}`, `clearTeamDoc${i}_${d}`);
+                    }
+                    // Jika user klik Cancel
+                    else {
+                        Logger.log('Cancel clicked - restoring previous file (if any)');
+                        
+                        if (uploadedFiles[`teamDoc${i}_${d}`]) {
+                            // Ada file di uploadedFiles, tampilkan kembali
+                            const existingFile = uploadedFiles[`teamDoc${i}_${d}`];
+                            label.textContent = existingFile.name;
+                            label.style.color = '#28a745';
+                            if (clearBtn) clearBtn.style.display = 'inline-block';
+                            Logger.log(`Restored previous file: ${existingFile.name}`);
+                        } else {
+                            // Tidak ada file sebelumnya, tampilkan "Belum ada"
+                            label.textContent = 'Belum ada';
+                            label.style.color = '#666';
+                            if (clearBtn) clearBtn.style.display = 'none';
+                            Logger.log('No previous file, showing "Belum ada"');
+                        }
+                        
+                        updateSubmitButtonState();
+                    }
                 });
             }
+            
             if (clearBtn) {
-                clearBtn.addEventListener('click', function() {
+                clearBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    Logger.log(`Clear button clicked for teamDoc${i}_${d}`);
+                    
                     document.getElementById(`teamDoc${i}_${d}`).value = '';
                     document.getElementById(`teamDoc${i}_${d}Name`).textContent = 'Belum ada';
                     document.getElementById(`teamDoc${i}_${d}Name`).style.color = '#666';

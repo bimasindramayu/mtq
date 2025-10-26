@@ -494,6 +494,14 @@ body::before {
     animation: fadeIn 0.5s ease;
 }
 
+.form-group label {
+    display: block;
+    margin-bottom: 12px;
+    color: var(--primary);
+    font-weight: 700;
+    font-size: 1em;
+}
+
 @keyframes fadeIn {
     from { opacity: 0; }
     to { opacity: 1; }
@@ -548,6 +556,9 @@ button {
     box-shadow: 0 8px 25px rgba(5, 150, 105, 0.3);
     position: relative;
     overflow: hidden;
+    display: inline-block;  /* ← IMPORTANT: inline-block, bukan flex di button umum */
+    vertical-align: middle; /* ← IMPORTANT: align ke tengah */
+    line-height: 1;         /* ← IMPORTANT: normalize line-height */
 }
 
 button::before {
@@ -636,8 +647,13 @@ button:disabled {
 }
 
 .file-name {
-    font-size: 0.95em;
+    color: #666;
     font-weight: 600;
+    display: block;
+    margin-top: 12px;
+    word-break: break-word;
+    font-size: 0.95em;
+    line-height: 1.4;
 }
 
 /* ===== Loading Overlay ===== */
@@ -1427,4 +1443,211 @@ html {
         background: transparent;
         transform: none;
     }
+}
+
+label[for^="personalDoc"],
+label[for^="teamDoc"] {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    vertical-align: middle !important;
+    
+    /* Sizing */
+    height: 50px !important;
+    padding: 0 25px !important;
+    
+    /* Styling */
+    background: linear-gradient(135deg, #34d399, #10b981) !important;
+    color: white !important;
+    border-radius: 25px !important;
+    cursor: pointer !important;
+    font-weight: 700 !important;
+    font-size: 1em !important;
+    
+    /* Behavior */
+    white-space: nowrap !important;
+    border: none !important;
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3) !important;
+    transition: all 0.3s ease !important;
+    flex-shrink: 0 !important;
+    margin: 0 !important;
+    line-height: 1 !important;
+}
+
+label[for^="personalDoc"]:hover,
+label[for^="teamDoc"]:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4) !important;
+}
+
+#clearPersonalDoc1,
+#clearPersonalDoc2,
+#clearPersonalDoc3,
+#clearPersonalDoc4,
+#clearPersonalDoc5,
+#clearTeamDoc1_1,
+#clearTeamDoc1_2,
+#clearTeamDoc1_3,
+#clearTeamDoc1_4,
+#clearTeamDoc1_5,
+#clearTeamDoc2_1,
+#clearTeamDoc2_2,
+#clearTeamDoc2_3,
+#clearTeamDoc2_4,
+#clearTeamDoc2_5,
+#clearTeamDoc3_1,
+#clearTeamDoc3_2,
+#clearTeamDoc3_3,
+#clearTeamDoc3_4,
+#clearTeamDoc3_5 {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    vertical-align: middle !important;
+    
+    /* Sizing - HARUS SAMA DENGAN LABEL */
+    height: 50px !important;
+    padding: 0 25px !important;
+    
+    /* Styling */
+    background: linear-gradient(135deg, #ef4444, #dc2626) !important;
+    color: white !important;
+    border-radius: 25px !important;
+    cursor: pointer !important;
+    font-weight: 700 !important;
+    font-size: 1em !important;
+    border: none !important;
+    
+    /* Behavior */
+    white-space: nowrap !important;
+    box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3) !important;
+    transition: all 0.3s ease !important;
+    flex-shrink: 0 !important;
+    margin: 0 !important;
+    line-height: 1 !important;
+    position: relative !important;
+    overflow: visible !important;
+}
+
+#clearPersonalDoc1:hover,
+#clearPersonalDoc2:hover,
+#clearPersonalDoc3:hover,
+#clearPersonalDoc4:hover,
+#clearPersonalDoc5:hover,
+#clearTeamDoc1_1:hover,
+#clearTeamDoc1_2:hover,
+#clearTeamDoc1_3:hover,
+#clearTeamDoc1_4:hover,
+#clearTeamDoc1_5:hover,
+#clearTeamDoc2_1:hover,
+#clearTeamDoc2_2:hover,
+#clearTeamDoc2_3:hover,
+#clearTeamDoc2_4:hover,
+#clearTeamDoc2_5:hover,
+#clearTeamDoc3_1:hover,
+#clearTeamDoc3_2:hover,
+#clearTeamDoc3_3:hover,
+#clearTeamDoc3_4:hover,
+#clearTeamDoc3_5:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4) !important;
+}
+
+div[style*="display: flex"][style*="gap: 12px"][style*="align-items: center"] {
+    display: flex !important;
+    gap: 12px !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    flex-wrap: nowrap !important;
+    margin-bottom: 15px !important;
+}
+
+@media (max-width: 768px) {
+    label[for^="personalDoc"],
+    label[for^="teamDoc"],
+    #clearPersonalDoc1,
+    #clearPersonalDoc2,
+    #clearPersonalDoc3,
+    #clearPersonalDoc4,
+    #clearPersonalDoc5,
+    #clearTeamDoc1_1,
+    #clearTeamDoc1_2,
+    #clearTeamDoc1_3,
+    #clearTeamDoc1_4,
+    #clearTeamDoc1_5,
+    #clearTeamDoc2_1,
+    #clearTeamDoc2_2,
+    #clearTeamDoc2_3,
+    #clearTeamDoc2_4,
+    #clearTeamDoc2_5,
+    #clearTeamDoc3_1,
+    #clearTeamDoc3_2,
+    #clearTeamDoc3_3,
+    #clearTeamDoc3_4,
+    #clearTeamDoc3_5 {
+        height: 46px !important;
+        padding: 0 20px !important;
+        font-size: 0.95em !important;
+    }
+    
+    div[style*="display: flex"][style*="gap: 12px"][style*="align-items: center"] {
+        gap: 10px !important;
+    }
+}
+
+@media (max-width: 480px) {
+    label[for^="personalDoc"],
+    label[for^="teamDoc"],
+    #clearPersonalDoc1,
+    #clearPersonalDoc2,
+    #clearPersonalDoc3,
+    #clearPersonalDoc4,
+    #clearPersonalDoc5,
+    #clearTeamDoc1_1,
+    #clearTeamDoc1_2,
+    #clearTeamDoc1_3,
+    #clearTeamDoc1_4,
+    #clearTeamDoc1_5,
+    #clearTeamDoc2_1,
+    #clearTeamDoc2_2,
+    #clearTeamDoc2_3,
+    #clearTeamDoc2_4,
+    #clearTeamDoc2_5,
+    #clearTeamDoc3_1,
+    #clearTeamDoc3_2,
+    #clearTeamDoc3_3,
+    #clearTeamDoc3_4,
+    #clearTeamDoc3_5 {
+        height: 44px !important;
+        padding: 0 18px !important;
+        font-size: 0.9em !important;
+    }
+    
+    div[style*="display: flex"][style*="gap: 12px"][style*="align-items: center"] {
+        flex-wrap: wrap !important;
+        gap: 8px !important;
+    }
+}
+
+#clearPersonalDoc1::before,
+#clearPersonalDoc2::before,
+#clearPersonalDoc3::before,
+#clearPersonalDoc4::before,
+#clearPersonalDoc5::before,
+#clearTeamDoc1_1::before,
+#clearTeamDoc1_2::before,
+#clearTeamDoc1_3::before,
+#clearTeamDoc1_4::before,
+#clearTeamDoc1_5::before,
+#clearTeamDoc2_1::before,
+#clearTeamDoc2_2::before,
+#clearTeamDoc2_3::before,
+#clearTeamDoc2_4::before,
+#clearTeamDoc2_5::before,
+#clearTeamDoc3_1::before,
+#clearTeamDoc3_2::before,
+#clearTeamDoc3_3::before,
+#clearTeamDoc3_4::before,
+#clearTeamDoc3_5::before {
+    display: none !important;
 }
