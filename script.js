@@ -1,8 +1,8 @@
 // script.js
 // ===== CONFIGURATION =====
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwacYyuw19u4kqxa_ukG2A1yFf_VWiHHEzcvfL6D0oo19sPIl1SytGiu-ijlP66W8p4/exec';
-const REGISTRATION_START = new Date('2025-10-25T09:00:00+07:00');
-const REGISTRATION_END = new Date('2025-10-30T23:59:59+07:00');
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxr0oyshQ8pdzaOR0f5p6Js_Q5C8Sxl1iu2d90-sjZ5uMHTrF3gVBvfm2bkV6pFj4cu/exec';
+const REGISTRATION_START = new Date('2025-10-29T00:00:00+07:00');
+const REGISTRATION_END = new Date('2025-11-03T23:59:59+07:00');
 const MAX_FILE_SIZE_MB = 5;
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 
