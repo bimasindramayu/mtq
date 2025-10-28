@@ -8,8 +8,8 @@ const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 
 // ===== DEVELOPER MODE CONFIG (BARU) =====
 const DEV_CONFIG = {
-    enabled: true,              // Set ke true untuk enable developer mode & tools
-    loggerEnabled: true          // Set ke false untuk disable semua console logs
+    enabled: false,              // Set ke true untuk enable developer mode & tools
+    loggerEnabled: false          // Set ke false untuk disable semua console logs
 };
 
 const Logger = {
