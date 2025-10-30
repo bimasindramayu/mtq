@@ -4,8 +4,8 @@ const FOLDER_ID = '1AK6rc4VUOJg_wDFed8F2nLzFSaDqf_5o';
 const SHEET_NAME = 'Peserta';
 
 // REGISTRATION TIME WINDOW (WIB = UTC+7)
-const REGISTRATION_START = new Date('2025-10-22T00:00:00+07:00');
-const REGISTRATION_END = new Date('2025-10-30T23:59:59+07:00');
+const REGISTRATION_START = new Date('2025-10-29T00:00:00+07:00');
+const REGISTRATION_END = new Date('2025-11-03T23:59:59+07:00');
 
 // ===== CONCURRENCY PROTECTION - OPTIMIZED =====
 const LOCK_TIMEOUT_MS = 45000;      // 45 detik (lebih pendek)
@@ -107,7 +107,7 @@ function doPost(e) {
     const now = new Date();
     if (now < REGISTRATION_START || now > REGISTRATION_END) {
       Logger.log('ERROR: Registration outside time window');
-      return createResponse(false, 'Pendaftaran hanya dapat dilakukan antara tanggal 29-30 Oktober 2025. Saat ini waktu pendaftaran telah ditutup atau belum dimulai.');
+      return createResponse(false, 'Saat ini waktu pendaftaran telah ditutup atau belum dimulai.');
     }
     Logger.log('✓ Registration time valid');
     
@@ -251,9 +251,8 @@ function handleFileUploadOnly(e) {
     Logger.log('Total entries to search: ' + nomorPesertaValues.length);
     
     // ===== NORMALIZE SEARCH STRING =====
-    // Handle both formats: "072" dan "72", "K. 187" dan "K. 187"
     const searchStr = nomorPesertaOriginal.toString().trim();
-    const searchStrNoLeadingZero = parseInt(searchStr) || searchStr; // Convert "072" to 72 if numeric
+    const searchStrNoLeadingZero = parseInt(searchStr) || searchStr;
     
     Logger.log('Searching for: "' + searchStr + '"');
     Logger.log('Alternative (no leading zero): "' + searchStrNoLeadingZero + '"');
@@ -273,7 +272,6 @@ function handleFileUploadOnly(e) {
       }
       
       // Try numeric comparison (handles leading zeros)
-      // e.g., "072" vs "72" both become 72
       if (!isNaN(searchStr) && !isNaN(cellStr)) {
         const searchNum = parseInt(searchStr);
         const cellNum = parseInt(cellStr);
@@ -287,7 +285,7 @@ function handleFileUploadOnly(e) {
     }
     
     if (targetRow === -1) {
-      Logger.log('❌ ERROR: No match found!');
+      Logger.log('✗ ERROR: No match found!');
       Logger.log('Showing last 10 nomor peserta:');
       const startIdx = Math.max(0, nomorPesertaValues.length - 10);
       for (let i = startIdx; i < nomorPesertaValues.length; i++) {
@@ -305,6 +303,10 @@ function handleFileUploadOnly(e) {
     Logger.log('Processing file uploads...');
     const fileLinks = processFileUploads(e, e.parameter, nomorPesertaOriginal);
     Logger.log('✓ Files processed: ' + Object.keys(fileLinks).length);
+    Logger.log('File links received:');
+    for (let key in fileLinks) {
+      Logger.log('  ' + key + ': ' + fileLinks[key]);
+    }
     
     // ===== UPDATE FILE LINKS KE SHEET =====
     if (Object.keys(fileLinks).length > 0) {
@@ -317,10 +319,19 @@ function handleFileUploadOnly(e) {
     
     Logger.log('=== HANDLE FILE UPLOAD SUCCESS ===');
     
-    return createResponse(true, 'File berhasil diupload', nomorPesertaOriginal, {
+    // ===== CRITICAL: RETURN FILE LINKS TO CLIENT =====
+    Logger.log('Preparing response with file links...');
+    Logger.log('File links object: ' + JSON.stringify(fileLinks));
+    
+    const responseDetails = {
       filesUploaded: Object.keys(fileLinks).length,
-      rowUpdated: targetRow
-    });
+      rowUpdated: targetRow,
+      fileLinks: fileLinks  // MOST IMPORTANT: Include file links!
+    };
+    
+    Logger.log('Response details: ' + JSON.stringify(responseDetails));
+    
+    return createResponse(true, 'File berhasil diupload', nomorPesertaOriginal, responseDetails);
     
   } catch (error) {
     Logger.log('=== ERROR in handleFileUploadOnly ===');

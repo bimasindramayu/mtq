@@ -1,6 +1,6 @@
 // script.js
 // ===== CONFIGURATION =====
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxr0oyshQ8pdzaOR0f5p6Js_Q5C8Sxl1iu2d90-sjZ5uMHTrF3gVBvfm2bkV6pFj4cu/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwUqZZ9RW2o5rO8yXs9HNL6qsnfFe64k0bXCtC9FYk7a8gel-M6LHVSoWxSlHzVbTOo/exec';
 const REGISTRATION_START = new Date('2025-10-29T00:00:00+07:00');
 const REGISTRATION_END = new Date('2025-11-03T23:59:59+07:00');
 const MAX_FILE_SIZE_MB = 5;
@@ -8,8 +8,8 @@ const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 
 // ===== DEVELOPER MODE CONFIG (BARU) =====
 const DEV_CONFIG = {
-    enabled: false,              // Set ke true untuk enable developer mode & tools
-    loggerEnabled: false          // Set ke false untuk disable semua console logs
+    enabled: true,              // Set ke true untuk enable developer mode & tools
+    loggerEnabled: true          // Set ke false untuk disable semua console logs
 };
 
 const Logger = {
@@ -1218,6 +1218,34 @@ function updateSubmitButtonState() {
     }
 }
 
+function cleanupFormBeforeSubmit() {
+    Logger.log('=== CLEANUP FORM BEFORE SUBMIT ===');
+    
+    // Remove required dari SEMUA file input yang hidden/tidak ada file
+    for (let i = 1; i <= 5; i++) {
+        // Personal
+        const personalInput = document.getElementById(`personalDoc${i}`);
+        if (personalInput && personalInput.hasAttribute('required')) {
+            personalInput.removeAttribute('required');
+            Logger.log(`Removed required from personalDoc${i}`);
+        }
+    }
+    
+    // Team
+    for (let i = 1; i <= 3; i++) {
+        for (let d = 1; d <= 5; d++) {
+            const teamInput = document.getElementById(`teamDoc${i}_${d}`);
+            if (teamInput && teamInput.hasAttribute('required')) {
+                teamInput.removeAttribute('required');
+                Logger.log(`Removed required from teamDoc${i}_${d}`);
+            }
+        }
+    }
+    
+    Logger.log('=== CLEANUP COMPLETE ===');
+}
+
+
 function checkPersonalCompletion() {
     const reasons = [];
     const tglLahir = document.getElementById('tglLahir').value;
@@ -1806,13 +1834,15 @@ function clearAllDevData() {
 document.getElementById('registrationForm')?.addEventListener('submit', async function(e) {
     e.preventDefault();
     
+    cleanupFormBeforeSubmit();
+    
     Logger.log('=== FORM SUBMISSION START (OPTIMIZED FLOW) ===');
     Logger.log('Request received at: ' + new Date().toISOString());
     
     try {
         // ===== RESET PROGRESS TRACKER =====
         progressTracker.reset();
-        
+
         // ===== STEP 0: BERSIHKAN REQUIRED ATTRIBUTE =====
         Logger.log('STEP 0: Cleaning required attributes from file inputs...');
         
