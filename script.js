@@ -8,7 +8,7 @@ const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 
 // ===== DEVELOPER MODE CONFIG (BARU) =====
 const DEV_CONFIG = {
-    enabled: true,              // Set ke true untuk enable developer mode & tools
+    enabled: false,              // Set ke true untuk enable developer mode & tools
     loggerEnabled: true          // Set ke false untuk disable semua console logs
 };
 
@@ -2068,7 +2068,7 @@ document.getElementById('registrationForm')?.addEventListener('submit', async fu
         
         // ===== STEP 7: UPLOAD FILES (JIKA ADA) =====
         Logger.log('STEP 7: Processing file uploads...');
-        showLoadingOverlay(true, 'Mengupload dokumen...');
+        showLoadingOverlay(true, 'Mengupload dokumen... Jangan tutup/refresh halaman ini.');
         
         progressTracker.currentStep = 1;
         progressTracker.filesTotal = Object.keys(uploadedFiles).length;
