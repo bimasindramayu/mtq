@@ -1746,8 +1746,8 @@ div[style*="display: flex"][style*="gap: 12px"][style*="align-items: center"] {
     bottom: 20px;
     left: 20px;
     background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
     color: rgba(255, 255, 255, 0.8);
     padding: 10px 18px;
     border-radius: 20px;
