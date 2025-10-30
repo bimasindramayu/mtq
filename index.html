@@ -148,7 +148,7 @@
                     <p id="progressMessage" style="margin-top: 12px; text-align: center; color: var(--primary); font-weight: 600; font-size: 0.95em;">Validasi Data</p>
                 </div>
 
-                <form id="registrationForm" name="registrationForm">
+                <form id="registrationForm" name="registrationForm" novalidate>
                     <!-- Cabang & Kecamatan Section -->
                     <h3 style="color: var(--primary); margin-bottom: 25px; font-size: 1.4em;">🏆 Pilih Cabang & Kecamatan</h3>
 
@@ -474,16 +474,16 @@
             <!-- ===== BAGIAN 2: PENCARIAN DATA PESERTA BERDASARKAN NIK ===== -->
             <div id="searchDataSection">
                 <h2 class="section-title">🔍 Cari Data Peserta Berdasarkan NIK</h2>
-                    <div style="display: flex; gap: 15px; align-items: flex-end; margin-bottom: 30px; flex-wrap: nowrap;">
+                    <div style="display: grid; grid-template-columns: 1fr auto; gap: 15px; align-items: end; margin-bottom: 30px;">
                         <!-- INPUT NIK -->
-                        <div style="flex: 1; min-width: 0;">
+                        <div>
                             <label for="searchNIK" style="display: block; margin-bottom: 12px; color: var(--primary); font-weight: 700; font-size: 1em;">Masukkan NIK Peserta</label>
                             <input type="text" id="searchNIK" name="searchNIK" maxlength="16" inputmode="numeric" placeholder="16 digit NIK" style="width: 100%; padding: 16px 20px; border: 2px solid rgba(5, 150, 105, 0.2); border-radius: 15px; font-size: 1.02em; transition: all 0.3s ease; font-family: inherit; background: rgba(255, 255, 255, 0.9); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);">
                             <small style="font-size: 0.85em; color: #666; display: block; margin-top: 5px;">Contoh: 3276012345678901</small>
                         </div>
                         
                         <!-- BUTTON CARI -->
-                        <button type="button" class="btn-submit" onclick="searchPesertaByNIK()" style="height: 50px; padding: 0 35px; white-space: nowrap; flex-shrink: 0; margin-bottom: 0; margin-top: 29px;">
+                        <button type="button" class="btn-submit" onclick="searchPesertaByNIK()" style="padding: 16px 35px; white-space: nowrap; margin-bottom: 22px;">
                             🔍 Cari
                         </button>
                     </div>
@@ -551,7 +551,7 @@
             </div>
         </div>
     </div>
-
+    <div class="version-badge">v1.0.0</div>
     <script src="script.js"></script>
 </body>
 </html>

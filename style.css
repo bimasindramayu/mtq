@@ -681,6 +681,11 @@ button:disabled {
     color: white;
 }
 
+.loading-content p {
+    white-space: pre-line;  /* ← TAMBAHKAN INI */
+    line-height: 1.6;       /* ← TAMBAHKAN INI untuk spacing yang baik */
+}
+
 .loading-spinner {
     width: 80px;
     height: 80px;
@@ -1714,16 +1719,13 @@ div[style*="display: flex"][style*="gap: 12px"][style*="align-items: center"] {
         flex-wrap: wrap !important;
     }
     
-    div[style*="display: flex"][style*="gap: 15px"][style*="align-items: flex-end"] > div {
-        flex: 1 !important;
-        min-width: 100% !important;
+    div[style*="display: grid"][style*="grid-template-columns: 1fr auto"] {
+        grid-template-columns: 1fr !important;
     }
     
     button[onclick="searchPesertaByNIK()"] {
         width: 100% !important;
-        margin-top: 0 !important;
-        height: auto !important;
-        padding: 16px 35px !important;
+        margin-bottom: 0 !important;
     }
 }
 
@@ -1735,5 +1737,50 @@ div[style*="display: flex"][style*="gap: 12px"][style*="align-items: center"] {
     button[onclick="searchPesertaByNIK()"] {
         padding: 14px 25px !important;
         font-size: 0.95em !important;
+    }
+}
+
+/* ===== VERSION BADGE ===== */
+.version-badge {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    color: rgba(255, 255, 255, 0.8);
+    padding: 10px 18px;
+    border-radius: 20px;
+    font-size: 0.85em;
+    font-weight: 600;
+    z-index: 998;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease;
+    pointer-events: none;
+    -webkit-user-select : none;
+    user-select: none;
+}
+
+.version-badge:hover {
+    background: rgba(255, 255, 255, 0.15);
+    transform: translateY(-2px);
+}
+
+@media (max-width: 768px) {
+    .version-badge {
+        bottom: 15px;
+        left: 15px;
+        padding: 8px 14px;
+        font-size: 0.75em;
+    }
+}
+
+@media (max-width: 480px) {
+    .version-badge {
+        bottom: 12px;
+        left: 12px;
+        padding: 6px 12px;
+        font-size: 0.70em;
     }
 }

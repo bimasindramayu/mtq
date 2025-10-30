@@ -1834,75 +1834,32 @@ function clearAllDevData() {
 document.getElementById('registrationForm')?.addEventListener('submit', async function(e) {
     e.preventDefault();
     
-    cleanupFormBeforeSubmit();
-    
-    Logger.log('=== FORM SUBMISSION START (OPTIMIZED FLOW) ===');
+    Logger.log('=== FORM SUBMISSION START ===');
     Logger.log('Request received at: ' + new Date().toISOString());
     
     try {
-        // ===== RESET PROGRESS TRACKER =====
+        // ===== STEP 0: CLEANUP FILE INPUTS =====
+        Logger.log('STEP 0: Cleaning up file input attributes...');
+        cleanupFormBeforeSubmit();
+        
+        // ===== STEP 1: MANUAL VALIDATION =====
+        Logger.log('STEP 1: Running manual validation...');
+        const validation = validateFormManually();
+        
+        if (!validation.isValid) {
+            Logger.log('❌ Form validation failed');
+            showResultModal(false, 'Data Tidak Lengkap', 
+                'Mohon lengkapi data berikut:\n\n' + validation.errors.join('\n'));
+            return;
+        }
+        
+        Logger.log('✅ Form validation passed');
+        
+        // ===== STEP 2: RESET PROGRESS TRACKER =====
         progressTracker.reset();
 
-        // ===== STEP 0: BERSIHKAN REQUIRED ATTRIBUTE =====
-        Logger.log('STEP 0: Cleaning required attributes from file inputs...');
-        
-        let personalFilesRemoved = 0;
-        let teamFilesRemoved = 0;
-        
-        // Untuk Personal Form
-        Logger.log('Cleaning personal form files...');
-        for (let i = 1; i <= 5; i++) {
-            const personalInput = document.getElementById(`personalDoc${i}`);
-            if (personalInput) {
-                const hasUpload = uploadedFiles[`doc${i}`];
-                
-                if (!hasUpload) {
-                    if (personalInput.hasAttribute('required')) {
-                        personalInput.removeAttribute('required');
-                        personalFilesRemoved++;
-                        Logger.log(`  Removed required from personalDoc${i}`);
-                    }
-                } else {
-                    if (i === 3 && personalInput.hasAttribute('required')) {
-                        personalInput.removeAttribute('required');
-                    }
-                    if (i === 4 && personalInput.hasAttribute('required')) {
-                        personalInput.removeAttribute('required');
-                    }
-                }
-            }
-        }
-        Logger.log(`Personal files cleaned: ${personalFilesRemoved} removed required`);
-        
-        // Untuk Team Form
-        Logger.log('Cleaning team form files...');
-        for (let i = 1; i <= 3; i++) {
-            for (let d = 1; d <= 5; d++) {
-                const teamInput = document.getElementById(`teamDoc${i}_${d}`);
-                if (teamInput) {
-                    const hasUpload = uploadedFiles[`teamDoc${i}_${d}`];
-                    
-                    if (teamInput.hasAttribute('required')) {
-                        if (!hasUpload) {
-                            teamInput.removeAttribute('required');
-                            teamFilesRemoved++;
-                            Logger.log(`  Removed required from teamDoc${i}_${d}`);
-                        }
-                    }
-                    
-                    if (d === 3 && teamInput.hasAttribute('required')) {
-                        teamInput.removeAttribute('required');
-                    }
-                    if (d === 4 && teamInput.hasAttribute('required')) {
-                        teamInput.removeAttribute('required');
-                    }
-                }
-            }
-        }
-        Logger.log(`Team files cleaned: ${teamFilesRemoved} removed required`);
-        
-        // ===== STEP 1: CHECK REGISTRATION TIME (TANPA LOCK) =====
-        Logger.log('STEP 1: Checking registration time...');
+        // ===== STEP 3: CHECK REGISTRATION TIME =====
+        Logger.log('STEP 3: Checking registration time...');
         progressTracker.currentStep = 0;
         updateProgressDetailed(8, 'Memvalidasi Waktu Pendaftaran...');
         
@@ -2068,7 +2025,7 @@ document.getElementById('registrationForm')?.addEventListener('submit', async fu
         
         // ===== STEP 7: UPLOAD FILES (JIKA ADA) =====
         Logger.log('STEP 7: Processing file uploads...');
-        showLoadingOverlay(true, 'Mengupload dokumen... Jangan tutup/refresh halaman ini.');
+        showLoadingOverlay(true, 'Mengupload dokumen... \nJangan tutup ataupun refresh halaman ini..');
         
         progressTracker.currentStep = 1;
         progressTracker.filesTotal = Object.keys(uploadedFiles).length;
@@ -2399,3 +2356,180 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 }, { once: false });
+
+function cleanupFormBeforeSubmit() {
+    Logger.log('=== CLEANUP FORM BEFORE SUBMIT ===');
+    
+    let personalCleaned = 0;
+    let teamCleaned = 0;
+    
+    // Personal file inputs
+    for (let i = 1; i <= 5; i++) {
+        const personalInput = document.getElementById(`personalDoc${i}`);
+        if (personalInput) {
+            const hadRequired = personalInput.hasAttribute('required');
+            const hasFile = uploadedFiles[`doc${i}`];
+            
+            if (hadRequired) {
+                personalInput.removeAttribute('required');
+                personalCleaned++;
+                Logger.log(`  ✓ Removed required from personalDoc${i} (hasFile: ${!!hasFile})`);
+            }
+        }
+    }
+    
+    // Team file inputs
+    for (let i = 1; i <= 3; i++) {
+        for (let d = 1; d <= 5; d++) {
+            const teamInput = document.getElementById(`teamDoc${i}_${d}`);
+            if (teamInput) {
+                const hadRequired = teamInput.hasAttribute('required');
+                const hasFile = uploadedFiles[`teamDoc${i}_${d}`];
+                
+                if (hadRequired) {
+                    teamInput.removeAttribute('required');
+                    teamCleaned++;
+                    Logger.log(`  ✓ Removed required from teamDoc${i}_${d} (hasFile: ${!!hasFile})`);
+                }
+            }
+        }
+    }
+    
+    Logger.log(`✅ Cleanup complete: ${personalCleaned} personal + ${teamCleaned} team = ${personalCleaned + teamCleaned} total`);
+    Logger.log('=== CLEANUP COMPLETE ===');
+}
+
+function validateFormManually() {
+    Logger.log('=== MANUAL VALIDATION START ===');
+    
+    const errors = [];
+    
+    // Validate kecamatan
+    const kecamatan = document.getElementById('kecamatan').value;
+    if (!kecamatan) {
+        errors.push('Kecamatan belum dipilih');
+    }
+    
+    // Validate cabang
+    const cabang = document.getElementById('cabang').value;
+    if (!cabang || !currentCabang) {
+        errors.push('Cabang lomba belum dipilih');
+    }
+    
+    // Validate based on form type
+    if (currentCabang) {
+        if (!currentCabang.isTeam) {
+            // Personal validation
+            const personalFields = [
+                { id: 'nik', name: 'NIK' },
+                { id: 'nama', name: 'Nama lengkap' },
+                { id: 'jenisKelamin', name: 'Jenis kelamin' },
+                { id: 'tempatLahir', name: 'Tempat lahir' },
+                { id: 'tglLahir', name: 'Tanggal lahir' },
+                { id: 'alamat', name: 'Alamat' },
+                { id: 'noTelepon', name: 'Nomor telepon' },
+                { id: 'email', name: 'Email' }
+            ];
+            
+            personalFields.forEach(field => {
+                const value = document.getElementById(field.id)?.value;
+                if (!value || value.trim() === '') {
+                    errors.push(`${field.name} belum diisi`);
+                }
+            });
+            
+            // Check required files
+            const requiredDocs = [1, 2, 5];
+            requiredDocs.forEach(docNum => {
+                if (!uploadedFiles[`doc${docNum}`]) {
+                    const docNames = { 1: 'Surat Mandat', 2: 'KTP/KK/KIA', 5: 'Pas Photo' };
+                    errors.push(`Dokumen ${docNames[docNum]} belum diupload`);
+                }
+            });
+            
+        } else {
+            // Team validation
+            const namaRegu = document.getElementById('namaRegu')?.value;
+            if (!namaRegu || namaRegu.trim() === '') {
+                errors.push('Nama regu/tim belum diisi');
+            }
+            
+            // Validate members
+            for (let i = 1; i <= 2; i++) {
+                const memberFields = [
+                    { name: `memberNik${i}`, label: `Anggota ${i}: NIK` },
+                    { name: `memberName${i}`, label: `Anggota ${i}: Nama` },
+                    { name: `memberJenisKelamin${i}`, label: `Anggota ${i}: Jenis kelamin` },
+                    { name: `memberTempatLahir${i}`, label: `Anggota ${i}: Tempat lahir` },
+                    { name: `memberBirthDate${i}`, label: `Anggota ${i}: Tanggal lahir` },
+                    { name: `memberAlamat${i}`, label: `Anggota ${i}: Alamat` },
+                    { name: `memberNoTelepon${i}`, label: `Anggota ${i}: No telepon` },
+                    { name: `memberEmail${i}`, label: `Anggota ${i}: Email` }
+                ];
+                
+                memberFields.forEach(field => {
+                    const value = document.querySelector(`[name="${field.name}"]`)?.value;
+                    if (!value || value.trim() === '') {
+                        errors.push(`${field.label} belum diisi`);
+                    }
+                });
+                
+                // Check required files for member
+                const requiredDocs = [1, 2, 5];
+                requiredDocs.forEach(docNum => {
+                    if (!uploadedFiles[`teamDoc${i}_${docNum}`]) {
+                        const docNames = { 1: 'Surat Mandat', 2: 'KTP/KK/KIA', 5: 'Pas Photo' };
+                        errors.push(`Anggota ${i}: Dokumen ${docNames[docNum]} belum diupload`);
+                    }
+                });
+            }
+            
+            // Check member 3 if filled
+            if (currentTeamMemberCount === 3) {
+                const member3Filled = isTeamMemberFilled(3);
+                if (member3Filled) {
+                    // Validate member 3
+                    const member3Fields = [
+                        { name: 'memberNik3', label: 'Anggota 3: NIK' },
+                        { name: 'memberName3', label: 'Anggota 3: Nama' },
+                        { name: 'memberJenisKelamin3', label: 'Anggota 3: Jenis kelamin' },
+                        { name: 'memberTempatLahir3', label: 'Anggota 3: Tempat lahir' },
+                        { name: 'memberBirthDate3', label: 'Anggota 3: Tanggal lahir' },
+                        { name: 'memberAlamat3', label: 'Anggota 3: Alamat' },
+                        { name: 'memberNoTelepon3', label: 'Anggota 3: No telepon' },
+                        { name: 'memberEmail3', label: 'Anggota 3: Email' }
+                    ];
+                    
+                    member3Fields.forEach(field => {
+                        const value = document.querySelector(`[name="${field.name}"]`)?.value;
+                        if (!value || value.trim() === '') {
+                            errors.push(`${field.label} belum diisi`);
+                        }
+                    });
+                    
+                    // Check required files for member 3
+                    const requiredDocs = [1, 2, 5];
+                    requiredDocs.forEach(docNum => {
+                        if (!uploadedFiles[`teamDoc3_${docNum}`]) {
+                            const docNames = { 1: 'Surat Mandat', 2: 'KTP/KK/KIA', 5: 'Pas Photo' };
+                            errors.push(`Anggota 3: Dokumen ${docNames[docNum]} belum diupload`);
+                        }
+                    });
+                }
+            }
+        }
+    }
+    
+    if (errors.length > 0) {
+        Logger.log('❌ Validation FAILED:');
+        errors.forEach((err, idx) => {
+            Logger.log(`  ${idx + 1}. ${err}`);
+        });
+        Logger.log('=== MANUAL VALIDATION FAILED ===');
+        return { isValid: false, errors: errors };
+    }
+    
+    Logger.log('✅ Validation PASSED');
+    Logger.log('=== MANUAL VALIDATION COMPLETE ===');
+    return { isValid: true, errors: [] };
+}
