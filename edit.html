@@ -1160,7 +1160,7 @@
             document.getElementById('resultModal').classList.remove('show');
             if (document.getElementById('resultIcon').textContent === '✅') {
                 // Reload page on success
-                window.location.href = 'index.html';
+                window.location.href = './';
             }
         }
 
@@ -1192,6 +1192,12 @@
 
         // Run on page load
         init();
+
+        window.addEventListener("beforeunload", function (e) {
+        e.preventDefault();
+        e.returnValue = "Pastikan semua proses registrasi sudah selesai sebelum keluar"; // teks kosong = browser tampilkan pesan default
+        });
+
     </script>
 </body>
 </html>
