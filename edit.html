@@ -1193,11 +1193,6 @@
         // Run on page load
         init();
 
-        window.addEventListener("beforeunload", function (e) {
-        e.preventDefault();
-        e.returnValue = "Pastikan semua proses registrasi sudah selesai sebelum keluar"; // teks kosong = browser tampilkan pesan default
-        });
-
     </script>
 </body>
 </html>
