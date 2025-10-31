@@ -2182,7 +2182,11 @@ if (jenisKelaminEl) {
 });
 
 document.getElementById('kecamatan')?.addEventListener('change', updateSubmitButtonState);
-
+const namaReguEl = document.getElementById('namaRegu');
+if (namaReguEl) {
+    namaReguEl.addEventListener('input', updateSubmitButtonState);
+    namaReguEl.addEventListener('change', updateSubmitButtonState);
+}
 
 async function searchPesertaByNIK() {
     try {
