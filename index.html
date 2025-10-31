@@ -553,5 +553,11 @@
     </div>
     <div class="version-badge">v1.0.0</div>
     <script src="script.js"></script>
+    <script>
+        window.addEventListener("beforeunload", function (e) {
+        e.preventDefault();
+        e.returnValue = "Pastikan semua proses registrasi sudah selesai sebelum keluar"; // teks kosong = browser tampilkan pesan default
+        });
+    </script>
 </body>
 </html>
