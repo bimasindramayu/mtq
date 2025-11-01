@@ -1,0 +1,1002 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Peserta Kecamatan - MTQ ke-55</title>
+    <link rel="icon" type="image/png" href="logomtq.png">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+    :root {
+        --primary: #059669;
+        --primary-dark: #047857;
+        --primary-light: #10b981;
+        --secondary: #34d399;
+        --danger: #ef4444;
+        --success: #10b981;
+        --warning: #f59e0b;
+    }
+
+    body {
+        font-family: 'Poppins', 'Inter', 'Segoe UI', sans-serif;
+        background: linear-gradient(135deg, #064e3b 0%, #059669 100%);
+        background-attachment: fixed;
+        min-height: 100vh;
+        padding: 40px 20px;
+        color: #1f2937;
+    }
+
+    body::before {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: radial-gradient(circle at 20% 30%, rgba(16, 185, 129, 0.15) 0%, transparent 50%);
+        pointer-events: none;
+        z-index: 0;
+    }
+
+    .container {
+        max-width: 1400px;
+        margin: 0 auto;
+        position: relative;
+        z-index: 10;
+    }
+
+    .header {
+        background: rgba(255, 255, 255, 0.95);
+        -webkit-backdrop-filter: blur(20px);
+        backdrop-filter: blur(20px);
+        padding: 40px;
+        border-radius: 25px;
+        text-align: center;
+        margin-bottom: 30px;
+        box-shadow: 0 15px 50px rgba(0, 0, 0, 0.15);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .header h1 {
+        color: var(--primary);
+        font-size: 2.2em;
+        margin-bottom: 10px;
+        font-weight: 800;
+    }
+
+    .header p {
+        color: #065f46;
+        font-size: 1.1em;
+    }
+
+    .kecamatan-badge {
+        display: inline-block;
+        background: linear-gradient(135deg, var(--primary), var(--primary-light));
+        color: white;
+        padding: 12px 30px;
+        border-radius: 25px;
+        font-weight: 700;
+        font-size: 1.2em;
+        margin-top: 15px;
+        box-shadow: 0 4px 15px rgba(5, 150, 105, 0.3);
+    }
+
+    .card {
+        background: rgba(255, 255, 255, 0.95);
+        -webkit-backdrop-filter: blur(20px);
+        backdrop-filter: blur(20px);
+        padding: 40px;
+        border-radius: 25px;
+        box-shadow: 0 15px 50px rgba(0, 0, 0, 0.15);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        margin-bottom: 25px;
+    }
+
+    .loading-container {
+        text-align: center;
+        padding: 60px 40px;
+    }
+
+    .loading-spinner {
+        width: 60px;
+        height: 60px;
+        margin: 0 auto 20px;
+        border: 5px solid rgba(16, 185, 129, 0.2);
+        border-top: 5px solid var(--primary);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    .loading-text {
+        color: var(--primary);
+        font-size: 1.2em;
+        font-weight: 600;
+    }
+
+    .error-container {
+        text-align: center;
+        padding: 60px 40px;
+    }
+
+    .error-icon {
+        font-size: 5em;
+        margin-bottom: 20px;
+    }
+
+    .error-title {
+        color: var(--danger);
+        font-size: 2em;
+        margin-bottom: 15px;
+        font-weight: 700;
+    }
+
+    .error-message {
+        color: #666;
+        font-size: 1.1em;
+        line-height: 1.8;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+
+    .stat-card {
+        background: white;
+        border: 2px solid rgba(5, 150, 105, 0.1);
+        padding: 30px 25px;
+        border-radius: 20px;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    }
+
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 4px;
+        background: linear-gradient(90deg, var(--primary), var(--primary-light));
+    }
+
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 25px rgba(5, 150, 105, 0.15);
+    }
+
+    .stat-card.warning::before {
+        background: linear-gradient(90deg, #f59e0b, #fbbf24);
+    }
+
+    .stat-card.success::before {
+        background: linear-gradient(90deg, #10b981, #34d399);
+    }
+
+    .stat-card.danger::before {
+        background: linear-gradient(90deg, #ef4444, #f87171);
+    }
+
+    .stat-icon {
+        font-size: 2.5em;
+        margin-bottom: 10px;
+        opacity: 0.9;
+    }
+
+    .stat-number {
+        font-size: 2.8em;
+        font-weight: 800;
+        color: var(--primary);
+        margin-bottom: 8px;
+        line-height: 1;
+    }
+
+    .stat-card.warning .stat-number {
+        color: #f59e0b;
+    }
+
+    .stat-card.success .stat-number {
+        color: #10b981;
+    }
+
+    .stat-card.danger .stat-number {
+        color: #ef4444;
+    }
+
+    .stat-label {
+        color: #6b7280;
+        font-size: 0.95em;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .action-bar {
+        display: flex;
+        gap: 15px;
+        margin-bottom: 25px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    .btn {
+        padding: 14px 28px;
+        border: none;
+        background: linear-gradient(135deg, var(--primary), var(--primary-light));
+        color: white;
+        cursor: pointer;
+        border-radius: 12px;
+        font-weight: 700;
+        font-size: 1em;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(5, 150, 105, 0.3);
+    }
+
+    .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(5, 150, 105, 0.4);
+    }
+
+    .search-box {
+        flex: 1;
+        min-width: 250px;
+        position: relative;
+    }
+
+    .search-box input {
+        width: 100%;
+        padding: 14px 18px 14px 45px;
+        border: 2px solid rgba(5, 150, 105, 0.2);
+        border-radius: 12px;
+        font-size: 1em;
+        transition: all 0.3s ease;
+        font-family: inherit;
+        background: rgba(255, 255, 255, 0.9);
+    }
+
+    .search-box input:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 4px rgba(5, 150, 105, 0.1);
+        background: white;
+    }
+
+    .search-icon {
+        position: absolute;
+        left: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--primary);
+        font-size: 1.2em;
+    }
+
+    .table-wrapper {
+        background: white;
+        border-radius: 20px;
+        overflow-x: auto;
+        box-shadow: 0 5px 20px rgba(5, 150, 105, 0.1);
+        border: 1px solid rgba(16, 185, 129, 0.2);
+    }
+
+    .data-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.95em;
+    }
+
+    .data-table thead {
+        background: linear-gradient(135deg, var(--primary), var(--primary-light));
+        color: white;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .data-table thead th {
+        padding: 20px;
+        text-align: left;
+        border-bottom: 3px solid var(--primary);
+        white-space: nowrap;
+    }
+
+    .data-table tbody tr {
+        border-bottom: 1px solid rgba(5, 150, 105, 0.15);
+        transition: all 0.3s ease;
+    }
+
+    .data-table tbody tr:hover {
+        background: linear-gradient(90deg, rgba(16, 185, 129, 0.08), rgba(16, 185, 129, 0.05), rgba(16, 185, 129, 0.08));
+        box-shadow: inset 0 4px 12px rgba(16, 185, 129, 0.1);
+    }
+
+    .data-table tbody td {
+        padding: 18px 20px;
+        color: #333;
+        word-break: break-word;
+        vertical-align: middle;
+    }
+
+    .status-badge {
+        display: inline-block;
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-weight: 700;
+        font-size: 0.8em;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        text-align: center;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        white-space: nowrap;
+    }
+
+    .status-menunggu {
+        background: linear-gradient(135deg, #f59e0b, #fbbf24);
+        color: white;
+    }
+
+    .status-terverifikasi {
+        background: linear-gradient(135deg, #10b981, #34d399);
+        color: white;
+    }
+
+    .status-ditolak {
+        background: linear-gradient(135deg, #ef4444, #f87171);
+        color: white;
+    }
+
+    .btn-edit {
+        padding: 8px 16px;
+        background: linear-gradient(135deg, #3b82f6, #2563eb);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.85em;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+    }
+
+    .btn-edit:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px 40px;
+        color: #999;
+    }
+
+    .empty-icon {
+        font-size: 4em;
+        margin-bottom: 20px;
+    }
+
+    .no-results {
+        display: none;
+        text-align: center;
+        padding: 40px;
+        color: #666;
+        font-size: 1.1em;
+    }
+
+    /* Sort Indicator */
+    .sort-indicator {
+        font-size: 0.75em;
+        margin-left: 5px;
+        display: inline-block;
+        min-width: 15px;
+        color: rgba(255, 255, 255, 0.8);
+    }
+
+    .data-table thead th {
+        -webkit-user-select: none;
+        user-select: none;
+        position: relative;
+        transition: all 0.2s ease;
+    }
+
+    .data-table thead th:hover {
+        background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+    }
+
+    .data-table thead th[onclick] {
+        cursor: pointer;
+    }
+
+    @media (max-width: 768px) {
+        .container {
+            padding: 0 15px;
+        }
+
+        body {
+            padding: 30px 15px;
+        }
+
+        .header, .card {
+            padding: 25px 20px;
+            border-radius: 15px;
+        }
+
+        .header h1 {
+            font-size: 1.6em;
+        }
+
+        .header p {
+            font-size: 0.95em;
+        }
+
+        .kecamatan-badge {
+            font-size: 1em;
+            padding: 10px 20px;
+        }
+
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+
+        .stat-card {
+            padding: 20px 15px;
+        }
+
+        .stat-icon {
+            font-size: 2em;
+        }
+
+        .stat-number {
+            font-size: 2.2em;
+        }
+
+        .stat-label {
+            font-size: 0.8em;
+        }
+
+        .action-bar {
+            flex-direction: column;
+        }
+
+        .btn {
+            width: 100%;
+            justify-content: center;
+            display: flex;
+            align-items: center;
+        }
+
+        .search-box {
+            width: 100%;
+        }
+
+        .table-wrapper {
+            border-radius: 15px;
+        }
+
+        .data-table {
+            font-size: 0.85em;
+        }
+
+        .data-table thead th {
+            padding: 15px 10px;
+            font-size: 0.8em;
+        }
+
+        .data-table tbody td {
+            padding: 14px 10px;
+        }
+
+        .status-badge {
+            font-size: 0.7em;
+            padding: 6px 12px;
+        }
+    }
+
+    @media (max-width: 480px) {
+        body {
+            padding: 20px 10px;
+        }
+
+        .header h1 {
+            font-size: 1.4em;
+        }
+
+        .header p {
+            font-size: 0.9em;
+        }
+
+        .kecamatan-badge {
+            font-size: 0.9em;
+            padding: 8px 16px;
+        }
+
+        .stats-grid {
+            grid-template-columns: 1fr;
+            gap: 12px;
+        }
+
+        .stat-card {
+            padding: 18px 15px;
+        }
+
+        .stat-number {
+            font-size: 2em;
+        }
+
+        .stat-label {
+            font-size: 0.75em;
+        }
+
+        .btn {
+            padding: 12px 20px;
+            font-size: 0.9em;
+        }
+
+        .search-box input {
+            padding: 12px 16px 12px 40px;
+            font-size: 0.9em;
+        }
+
+        .data-table {
+            font-size: 0.75em;
+        }
+
+        .data-table thead th {
+            padding: 12px 8px;
+        }
+
+        .data-table tbody td {
+            padding: 12px 8px;
+        }
+
+        .status-badge {
+            font-size: 0.65em;
+            padding: 5px 10px;
+        }
+    }
+
+    @media (max-width: 360px) {
+        .header h1 {
+            font-size: 1.2em;
+        }
+
+        .stat-number {
+            font-size: 1.8em;
+        }
+
+        .data-table {
+            font-size: 0.7em;
+        }
+    }
+</style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>📊 Data Peserta Kecamatan</h1>
+            <p>MTQ ke-55 Kabupaten Indramayu 2025</p>
+            <div class="kecamatan-badge" id="kecamatanBadge">Loading...</div>
+        </div>
+
+    <!-- Loading State -->
+    <div id="loadingState" class="card">
+        <div class="loading-container">
+            <div class="loading-spinner"></div>
+            <p class="loading-text">Memuat data peserta...</p>
+        </div>
+    </div>
+
+    <!-- Error State -->
+    <div id="errorState" class="card" style="display: none;">
+        <div class="error-container">
+            <div class="error-icon">⚠️</div>
+            <div class="error-title">Akses Ditolak</div>
+            <div class="error-message" id="errorMessage">
+                Link tidak valid atau telah kedaluwarsa.
+            </div>
+        </div>
+    </div>
+
+    <!-- Content State -->
+    <div id="contentState" style="display: none;">
+        <!-- Statistics -->
+        <div class="card">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon">👥</div>
+                    <div class="stat-number" id="totalPeserta">0</div>
+                    <div class="stat-label">Total Peserta</div>
+                </div>
+                <div class="stat-card warning">
+                    <div class="stat-icon">⏳</div>
+                    <div class="stat-number" id="totalMenunggu">0</div>
+                    <div class="stat-label">Menunggu Verifikasi</div>
+                </div>
+                <div class="stat-card success">
+                    <div class="stat-icon">✅</div>
+                    <div class="stat-number" id="totalDiterima">0</div>
+                    <div class="stat-label">Terverifikasi</div>
+                </div>
+                <div class="stat-card danger">
+                    <div class="stat-icon">❌</div>
+                    <div class="stat-number" id="totalDitolak">0</div>
+                    <div class="stat-label">Ditolak</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Bar -->
+        <div class="card">
+            <div class="action-bar">
+                <button type="button" class="btn" onclick="refreshData()">
+                    🔄 Refresh Data
+                </button>
+                <button type="button" class="btn" onclick="exportToCSV()">
+                    📥 Export CSV
+                </button>
+                <div class="search-box">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" id="searchInput" placeholder="Cari nama, NIK, nomor peserta, atau cabang..." oninput="searchData()">
+                </div>
+            </div>
+
+            <!-- Table -->
+            <div class="table-wrapper">
+                <table class="data-table" id="dataTable">
+                    <thead>
+                        <tr>
+                            <th>No</th>
+                            <th style="cursor: pointer;" onclick="sortData('nomorPeserta')">Nomor Peserta <span class="sort-indicator"></span></th>
+                            <th style="cursor: pointer;" onclick="sortData('nama')">Nama/Tim <span class="sort-indicator"></span></th>
+                            <th style="cursor: pointer;" onclick="sortData('cabang')">Cabang Lomba <span class="sort-indicator"></span></th>
+                            <th style="cursor: pointer;" onclick="sortData('status')">Status <span class="sort-indicator"></span></th>
+                        </tr>
+                    </thead>
+                    <tbody id="dataTableBody">
+                        <!-- Data akan diisi oleh JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="noResults" class="no-results">
+                🔍 Tidak ada data yang sesuai dengan pencarian
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ===== CONFIGURATION =====
+    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxnWrsuoAPF70etkwUhZYIJkZME8BzeYyYvU7M0Cn9oL-AxqKsRbFcsPBeg50JPOR5Q/exec';
+
+    let allData = [];
+    let filteredData = [];
+    let currentKecamatan = '';
+    let sortColumn = null;
+    let sortDirection = 'asc';
+
+    // ===== DECODE KECAMATAN FROM URL =====
+    function getKecamatanFromURL() {
+        let encodedPart = window.location.hash.replace('#', '').trim();
+        
+        if (!encodedPart) {
+            const path = window.location.pathname;
+            const segments = path.split('/').filter(s => s);
+            encodedPart = segments[segments.length - 1];
+            
+            if (!encodedPart || encodedPart.includes('.html')) {
+                console.error('No valid encoded part found in URL');
+                return null;
+            }
+        }
+
+        try {
+            console.log('Encoded part:', encodedPart);
+            
+            const decoded = atob(encodedPart);
+            console.log('Decoded string:', decoded);
+            
+            // Format: "kecamatan-NAMA_KECAMATAN"
+            if (decoded.startsWith('kecamatan-')) {
+                const kecamatan = decoded.replace('kecamatan-', '');
+                console.log('Kecamatan extracted:', kecamatan);
+                return kecamatan;
+            }
+            
+            console.error('Invalid format: does not start with "kecamatan-"');
+            return null;
+        } catch (e) {
+            console.error('Decode error:', e);
+            return null;
+        }
+    }
+
+    // ===== LOAD DATA =====
+    async function loadData() {
+        try {
+            console.log('Loading data for kecamatan:', currentKecamatan);
+            
+            // Fetch all data
+            const response = await fetch(`${APPS_SCRIPT_URL}?action=getData`);
+            const result = await response.json();
+
+            if (!result.success) {
+                throw new Error(result.message || 'Gagal mengambil data');
+            }
+
+            // Filter by kecamatan
+            const kecamatanIdx = result.headers.indexOf('Kecamatan');
+            const nomorPesertaIdx = result.headers.indexOf('Nomor Peserta');
+            const namaReguIdx = result.headers.indexOf('Nama Regu/Tim');
+            const namaLengkapIdx = result.headers.indexOf('Nama Lengkap');
+            const cabangIdx = result.headers.indexOf('Cabang Lomba');
+            const nikIdx = result.headers.indexOf('NIK');
+            const statusIdx = result.headers.indexOf('Status');
+
+            // Filter data by kecamatan
+            allData = result.data
+                .map((row, index) => ({
+                    rowIndex: index,
+                    nomorPeserta: row[nomorPesertaIdx] || '-',
+                    nama: row[namaReguIdx] && row[namaReguIdx] !== '-' ? row[namaReguIdx] : row[namaLengkapIdx],
+                    cabang: row[cabangIdx] || '-',
+                    nik: row[nikIdx] || '-',
+                    status: row[statusIdx] || 'Menunggu Verifikasi',
+                    kecamatan: row[kecamatanIdx] || '-'
+                }))
+                .filter(item => item.kecamatan === currentKecamatan);
+
+            filteredData = [...allData];
+
+            console.log('Data loaded:', allData.length, 'peserta');
+            return allData;
+
+        } catch (error) {
+            console.error('Error loading data:', error);
+            throw error;
+        }
+    }
+
+    // ===== RENDER DATA =====
+    function renderData() {
+        const tbody = document.getElementById('dataTableBody');
+        tbody.innerHTML = '';
+
+        if (filteredData.length === 0) {
+            document.getElementById('noResults').style.display = 'block';
+            return;
+        }
+
+        document.getElementById('noResults').style.display = 'none';
+
+        filteredData.forEach((item, index) => {
+            const row = document.createElement('tr');
+            
+            // Status dengan warna berbeda
+            let statusClass = 'status-menunggu';
+            let statusText = item.status;
+            
+            if (statusText === 'Diterima' || statusText === 'Terverifikasi' || statusText === 'Verified') {
+                statusClass = 'status-terverifikasi';
+                statusText = 'Terverifikasi';
+            } else if (statusText === 'Ditolak') {
+                statusClass = 'status-ditolak';
+            } else if (statusText === 'Menunggu Verifikasi' || statusText === 'Menunggu') {
+                statusClass = 'status-menunggu';
+                statusText = 'Menunggu Verifikasi';
+            }
+
+            row.innerHTML = `
+                <td>${index + 1}</td>
+                <td><strong>${item.nomorPeserta}</strong></td>
+                <td>${item.nama}</td>
+                <td>${item.cabang}</td>
+                <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+            `;
+            
+            tbody.appendChild(row);
+        });
+
+        updateStatistics();
+    }
+
+    // ===== UPDATE STATISTICS =====
+    function updateStatistics() {
+        const total = allData.length;
+        const menunggu = allData.filter(item => 
+            item.status === 'Menunggu Verifikasi' || item.status === 'Menunggu'
+        ).length;
+        const diterima = allData.filter(item => 
+            item.status === 'Diterima' || item.status === 'Terverifikasi' || item.status === 'Verified'
+        ).length;
+        const ditolak = allData.filter(item => item.status === 'Ditolak').length;
+
+        document.getElementById('totalPeserta').textContent = total;
+        document.getElementById('totalMenunggu').textContent = menunggu;
+        document.getElementById('totalDiterima').textContent = diterima;
+        document.getElementById('totalDitolak').textContent = ditolak;
+    }
+
+    // ===== SEARCH DATA =====
+    function searchData() {
+        const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+
+        if (!searchTerm.trim()) {
+            filteredData = [...allData];
+        } else {
+            filteredData = allData.filter(item => {
+                // Convert semua field ke string dulu sebelum toLowerCase
+                const nama = (item.nama || '').toString().toLowerCase();
+                const nomorPeserta = (item.nomorPeserta || '').toString().toLowerCase();
+                const nik = (item.nik || '').toString().toLowerCase();
+                const cabang = (item.cabang || '').toString().toLowerCase();
+                
+                return nama.includes(searchTerm) ||
+                    nomorPeserta.includes(searchTerm) ||
+                    nik.includes(searchTerm) ||
+                    cabang.includes(searchTerm);
+            });
+        }
+
+        renderData();
+    }
+
+    // ===== REFRESH DATA =====
+    async function refreshData() {
+        try {
+            document.getElementById('loadingState').style.display = 'block';
+            document.getElementById('contentState').style.display = 'none';
+
+            await loadData();
+            renderData();
+
+            document.getElementById('loadingState').style.display = 'none';
+            document.getElementById('contentState').style.display = 'block';
+
+            alert('✅ Data berhasil diperbarui!');
+        } catch (error) {
+            console.error('Refresh error:', error);
+            alert('❌ Gagal memperbarui data: ' + error.message);
+            document.getElementById('loadingState').style.display = 'none';
+            document.getElementById('contentState').style.display = 'block';
+        }
+    }
+
+    // ===== EXPORT TO CSV =====
+    function exportToCSV() {
+        if (filteredData.length === 0) {
+            alert('Tidak ada data untuk diexport!');
+            return;
+        }
+
+        // Create CSV content
+        let csv = 'No,Nomor Peserta,Nama/Tim,Cabang Lomba,NIK,Status\n';
+        
+        filteredData.forEach((item, index) => {
+            csv += `${index + 1},"${item.nomorPeserta}","${item.nama}","${item.cabang}","${item.nik}","${item.status}"\n`;
+        });
+
+        // Create download link
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        
+        link.setAttribute('href', url);
+        link.setAttribute('download', `Data_Peserta_${currentKecamatan}_${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        console.log('CSV exported:', filteredData.length, 'rows');
+    }
+
+    // ===== SORT DATA =====
+    function sortData(column) {
+        // Toggle sort direction
+        if (sortColumn === column) {
+            sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+            sortColumn = column;
+            sortDirection = 'asc';
+        }
+
+        // Sort filteredData
+        filteredData.sort((a, b) => {
+            let aVal = a[column] || '';
+            let bVal = b[column] || '';
+
+            // Convert to string for comparison
+            aVal = aVal.toString().toLowerCase();
+            bVal = bVal.toString().toLowerCase();
+
+            if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+            if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+            return 0;
+        });
+
+        // Update sort indicators
+        updateSortIndicators(column);
+        
+        // Re-render
+        renderData();
+    }
+
+    function updateSortIndicators(activeColumn) {
+        // Remove all existing sort indicators
+        document.querySelectorAll('.data-table thead th .sort-indicator').forEach(indicator => {
+            indicator.textContent = '';
+        });
+
+        // Add indicator to active column
+        const columnMap = {
+            'nomorPeserta': 1,
+            'nama': 2,
+            'cabang': 3,
+            'status': 4
+        };
+
+        const thIndex = columnMap[activeColumn];
+        if (thIndex !== undefined) {
+            const th = document.querySelectorAll('.data-table thead th')[thIndex];
+            const indicator = th.querySelector('.sort-indicator');
+            if (indicator) {
+                const arrow = sortDirection === 'asc' ? '▲' : '▼';
+                indicator.textContent = ' ' + arrow;
+            }
+        }
+    }
+
+    // ===== INITIALIZE =====
+    async function init() {
+        try {
+            // Get kecamatan from URL
+            currentKecamatan = getKecamatanFromURL();
+
+            if (!currentKecamatan) {
+                throw new Error('Link tidak valid.');
+            }
+
+            console.log('Current Kecamatan:', currentKecamatan);
+
+            // Update header
+            document.getElementById('kecamatanBadge').textContent = currentKecamatan;
+
+            // Load data
+            await loadData();
+
+            // Render data
+            renderData();
+
+            // Show content
+            document.getElementById('loadingState').style.display = 'none';
+            document.getElementById('contentState').style.display = 'block';
+
+        } catch (error) {
+            console.error('Init error:', error);
+            document.getElementById('loadingState').style.display = 'none';
+            document.getElementById('errorState').style.display = 'block';
+            document.getElementById('errorMessage').textContent = error.message;
+        }
+    }
+
+    // Run on page load
+    init();
+</script>
+</body>
+</html>
