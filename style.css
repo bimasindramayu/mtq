@@ -173,6 +173,20 @@ body::before {
     border: 1px solid rgba(110, 231, 183, 0.3);
 }
 
+.hero-close {
+    color: var(--accent);
+    font-size: 1.2em;
+    font-weight: 700;
+    animation: fadeInUp 0.8s ease 0.4s both;
+    padding: 12px 30px;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 50px;
+    display: inline-block;
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
 @keyframes fadeInUp {
     from {
         opacity: 0;
