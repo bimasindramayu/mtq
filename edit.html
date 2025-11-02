@@ -849,6 +849,7 @@
         }
 
         function renderTeamMember(num) {
+            const isOptional = num === 3;
             return `
                 <div class="member-section">
                     <h4>Anggota Tim #${num}</h4>
@@ -856,7 +857,7 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label>NIK ${isOptional ? '' : '*'}</label>
-                            <input type="text" name="memberNik${i}" id="memberNik${i}" maxlength="16" pattern="[0-9]{16}" inputmode="numeric" placeholder="NIK (16 digit)" ${isOptional ? '' : 'required'}>
+                            <input type="text" name="memberNik${num}" id="memberNik${num}" maxlength="16" pattern="[0-9]{16}" inputmode="numeric" placeholder="NIK (16 digit)" ${isOptional ? '' : 'required'}>
                             <small style="font-size: 0.85em; color: #666; display: block; margin-top: 5px;">Hanya angka, tanpa spasi (16 digit)</small>
                         </div>
                         <div class="form-group">
