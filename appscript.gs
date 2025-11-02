@@ -5,7 +5,7 @@ const SHEET_NAME = 'Peserta';
 
 // REGISTRATION TIME WINDOW (WIB = UTC+7)
 const REGISTRATION_START = new Date('2025-10-29T00:00:00+07:00');
-const REGISTRATION_END = new Date('2025-11-03T23:59:59+07:00');
+const REGISTRATION_END = new Date('2025-11-03T12:00:00+07:00');
 
 // ===== CONCURRENCY PROTECTION - OPTIMIZED =====
 const LOCK_TIMEOUT_MS = 45000;      // 45 detik (lebih pendek)
@@ -31,8 +31,8 @@ const CABANG_ORDER = {
   'TFI': { start: 621, end: 682, name: 'Tafsir Indonesia' },
   'TFA': { start: 683, end: 744, name: 'Tafsir Arab' },
   'TFE': { start: 745, end: 806, name: 'Tafsir Inggris' },
-  'FAQ': { start: 1, end: 31, name: 'Fahm Al Qur\'an', prefix: 'F' },
-  'SAQ': { start: 1, end: 31, name: 'Syarh Al Qur\'an', prefix: 'S' },
+  'FAQ': { start: 1, end: 62, name: 'Fahm Al Qur\'an', prefix: 'F' },
+  'SAQ': { start: 1, end: 62, name: 'Syarh Al Qur\'an', prefix: 'S' },
   'KN': { start: 1, end: 62, name: 'Kaligrafi Naskah', prefix: 'N' },
   'KH': { start: 63, end: 124, name: 'Kaligrafi Hiasan', prefix: 'H' },
   'KD': { start: 125, end: 186, name: 'Kaligrafi Dekorasi', prefix: 'D' },
