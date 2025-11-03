@@ -1157,14 +1157,6 @@ function updateSubmitButtonState() {
     const statusDiv = document.getElementById('submitStatusInfo');
     const cabang = document.getElementById('cabang').value;
     const kecamatan = document.getElementById('kecamatan').value;
-    const nikEl = document.getElementById('nik');
-
-    if (nikEl) {
-        nikEl.addEventListener('input', function() {
-            this.value = this.value.replace(/[^0-9]/g, '').slice(0, 16);
-            updateSubmitButtonState(); // Sudah ada, pastikan ini dipanggil
-        });
-    }
     
     if (!kecamatan) {
         submitBtn.disabled = true;
@@ -1269,7 +1261,6 @@ function checkPersonalCompletion() {
     // const namaBank = document.getElementById('namaBank').value;
     
     if (!nik) reasons.push('NIK belum diisi');
-    else if (nik.length !== 16) reasons.push('NIK harus terdiri dari 16 digit'); // TAMBAHKAN INI
     if (!nama) reasons.push('Nama lengkap belum diisi');
     if (!gender) reasons.push('Jenis kelamin belum dipilih');
     if (!tempat) reasons.push('Tempat lahir belum diisi');
@@ -1346,7 +1337,6 @@ function checkTeamMember(memberIndex, isRequired) {
     // const rekBankEl = document.querySelector(`input[name="memberNamaBank${memberIndex}"]`);
     
     if (!nikEl?.value) reasons.push(`${prefix}: NIK belum diisi`);
-    else if (nikEl.value.length !== 16) reasons.push(`${prefix}: NIK harus 16 digit`); // TAMBAHKAN INI
     if (!nameEl?.value) reasons.push(`${prefix}: Nama belum diisi`);
     if (!genderEl?.value) reasons.push(`${prefix}: Jenis kelamin belum dipilih`);
     if (!tempatEl?.value) reasons.push(`${prefix}: Tempat lahir belum diisi`);
@@ -2451,11 +2441,6 @@ function validateFormManually() {
                     errors.push(`${field.name} belum diisi`);
                 }
             });
-
-            const nik = document.getElementById('nik')?.value;
-            if (nik && nik.length !== 16) {
-                errors.push('NIK harus terdiri dari 16 digit');
-            }
             
             // Check required files
             const requiredDocs = [1, 2, 5];
@@ -2492,11 +2477,6 @@ function validateFormManually() {
                         errors.push(`${field.label} belum diisi`);
                     }
                 });
-
-                const memberNik = document.querySelector(`[name="memberNik${i}"]`)?.value;
-                if (memberNik && memberNik.length !== 16) {
-                    errors.push(`Anggota ${i}: NIK harus terdiri dari 16 digit`);
-                }
                 
                 // Check required files for member
                 const requiredDocs = [1, 2, 5];
@@ -2530,11 +2510,6 @@ function validateFormManually() {
                             errors.push(`${field.label} belum diisi`);
                         }
                     });
-
-                    const member3Nik = document.querySelector('[name="memberNik3"]')?.value;
-                    if (member3Nik && member3Nik.length !== 16) {
-                        errors.push('Anggota 3: NIK harus terdiri dari 16 digit');
-                    }
 
                     // Check required files for member 3
                     const requiredDocs = [1, 2, 5];

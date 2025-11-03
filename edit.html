@@ -261,8 +261,6 @@
             box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
             transition: all 0.3s ease;
             flex-shrink: 0;
-            line-height: 1;
-            vertical-align: middle;
         }
 
         .btn-file:hover {
@@ -287,8 +285,6 @@
             box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
             transition: all 0.3s ease;
             flex-shrink: 0;
-            line-height: 1;
-            vertical-align: middle;
         }
 
         .btn-clear:hover {
@@ -784,9 +780,6 @@
             }
 
             setupFileInputs();
-            setTimeout(() => {
-                validateFormAndUpdateButton();
-            }, 100);
         }
 
         // ===== RENDER PERSONAL FORM =====
@@ -797,8 +790,7 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label>NIK *</label>
-                        <input type="text" name="nik" id="nik" maxlength="16" pattern="[0-9]{16}" inputmode="numeric" required>
-                        <small style="font-size: 0.85em; color: #666; display: block; margin-top: 5px;">Masukkan 16 digit NIK tanpa spasi</small>
+                        <input type="text" name="nik" id="nik" maxlength="16" required>
                     </div>
                     <div class="form-group">
                         <label>Nama Lengkap *</label>
@@ -853,16 +845,14 @@
         }
 
         function renderTeamMember(num) {
-            const isOptional = num === 3;
             return `
                 <div class="member-section">
                     <h4>Anggota Tim #${num}</h4>
 
                     <div class="form-row">
                         <div class="form-group">
-                            <label>NIK ${isOptional ? '' : '*'}</label>
-                            <input type="text" name="memberNik${num}" id="memberNik${num}" maxlength="16" pattern="[0-9]{16}" inputmode="numeric" placeholder="NIK (16 digit)" ${isOptional ? '' : 'required'}>
-                            <small style="font-size: 0.85em; color: #666; display: block; margin-top: 5px;">Hanya angka, tanpa spasi (16 digit)</small>
+                            <label>NIK ${num <= 2 ? '*' : ''}</label>
+                            <input type="text" name="memberNik${num}" id="memberNik${num}" maxlength="16" ${num <= 2 ? 'required' : ''}>
                         </div>
                         <div class="form-group">
                             <label>Nama Lengkap ${num <= 2 ? '*' : ''}</label>
@@ -913,15 +903,6 @@
             document.getElementById('nik').value = getValue('NIK');
             document.getElementById('nama').value = getValue('Nama Lengkap');
 
-            // TAMBAHKAN EVENT LISTENER UNTUK NIK
-            const nikInput = document.getElementById('nik');
-            if (nikInput) {
-                nikInput.addEventListener('input', function() {
-                    this.value = this.value.replace(/[^0-9]/g, '').slice(0, 16);
-                    validateFormAndUpdateButton();
-                });
-            }
-
             // Show current files
             for (let i = 1; i <= 5; i++) {
                 const fileLink = getValue(`Link - Doc ${getDocName(i)} Personal`);
@@ -948,15 +929,7 @@
                 const nikEl = document.getElementById(`memberNik${i}`);
                 const nameEl = document.getElementById(`memberName${i}`);
                 
-                if (nikEl) {
-                    nikEl.value = getValue(`Anggota Tim #${i} - NIK`);
-                    
-                    // TAMBAHKAN EVENT LISTENER UNTUK NIK
-                    nikEl.addEventListener('input', function() {
-                        this.value = this.value.replace(/[^0-9]/g, '').slice(0, 16);
-                        validateFormAndUpdateButton();
-                    });
-                }
+                if (nikEl) nikEl.value = getValue(`Anggota Tim #${i} - NIK`);
                 if (nameEl) nameEl.value = getValue(`Anggota Tim #${i} - Nama`);
 
                 // Show current files
@@ -966,23 +939,6 @@
                         showCurrentFile(`currentTeamDoc${i}_${d}`, fileLink);
                     }
                 }
-            }
-        }
-
-        // ===== VALIDATE FORM AND UPDATE BUTTON STATE =====
-        function validateFormAndUpdateButton() {
-            const submitBtn = document.getElementById('submitBtn');
-            const nikErrors = validateAllNIKs();
-            
-            if (nikErrors.length > 0) {
-                submitBtn.disabled = true;
-                submitBtn.style.opacity = '0.6';
-                submitBtn.style.cursor = 'not-allowed';
-                console.log('NIK validation errors:', nikErrors);
-            } else {
-                submitBtn.disabled = false;
-                submitBtn.style.opacity = '1';
-                submitBtn.style.cursor = 'pointer';
             }
         }
 
@@ -1006,74 +962,6 @@
                         <a href="${fileLink}" target="_blank" class="current-file-link">Lihat Dokumen</a>
                     </div>
                 `;
-            }
-        }
-
-        // ===== VALIDATE NIK LENGTH =====
-        function validateNIKLength(nik) {
-            if (!nik) return { isValid: false, message: 'NIK belum diisi' };
-            if (nik.length !== 16) return { isValid: false, message: 'NIK harus terdiri dari 16 digit' };
-            return { isValid: true, message: '' };
-        }
-
-        function validateAllNIKs() {
-            const isTeam = document.getElementById('isTeam').value === 'true';
-            const errors = [];
-            
-            if (isTeam) {
-                // Validate team member NIKs
-                for (let i = 1; i <= 3; i++) {
-                    const nikInput = document.getElementById(`memberNik${i}`);
-                    if (nikInput && nikInput.value) {
-                        const validation = validateNIKLength(nikInput.value);
-                        if (!validation.isValid) {
-                            errors.push(`Anggota #${i}: ${validation.message}`);
-                        }
-                    }
-                }
-            } else {
-                // Validate personal NIK
-                const nikInput = document.getElementById('nik');
-                if (nikInput && nikInput.value) {
-                    const validation = validateNIKLength(nikInput.value);
-                    if (!validation.isValid) {
-                        errors.push(validation.message);
-                    }
-                }
-            }
-            
-            return errors;
-        }
-
-        function validateFormAndUpdateButton() {
-            const submitBtn = document.getElementById('submitBtn');
-            const nikErrors = validateAllNIKs();
-            
-            if (nikErrors.length > 0) {
-                submitBtn.disabled = true;
-                submitBtn.style.opacity = '0.6';
-                submitBtn.style.cursor = 'not-allowed';
-                
-                // Show error message (optional)
-                const statusDiv = document.createElement('div');
-                statusDiv.id = 'nikValidationError';
-                statusDiv.style.cssText = 'background: #ffe7e7; color: #c82333; padding: 15px; border-radius: 10px; margin: 15px 0; border-left: 5px solid #dc2626;';
-                statusDiv.innerHTML = '⚠️ ' + nikErrors.join('<br>⚠️ ');
-                
-                // Remove existing error if any
-                const existingError = document.getElementById('nikValidationError');
-                if (existingError) existingError.remove();
-                
-                // Insert before submit button
-                submitBtn.parentElement.insertBefore(statusDiv, submitBtn);
-            } else {
-                submitBtn.disabled = false;
-                submitBtn.style.opacity = '1';
-                submitBtn.style.cursor = 'pointer';
-                
-                // Remove error message
-                const existingError = document.getElementById('nikValidationError');
-                if (existingError) existingError.remove();
             }
         }
 
@@ -1147,13 +1035,6 @@
         document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('editForm').addEventListener('submit', async function(e) {
                 e.preventDefault();
-
-                // TAMBAHKAN VALIDASI NIK SEBELUM SUBMIT
-                const nikErrors = validateAllNIKs();
-                if (nikErrors.length > 0) {
-                    showResultModal(false, 'Validasi Gagal', nikErrors.join('\n'));
-                    return;
-                }
 
                 try {
                     showLoadingOverlay(true, 'Menyimpan perubahan...');
