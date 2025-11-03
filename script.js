@@ -288,6 +288,14 @@ function checkRegistrationTime() {
     const registrationClosed = document.getElementById('registrationClosed');
     const registrationOpen = document.getElementById('registrationOpen');
     
+    // Format tanggal ke gaya Indonesia (contoh: 4 November 2025)
+    const options = { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' };
+    const formattedDate = REGISTRATION_END.toLocaleDateString('id-ID', options);
+
+    // Ambil jam dan menit
+    const hours = String(REGISTRATION_END.getHours()).padStart(2, '0');
+    const minutes = String(REGISTRATION_END.getMinutes()).padStart(2, '0');
+
     if (isOpen) {
         registrationClosed.style.display = 'none';
         registrationOpen.style.display = 'block';
@@ -300,7 +308,7 @@ function checkRegistrationTime() {
             document.getElementById('countdownTimer').style.display = 'block';
             startCountdown();
         } else {
-            document.getElementById('closedMessage').textContent = 'Mohon maaf, pendaftaran peserta MTQ ke-55 telah ditutup pada tanggal 30 Oktober 2025 pukul 23:59 WIB.';
+            document.getElementById('closedMessage').textContent = `Mohon maaf, pendaftaran peserta MTQ ke-55 telah ditutup pada tanggal ${formattedDate} pukul ${hours}:${minutes} WIB.`;
             document.getElementById('countdownTimer').style.display = 'none';
             if (countdownInterval) clearInterval(countdownInterval);
         }
