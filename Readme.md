@@ -74,7 +74,7 @@ const APPS_SCRIPT_URL = 'https://script.google.com/macros/d/1a2b3c4d5e6f7g8h9i0j
 
 ## STEP 7: Update script.js Untuk Production
 
-Cari bagian ini di `script.js`:
+Cari bagian ini di `config.js`:
 
 ```javascript
 const isDemo = true;
