@@ -5,8 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Registrasi MTQ ke-55 Kabupaten Indramayu 2025</title>
-    <link rel="icon" type="image/png" href="logomtq.png">
-    <link rel="stylesheet" href="style.css">
+    <link rel="icon" type="image/png" href="asset/logomtq.png">
+    <link rel="stylesheet" href="unified-styles.css">
 </head>
 <body>
     <!-- Loading Overlay -->
@@ -21,9 +21,9 @@
     <div class="hero">
         <div class="hero-content">
             <div class="hero-logos">
-                <img src="logokemenag.png" alt="Logo Kemenag" class="hero-logo hero-logo-kemenag">
-                <img src="logomtq.png" alt="Logo MTQ" class="hero-logo hero-logo-mtq">
-                <img src="logoindramayu.png" alt="Logo Indramayu" class="hero-logo hero-logo-indramayu">
+                <img src="asset/logokemenag.png" alt="Logo Kemenag" class="hero-logo hero-logo-kemenag">
+                <img src="asset/logomtq.png" alt="Logo MTQ" class="hero-logo hero-logo-mtq">
+                <img src="asset/logoindramayu.png" alt="Logo Indramayu" class="hero-logo hero-logo-indramayu">
             </div>
             <h1>Musabaqah Tilawatil Qur'an (MTQ)<br>ke-55</h1>
             <p class="hero-subtitle">Tingkat Kabupaten Indramayu - Tahun 2025</p>
@@ -158,7 +158,7 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label for="cabang">Cabang Lomba *</label>
-                            <select id="cabang" name="cabang" required onchange="handleCabangChange()">
+                            <select id="cabang" name="cabang" required>
                                 <option value="">-- Pilih Cabang Lomba --</option>
                                 
                                 <optgroup label="Tartil Al Qur'an (Max: 12 tahun 11 bulan 29 hari)">
@@ -557,8 +557,8 @@
             </div>
         </div>
     </div>
-    <div class="version-badge">v1.0.2</div>
-    <script src="script.js"></script>
+    <div class="version-badge">v1.0.3</div>
+    <script type="module" src="js/main.js"></script>
     <script>
         window.addEventListener("beforeunload", function (e) {
         e.preventDefault();
