@@ -12,7 +12,14 @@ export class RegistrationTimeManager {
         
         const registrationClosed = document.getElementById('registrationClosed');
         const registrationOpen = document.getElementById('registrationOpen');
-        
+
+        const options = { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' };
+        const formattedDateStart = REGISTRATION_START.toLocaleDateString('id-ID', options);
+        const hoursStart = String(REGISTRATION_START.getHours()).padStart(2, '0');
+        const minutesStart = String(REGISTRATION_START.getMinutes()).padStart(2, '0');
+        const formattedDateEnd = REGISTRATION_END.toLocaleDateString('id-ID', options);
+        const hoursEnd = String(REGISTRATION_END.getHours()).padStart(2, '0');
+        const minutesEnd = String(REGISTRATION_END.getMinutes()).padStart(2, '0');
         if (isOpen) {
             if (registrationClosed) registrationClosed.style.display = 'none';
             if (registrationOpen) registrationOpen.style.display = 'block';
@@ -24,13 +31,13 @@ export class RegistrationTimeManager {
             
             if (now < CONFIG.REGISTRATION_START) {
                 document.getElementById('closedMessage').textContent = 
-                    'Pendaftaran peserta MTQ ke-55 akan dibuka pada tanggal 29 Oktober 2025 pukul 00:00 WIB.';
+                    `Pendaftaran peserta MTQ ke-55 akan dibuka pada tanggal ${formattedDateStart} pukul ${hoursStart}:${minutesStart} WIB.`;
                 document.getElementById('countdownTimer').style.display = 'block';
                 this.startCountdown();
                 logger.log('Registration CLOSED - before start time');
             } else {
                 document.getElementById('closedMessage').textContent = 
-                    'Mohon maaf, pendaftaran peserta MTQ ke-55 telah ditutup pada tanggal 3 November 2025 pukul 12:00 WIB.';
+                    `Mohon maaf, pendaftaran peserta MTQ ke-55 telah ditutup pada tanggal ${formattedDateEnd} pukul ${hoursEnd}:${minutesEnd} WIB.`;
                 document.getElementById('countdownTimer').style.display = 'none';
                 this.stopCountdown();
                 logger.log('Registration CLOSED - after end time');
