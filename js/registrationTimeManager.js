@@ -14,12 +14,12 @@ export class RegistrationTimeManager {
         const registrationOpen = document.getElementById('registrationOpen');
 
         const options = { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Jakarta' };
-        const formattedDateStart = REGISTRATION_START.toLocaleDateString('id-ID', options);
-        const hoursStart = String(REGISTRATION_START.getHours()).padStart(2, '0');
-        const minutesStart = String(REGISTRATION_START.getMinutes()).padStart(2, '0');
-        const formattedDateEnd = REGISTRATION_END.toLocaleDateString('id-ID', options);
-        const hoursEnd = String(REGISTRATION_END.getHours()).padStart(2, '0');
-        const minutesEnd = String(REGISTRATION_END.getMinutes()).padStart(2, '0');
+        const formattedDateStart = CONFIG.REGISTRATION_START.toLocaleDateString('id-ID', options);
+        const hoursStart = String(CONFIG.REGISTRATION_START.getHours()).padStart(2, '0');
+        const minutesStart = String(CONFIG.REGISTRATION_START.getMinutes()).padStart(2, '0');
+        const formattedDateEnd = CONFIG.REGISTRATION_END.toLocaleDateString('id-ID', options);
+        const hoursEnd = String(CONFIG.REGISTRATION_END.getHours()).padStart(2, '0');
+        const minutesEnd = String(CONFIG.REGISTRATION_END.getMinutes()).padStart(2, '0');
         if (isOpen) {
             if (registrationClosed) registrationClosed.style.display = 'none';
             if (registrationOpen) registrationOpen.style.display = 'block';
