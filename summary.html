@@ -348,6 +348,131 @@
             font-size: 1.2em;
         }
 
+        /* Warna untuk setiap cabang */
+        th.cabang-header {
+            font-weight: 900;
+            font-size: 1.05em;
+            border-left: 3px solid rgba(255, 255, 255, 0.5);
+            border-right: 3px solid rgba(255, 255, 255, 0.5);
+        }
+
+        /* Warna berbeda untuk setiap cabang */
+        .cabang-0 { background: linear-gradient(135deg, #ef4444, #dc2626) !important; }
+        .cabang-1 { background: linear-gradient(135deg, #f97316, #ea580c) !important; }
+        .cabang-2 { background: linear-gradient(135deg, #f59e0b, #d97706) !important; }
+        .cabang-3 { background: linear-gradient(135deg, #eab308, #ca8a04) !important; }
+        .cabang-4 { background: linear-gradient(135deg, #84cc16, #65a30d) !important; }
+        .cabang-5 { background: linear-gradient(135deg, #22c55e, #16a34a) !important; }
+        .cabang-6 { background: linear-gradient(135deg, #10b981, #059669) !important; }
+        .cabang-7 { background: linear-gradient(135deg, #14b8a6, #0d9488) !important; }
+        .cabang-8 { background: linear-gradient(135deg, #06b6d4, #0891b2) !important; }
+        .cabang-9 { background: linear-gradient(135deg, #0ea5e9, #0284c7) !important; }
+        .cabang-10 { background: linear-gradient(135deg, #3b82f6, #2563eb) !important; }
+        .cabang-11 { background: linear-gradient(135deg, #6366f1, #4f46e5) !important; }
+        .cabang-12 { background: linear-gradient(135deg, #8b5cf6, #7c3aed) !important; }
+        .cabang-13 { background: linear-gradient(135deg, #a855f7, #9333ea) !important; }
+        .cabang-14 { background: linear-gradient(135deg, #d946ef, #c026d3) !important; }
+        .cabang-15 { background: linear-gradient(135deg, #ec4899, #db2777) !important; }
+        .cabang-16 { background: linear-gradient(135deg, #f43f5e, #e11d48) !important; }
+        .cabang-17 { background: linear-gradient(135deg, #fb7185, #f43f5e) !important; }
+        .cabang-18 { background: linear-gradient(135deg, #fb923c, #f97316) !important; }
+        .cabang-19 { background: linear-gradient(135deg, #facc15, #eab308) !important; }
+
+        td.cabang-col-0 { background: rgba(239, 68, 68, 0.05) !important; }
+        td.cabang-col-1 { background: rgba(249, 115, 22, 0.05) !important; }
+        td.cabang-col-2 { background: rgba(245, 158, 11, 0.05) !important; }
+        td.cabang-col-3 { background: rgba(234, 179, 8, 0.05) !important; }
+        td.cabang-col-4 { background: rgba(132, 204, 22, 0.05) !important; }
+        td.cabang-col-5 { background: rgba(34, 197, 94, 0.05) !important; }
+        td.cabang-col-6 { background: rgba(16, 185, 129, 0.05) !important; }
+        td.cabang-col-7 { background: rgba(20, 184, 166, 0.05) !important; }
+        td.cabang-col-8 { background: rgba(6, 182, 212, 0.05) !important; }
+        td.cabang-col-9 { background: rgba(14, 165, 233, 0.05) !important; }
+        td.cabang-col-10 { background: rgba(59, 130, 246, 0.05) !important; }
+        td.cabang-col-11 { background: rgba(99, 102, 241, 0.05) !important; }
+        td.cabang-col-12 { background: rgba(139, 92, 246, 0.05) !important; }
+        td.cabang-col-13 { background: rgba(168, 85, 247, 0.05) !important; }
+        td.cabang-col-14 { background: rgba(217, 70, 239, 0.05) !important; }
+        td.cabang-col-15 { background: rgba(236, 72, 153, 0.05) !important; }
+        td.cabang-col-16 { background: rgba(244, 63, 94, 0.05) !important; }
+        td.cabang-col-17 { background: rgba(251, 113, 133, 0.05) !important; }
+        td.cabang-col-18 { background: rgba(251, 146, 60, 0.05) !important; }
+        td.cabang-col-19 { background: rgba(250, 204, 21, 0.05) !important; }
+        
+        /* Garis tebal untuk pembatas cabang */
+        th.cabang-header {
+            font-weight: 900;
+            font-size: 1.05em;
+            border-left: 4px solid rgba(255, 255, 255, 0.8) !important;
+            border-right: 4px solid rgba(255, 255, 255, 0.8) !important;
+        }
+
+        /* Garis tebal untuk kolom putra (kiri cabang) */
+        th.putra-col, td.putra-col {
+            border-left: 4px solid rgba(0, 0, 0, 0.3) !important;
+        }
+
+        /* Garis tebal untuk kolom putri (kanan cabang) */
+        th.putri-col, td.putri-col {
+            border-right: 4px solid rgba(0, 0, 0, 0.3) !important;
+        }
+
+        /* Logo Styling */
+        .hero-logos {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 30px;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+        }
+
+        .hero-logo {
+            height: 80px;
+            width: auto;
+            object-fit: contain;
+            filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.1));
+            transition: transform 0.3s ease;
+        }
+
+        .hero-logo:hover {
+            transform: scale(1.1);
+        }
+
+        .hero-logo-kemenag {
+            height: 85px;
+        }
+
+        .hero-logo-mtq {
+            height: 90px;
+        }
+
+        .hero-logo-indramayu {
+            height: 80px;
+        }
+
+        @media (max-width: 768px) {
+            .hero-logos {
+                gap: 20px;
+            }
+            
+            .hero-logo {
+                height: 60px;
+            }
+            
+            .hero-logo-kemenag {
+                height: 65px;
+            }
+            
+            .hero-logo-mtq {
+                height: 70px;
+            }
+            
+            .hero-logo-indramayu {
+                height: 60px;
+            }
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             .hero h1 {
@@ -372,7 +497,12 @@
     <div class="container">
         <!-- Hero Section -->
         <div class="hero">
-            <h1>👥 Summary Per Kecamatan - MTQ ke-55</h1>
+            <div class="hero-logos">
+                <img src="asset/logokemenag.png" alt="Logo Kemenag" class="hero-logo hero-logo-kemenag">
+                <img src="asset/logomtq.png" alt="Logo MTQ" class="hero-logo hero-logo-mtq">
+                <img src="asset/logoindramayu.png" alt="Logo Indramayu" class="hero-logo hero-logo-indramayu">
+            </div>
+            <h1>📊 Summary Per Kecamatan - MTQ ke-55</h1>
             <p>Jumlah Peserta Putra & Putri Berdasarkan Kecamatan</p>
             <p style="color: #059669; font-size: 0.9em; margin-top: 10px;">
                 ✓ Hanya data dengan status <strong>Terverifikasi</strong>
@@ -582,13 +712,13 @@
         function renderTables() {
             console.log('Rendering tables...');
 
-            // Prepare data structure
-            const summary = {};
+            // TAB 2: Summary dengan jumlah ORANG (untuk Tab 2)
+            const personSummary = {};
             KECAMATAN_LIST.forEach(kec => {
-                summary[kec] = {};
+                personSummary[kec] = {};
                 CABANG_LIST.forEach(cabang => {
-                    summary[kec][`${cabang.code}_putra`] = 0;
-                    summary[kec][`${cabang.code}_putri`] = 0;
+                    personSummary[kec][`${cabang.code}_putra`] = 0;
+                    personSummary[kec][`${cabang.code}_putri`] = 0;
                 });
             });
 
@@ -617,18 +747,16 @@
                         }
                     }
 
-                    if (cabangInfo && summary[kecamatan]) {
+                    if (cabangInfo && personSummary[kecamatan]) {
                         const participantCount = countParticipants(row, cabangInfo);
                         const key = isPutra ? `${cabangInfo.code}_putra` : `${cabangInfo.code}_putri`;
-                        summary[kecamatan][key] += participantCount;
-                        
-                        console.log(`${kecamatan} - ${cabang}: +${participantCount} ${isPutra ? 'Putra' : 'Putri'}`);
+                        personSummary[kecamatan][key] += participantCount;
                     }
                 }
             });
 
-            renderTable1(summary); // Per Cabang
-            renderTable2(summary); // Total Per Kecamatan
+            renderTable1(); // Tab 1: Checklist pendaftaran (tidak perlu summary)
+            renderTable2(personSummary); // Tab 2: Jumlah orang
         }
 
         function renderTable1(summary) {
@@ -638,16 +766,52 @@
                 <tr>
                     <th rowspan="2">No</th>
                     <th rowspan="2">Kecamatan</th>
-                    ${CABANG_LIST.map(c => `<th colspan="2" class="center">${c.name}</th>`).join('')}
+                    ${CABANG_LIST.map((c, idx) => `<th colspan="2" class="center cabang-header cabang-${idx}">${c.name}</th>`).join('')}
                     <th rowspan="2" class="center">Total</th>
                 </tr>
                 <tr>
-                    ${CABANG_LIST.map(c => `<th class="center">♂ Putra</th><th class="center">♀ Putri</th>`).join('')}
+                    ${CABANG_LIST.map((c, idx) => `<th class="center cabang-${idx} putra-col">♂ Putra</th><th class="center cabang-${idx} putri-col">♀ Putri</th>`).join('')}
                 </tr>
             `;
 
             const tbody1 = document.getElementById('tableBody1');
             tbody1.innerHTML = '';
+
+            // Prepare summary untuk Tab 1 - COUNT REGISTRATIONS
+            const registrationSummary = {};
+            KECAMATAN_LIST.forEach(kec => {
+                registrationSummary[kec] = {};
+                CABANG_LIST.forEach(cabang => {
+                    registrationSummary[kec][`${cabang.code}_putra`] = 0;
+                    registrationSummary[kec][`${cabang.code}_putri`] = 0;
+                });
+            });
+
+            // Count registrations (bukan jumlah orang)
+            const verifiedData = allData.filter(row => row[75] === 'Terverifikasi');
+            
+            verifiedData.forEach(row => {
+                const kecamatan = row[3];
+                const cabang = row[4];
+
+                if (kecamatan && cabang) {
+                    let cabangCode = null;
+                    let isPutra = false;
+
+                    for (let c of CABANG_LIST) {
+                        if (cabang.includes(c.name)) {
+                            cabangCode = c.code;
+                            isPutra = cabang.toLowerCase().includes('putra');
+                            break;
+                        }
+                    }
+
+                    if (cabangCode && registrationSummary[kecamatan]) {
+                        const key = isPutra ? `${cabangCode}_putra` : `${cabangCode}_putri`;
+                        registrationSummary[kecamatan][key] += 1; // Count 1 per registration
+                    }
+                }
+            });
 
             const columnTotals = {};
             CABANG_LIST.forEach(cabang => {
@@ -661,19 +825,17 @@
                 let rowTotal = 0;
                 let html = `<td class="center">${idx + 1}</td><td class="kecamatan">${kecamatan}</td>`;
 
-                CABANG_LIST.forEach(cabang => {
-                    const putraCount = summary[kecamatan][`${cabang.code}_putra`];
-                    const putriCount = summary[kecamatan][`${cabang.code}_putri`];
+                CABANG_LIST.forEach((cabang, idx) => {
+                    const putraCount = registrationSummary[kecamatan][`${cabang.code}_putra`];
+                    const putriCount = registrationSummary[kecamatan][`${cabang.code}_putri`];
                     
                     columnTotals[`${cabang.code}_putra`] += putraCount;
                     columnTotals[`${cabang.code}_putri`] += putriCount;
                     rowTotal += putraCount + putriCount;
-                    // Ganti bagian checklist di renderTable1:
-                    html += `<td class="center">${putraCount > 0 ? '<span class="check-mark">✓</span>' : '<span class="empty-mark">-</span>'}</td>`;
-                    html += `<td class="center">${putriCount > 0 ? '<span class="check-mark">✓</span>' : '<span class="empty-mark">-</span>'}</td>`;
-                    // CHECKLIST ONLY - tidak tampilkan angka
-                    // html += `<td class="center">${putraCount > 0 ? '<span style="color: #10b981; font-size: 1.2em; font-weight: bold;">✓</span>' : '<span style="color: #d1d5db;">-</span>'}</td>`;
-                    // html += `<td class="center">${putriCount > 0 ? '<span style="color: #10b981; font-size: 1.2em; font-weight: bold;">✓</span>' : '<span style="color: #d1d5db;">-</span>'}</td>`;
+
+                    // CHECKLIST ONLY dengan warna dan garis tebal
+                    html += `<td class="center cabang-col-${idx} putra-col">${putraCount > 0 ? '<span class="check-mark">✓</span>' : '<span class="empty-mark">-</span>'}</td>`;
+                    html += `<td class="center cabang-col-${idx} putri-col">${putriCount > 0 ? '<span class="check-mark">✓</span>' : '<span class="empty-mark">-</span>'}</td>`;
                 });
 
                 html += `<td class="center"><span class="badge badge-total">${rowTotal}</span></td>`;
@@ -681,17 +843,17 @@
                 tbody1.appendChild(tr);
             });
 
-            // Footer - tampilkan angka total per cabang
+            // Footer - tampilkan total pendaftaran per cabang
             const tfoot1 = document.getElementById('tableFoot1');
             let grandTotal = 0;
-            let footHtml = '<tr><td colspan="2" class="center">TOTAL PESERTA</td>';
+            let footHtml = '<tr><td colspan="2" class="center">TOTAL PENDAFTARAN</td>';
             
             CABANG_LIST.forEach(cabang => {
                 const putraTotal = columnTotals[`${cabang.code}_putra`];
                 const putriTotal = columnTotals[`${cabang.code}_putri`];
                 grandTotal += putraTotal + putriTotal;
                 
-                footHtml += `<td class="center">${putraTotal}</td><td class="center">${putriTotal}</td>`;
+                footHtml += `<td class="center putra-col">${putraTotal}</td><td class="center putri-col">${putriTotal}</td>`;
             });
             
             footHtml += `<td class="center" style="font-size: 1.3em;">${grandTotal}</td></tr>`;
@@ -770,24 +932,24 @@
             const timestamp = new Date().toISOString().split('T')[0];
 
             if (currentTab === 'individu') {
-                // CSV untuk Tab 1
+                // CSV untuk Tab 1 - COUNT REGISTRATIONS
                 csv = 'No,Kecamatan';
                 CABANG_LIST.forEach(c => {
                     csv += `,${c.name} Putra,${c.name} Putri`;
                 });
                 csv += ',Total\n';
 
-                // Prepare summary
-                const summary = {};
+                // Prepare summary - COUNT REGISTRATIONS
+                const registrationSummary = {};
                 KECAMATAN_LIST.forEach(kec => {
-                    summary[kec] = {};
+                    registrationSummary[kec] = {};
                     CABANG_LIST.forEach(cabang => {
-                        summary[kec][`${cabang.code}_putra`] = 0;
-                        summary[kec][`${cabang.code}_putri`] = 0;
+                        registrationSummary[kec][`${cabang.code}_putra`] = 0;
+                        registrationSummary[kec][`${cabang.code}_putri`] = 0;
                     });
                 });
 
-                // FILTER HANYA TERVERIFIKASI
+                // FILTER HANYA TERVERIFIKASI (Index 75 = Kolom BX)
                 const verifiedData = allData.filter(row => row[75] === 'Terverifikasi');
 
                 verifiedData.forEach(row => {
@@ -795,45 +957,20 @@
                     const cabang = row[4];
 
                     if (kecamatan && cabang) {
-                        let cabangInfo = null;
+                        let cabangCode = null;
                         let isPutra = false;
 
                         for (let c of CABANG_LIST) {
                             if (cabang.includes(c.name)) {
-                                cabangInfo = c;
+                                cabangCode = c.code;
                                 isPutra = cabang.toLowerCase().includes('putra');
                                 break;
                             }
                         }
 
-                        if (cabangInfo && summary[kecamatan]) {
-                            const participantCount = countParticipants(row, cabangInfo);
-                            const key = isPutra ? `${cabangInfo.code}_putra` : `${cabangInfo.code}_putri`;
-                            summary[kecamatan][key] += participantCount;
-                        }
-                    }
-                });
-
-                allData.forEach(row => {
-                    const kecamatan = row[3];
-                    const cabang = row[4];
-
-                    if (kecamatan && cabang) {
-                        let cabangInfo = null;
-                        let isPutra = false;
-
-                        for (let c of CABANG_LIST) {
-                            if (cabang.includes(c.name)) {
-                                cabangInfo = c;
-                                isPutra = cabang.toLowerCase().includes('putra');
-                                break;
-                            }
-                        }
-
-                        if (cabangInfo && summary[kecamatan]) {
-                            const participantCount = countParticipants(row, cabangInfo);
-                            const key = isPutra ? `${cabangInfo.code}_putra` : `${cabangInfo.code}_putri`;
-                            summary[kecamatan][key] += participantCount;
+                        if (cabangCode && registrationSummary[kecamatan]) {
+                            const key = isPutra ? `${cabangCode}_putra` : `${cabangCode}_putri`;
+                            registrationSummary[kecamatan][key] += 1; // Count 1 per registration
                         }
                     }
                 });
@@ -843,8 +980,8 @@
                     let rowTotal = 0;
 
                     CABANG_LIST.forEach(cabang => {
-                        const putraCount = summary[kecamatan][`${cabang.code}_putra`];
-                        const putriCount = summary[kecamatan][`${cabang.code}_putri`];
+                        const putraCount = registrationSummary[kecamatan][`${cabang.code}_putra`];
+                        const putriCount = registrationSummary[kecamatan][`${cabang.code}_putri`];
                         rowTotal += putraCount + putriCount;
                         csv += `,${putraCount},${putriCount}`;
                     });
@@ -859,8 +996,8 @@
                     let putraTotal = 0;
                     let putriTotal = 0;
                     KECAMATAN_LIST.forEach(kec => {
-                        putraTotal += summary[kec][`${cabang.code}_putra`];
-                        putriTotal += summary[kec][`${cabang.code}_putri`];
+                        putraTotal += registrationSummary[kec][`${cabang.code}_putra`];
+                        putriTotal += registrationSummary[kec][`${cabang.code}_putri`];
                     });
                     grandTotal += putraTotal + putriTotal;
                     csv += `,${putraTotal},${putriTotal}`;
