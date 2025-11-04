@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Summary Per Kecamatan - MTQ ke-55 Kabupaten Indramayu 2025</title>
+    <link rel="icon" type="image/png" href="asset/logomtq.png">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #059669;
+            --primary-dark: #047857;
+            --secondary: #34d399;
+            --putra: #3b82f6;
+            --putri: #ec4899;
+            --warning: #f59e0b;
+            --light: #f0fdf4;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #064e3b 0%, #047857 50%, #10b981 100%);
+            background-attachment: fixed;
+            min-height: 100vh;
+            padding: 20px;
+            color: #1f2937;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Hero Section */
+        .hero {
+            background: rgba(255, 255, 255, 0.95);
+            -webkit-backdrop-filter: blur(20px);
+            backdrop-filter: blur(20px);
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            margin-bottom: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+        }
+
+        .hero h1 {
+            color: var(--primary);
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 800;
+        }
+
+        .hero p {
+            color: #065f46;
+            font-size: 1.2em;
+        }
+
+        /* Tab Navigation */
+        .tab-nav {
+            background: rgba(255, 255, 255, 0.95);
+            -webkit-backdrop-filter: blur(20px);
+            backdrop-filter: blur(20px);
+            padding: 15px 25px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .tab-btn {
+            padding: 12px 30px;
+            border: none;
+            background: #e5e7eb;
+            color: #6b7280;
+            cursor: pointer;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 1em;
+            transition: all 0.3s ease;
+        }
+
+        .tab-btn.active {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            box-shadow: 0 4px 15px rgba(5, 150, 105, 0.3);
+        }
+
+        .tab-btn:hover:not(.active) {
+            background: #d1d5db;
+        }
+
+        /* Controls */
+        .controls {
+            background: rgba(255, 255, 255, 0.95);
+            -webkit-backdrop-filter: blur(20px);
+            backdrop-filter: blur(20px);
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            cursor: pointer;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 1em;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(5, 150, 105, 0.3);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(5, 150, 105, 0.4);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+        }
+
+        /* Loading */
+        .loading {
+            text-align: center;
+            padding: 60px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+        }
+
+        .loading-spinner {
+            width: 60px;
+            height: 60px;
+            margin: 0 auto 20px;
+            border: 5px solid rgba(5, 150, 105, 0.2);
+            border-top: 5px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Tab Content */
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Table Container */
+        .table-container {
+            background: rgba(255, 255, 255, 0.95);
+            -webkit-backdrop-filter: blur(20px);
+            backdrop-filter: blur(20px);
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+            overflow-y: auto;
+            max-height: calc(100vh - 400px);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        th {
+            padding: 15px 20px;
+            text-align: left;
+            font-weight: 700;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        th.center {
+            text-align: center;
+        }
+
+        tbody tr {
+            transition: background 0.2s ease;
+        }
+
+        tbody tr:nth-child(even) {
+            background: rgba(0, 0, 0, 0.02);
+        }
+
+        tbody tr:hover {
+            background: rgba(16, 185, 129, 0.08);
+        }
+
+        td {
+            padding: 12px 20px;
+            border: 1px solid #e5e7eb;
+        }
+
+        td.center {
+            text-align: center;
+            font-weight: 600;
+        }
+
+        td.kecamatan {
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.85em;
+            font-weight: 700;
+        }
+
+        .badge-putra {
+            background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+            color: #1e40af;
+        }
+
+        .badge-putri {
+            background: linear-gradient(135deg, #fce7f3, #fbcfe8);
+            color: #be185d;
+        }
+
+        .badge-total {
+            background: linear-gradient(135deg, #fef3c7, #fde68a);
+            color: #92400e;
+            font-size: 1em;
+            padding: 6px 16px;
+        }
+
+        tfoot {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+            font-weight: 700;
+            position: sticky;
+            bottom: 0;
+        }
+
+        tfoot td {
+            padding: 15px 20px;
+            font-size: 1.1em;
+        }
+
+        /* Stats Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.95);
+            -webkit-backdrop-filter: blur(20px);
+            backdrop-filter: blur(20px);
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .stat-card h3 {
+            font-size: 0.9em;
+            color: #6b7280;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stat-card .value {
+            font-size: 2.5em;
+            font-weight: 800;
+            margin-bottom: 5px;
+        }
+
+        .stat-card.putra .value {
+            background: linear-gradient(135deg, var(--putra), #2563eb);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .stat-card.putri .value {
+            background: linear-gradient(135deg, var(--putri), #db2777);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .stat-card.total .value {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 1.8em;
+            }
+
+            .tab-nav {
+                flex-direction: column;
+            }
+
+            table {
+                font-size: 0.85em;
+            }
+
+            th, td {
+                padding: 10px 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Hero Section -->
+        <div class="hero">
+            <h1>👥 Summary Per Kecamatan - MTQ ke-55</h1>
+            <p>Jumlah Peserta Putra & Putri Berdasarkan Kecamatan</p>
+            <p style="color: #059669; font-size: 0.9em; margin-top: 10px;">
+                ✓ Hanya data dengan status <strong>Terverifikasi</strong>
+            </p>
+        </div>
+
+        <!-- Tab Navigation -->
+        <div class="tab-nav">
+            <button class="tab-btn active" onclick="switchTab('individu')">📊 Per Cabang Lomba</button>
+            <button class="tab-btn" onclick="switchTab('total')">📈 Total Per Kecamatan</button>
+        </div>
+
+        <!-- Controls -->
+        <div class="controls">
+            <button class="btn" onclick="loadData()">🔄 Muat Data</button>
+            <button class="btn btn-secondary" onclick="downloadCSV()">📥 Download CSV</button>
+        </div>
+
+        <!-- Loading State -->
+        <div id="loadingState" class="loading">
+            <div class="loading-spinner"></div>
+            <p style="color: var(--primary); font-weight: 600; font-size: 1.1em;">Memuat data...</p>
+        </div>
+
+        <!-- Tab 1: Per Cabang Lomba -->
+        <div id="tab-individu" class="tab-content active">
+            <div id="tableContainer1" class="table-container" style="display: none;">
+                <div class="table-wrapper">
+                    <table id="summaryTable1">
+                        <thead id="tableHead1"></thead>
+                        <tbody id="tableBody1"></tbody>
+                        <tfoot id="tableFoot1"></tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 2: Total Per Kecamatan -->
+        <div id="tab-total" class="tab-content">
+            <!-- Stats Cards -->
+            <div class="stats-grid" id="statsCards" style="display: none;">
+                <div class="stat-card putra">
+                    <h3>Total Peserta Putra</h3>
+                    <div class="value" id="totalPutra">0</div>
+                    <p style="color: #6b7280;">Seluruh Kecamatan</p>
+                </div>
+                <div class="stat-card putri">
+                    <h3>Total Peserta Putri</h3>
+                    <div class="value" id="totalPutri">0</div>
+                    <p style="color: #6b7280;">Seluruh Kecamatan</p>
+                </div>
+                <div class="stat-card total">
+                    <h3>Total Keseluruhan</h3>
+                    <div class="value" id="totalAll">0</div>
+                    <p style="color: #6b7280;">Putra + Putri</p>
+                </div>
+            </div>
+
+            <div id="tableContainer2" class="table-container" style="display: none;">
+                <div class="table-wrapper">
+                    <table id="summaryTable2">
+                        <thead id="tableHead2"></thead>
+                        <tbody id="tableBody2"></tbody>
+                        <tfoot id="tableFoot2"></tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'https://script.google.com/macros/s/AKfycbzGiDuz-tQYpAWwSW3vqB3Sa3JRkUeTJ7vvaHG7p9nz1JArINxwGUMpHoVVw1f0eqJ3/exec';
+
+        const KECAMATAN_LIST = [
+            'Anjatan', 'Arahan', 'Balongan', 'Bangodua', 'Bongas',
+            'Cantigi', 'Cikedung', 'Gabuswetan', 'Gantar', 'Haurgeulis',
+            'Indramayu', 'Jatibarang', 'Juntinyuat', 'Kandanghaur', 'Karangampel',
+            'Kedokan Bunder', 'Kertasemaya', 'Krangkeng', 'Kroya', 'Lelea',
+            'Lohbener', 'Losarang', 'Pasekan', 'Patrol', 'Sindang',
+            'Sliyeg', 'Sukagumiwang', 'Sukra', 'Terisi', 'Tukdana', 'Widasari'
+        ];
+
+        const CABANG_LIST = [
+            { code: 'TA', name: 'Tartil Al Qur\'an', isTeam: false },
+            { code: 'TLA', name: 'Tilawah Anak-anak', isTeam: false },
+            { code: 'TLR', name: 'Tilawah Remaja', isTeam: false },
+            { code: 'TLD', name: 'Tilawah Dewasa', isTeam: false },
+            { code: 'QM', name: 'Qira\'at Mujawwad', isTeam: false },
+            { code: 'H1J', name: 'Hafalan 1 Juz', isTeam: false },
+            { code: 'H5J', name: 'Hafalan 5 Juz', isTeam: false },
+            { code: 'H10J', name: 'Hafalan 10 Juz', isTeam: false },
+            { code: 'H20J', name: 'Hafalan 20 Juz', isTeam: false },
+            { code: 'H30J', name: 'Hafalan 30 Juz', isTeam: false },
+            { code: 'TFI', name: 'Tafsir Indonesia', isTeam: false },
+            { code: 'TFA', name: 'Tafsir Arab', isTeam: false },
+            { code: 'TFE', name: 'Tafsir Inggris', isTeam: false },
+            { code: 'FAQ', name: 'Fahm Al Qur\'an', isTeam: true },
+            { code: 'SAQ', name: 'Syarh Al Qur\'an', isTeam: true },
+            { code: 'KN', name: 'Kaligrafi Naskah', isTeam: false },
+            { code: 'KH', name: 'Kaligrafi Hiasan', isTeam: false },
+            { code: 'KD', name: 'Kaligrafi Dekorasi', isTeam: false },
+            { code: 'KK', name: 'Kaligrafi Kontemporer', isTeam: false },
+            { code: 'KTIQ', name: 'KTIQ', isTeam: true }
+        ];
+
+        let allData = [];
+        let currentTab = 'individu';
+
+        function switchTab(tab) {
+            currentTab = tab;
+            
+            // Update tab buttons
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            // Update tab content
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            document.getElementById(`tab-${tab}`).classList.add('active');
+        }
+
+        async function loadData() {
+            try {
+                console.log('Loading data from API...');
+                document.getElementById('loadingState').style.display = 'block';
+                document.getElementById('tableContainer1').style.display = 'none';
+                document.getElementById('tableContainer2').style.display = 'none';
+                document.getElementById('statsCards').style.display = 'none';
+
+                const response = await fetch(`${API_URL}?action=getData`);
+                const result = await response.json();
+
+                if (!result.success) {
+                    throw new Error(result.message || 'Gagal mengambil data');
+                }
+
+                allData = result.data;
+                console.log('Data loaded:', allData.length, 'rows');
+
+                // DEBUG: Check status column
+                debugCheckStatusColumn();
+
+                renderTables();
+
+                document.getElementById('loadingState').style.display = 'none';
+                document.getElementById('tableContainer1').style.display = 'block';
+                document.getElementById('tableContainer2').style.display = 'block';
+                document.getElementById('statsCards').style.display = 'grid';
+
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Gagal memuat data: ' + error.message);
+                document.getElementById('loadingState').style.display = 'none';
+            }
+        }
+
+        function countParticipants(row, cabangInfo) {
+            // Jika individu, hitung 1 orang
+            if (!cabangInfo.isTeam) {
+                return 1;
+            }
+
+            // Jika tim, hitung jumlah anggota yang ada
+            let count = 0;
+            
+            // Check NIK columns untuk menghitung anggota tim yang valid
+            const namaRegu = row[6]; // Nama Regu/Tim
+            const member1Nik = row[19]; // Anggota Tim #1 - NIK
+            const member2Nik = row[31]; // Anggota Tim #2 - NIK
+            const member3Nik = row[43]; // Anggota Tim #3 - NIK
+
+            if (member1Nik && member1Nik !== '-' && member1Nik.toString().trim() !== '') count++;
+            if (member2Nik && member2Nik !== '-' && member2Nik.toString().trim() !== '') count++;
+            if (member3Nik && member3Nik !== '-' && member3Nik.toString().trim() !== '') count++;
+
+            return count > 0 ? count : 1; // Minimal 1 jika ada registrasi
+        }
+
+        function debugCheckStatusColumn() {
+            if (allData.length === 0) {
+                console.log('No data loaded');
+                return;
+            }
+
+            const sampleRow = allData[0];
+            console.log('=== DEBUG STATUS COLUMN ===');
+            console.log('Total columns:', sampleRow.length);
+            console.log('Column 75 (BX - Status):', sampleRow[75]);
+            
+            // Check all status values
+            const statusValues = new Set();
+            allData.forEach(row => {
+                if (row[75]) statusValues.add(row[75]);
+            });
+            
+            console.log('Unique status values found:', Array.from(statusValues));
+            
+            // Count by status
+            const statusCount = {};
+            allData.forEach(row => {
+                const status = row[75] || 'Kosong';
+                statusCount[status] = (statusCount[status] || 0) + 1;
+            });
+            console.log('Status count:', statusCount);
+            console.log('=== END DEBUG ===');
+        }
+
+        function renderTables() {
+            console.log('Rendering tables...');
+
+            // Prepare data structure
+            const summary = {};
+            KECAMATAN_LIST.forEach(kec => {
+                summary[kec] = {};
+                CABANG_LIST.forEach(cabang => {
+                    summary[kec][`${cabang.code}_putra`] = 0;
+                    summary[kec][`${cabang.code}_putri`] = 0;
+                });
+            });
+
+            // Process data - FILTER HANYA TERVERIFIKASI (Index 75 = Kolom BX)
+            const verifiedData = allData.filter(row => {
+                const status = row[75]; // Kolom BX = Index 75
+                return status === 'Terverifikasi';
+            });
+
+            console.log(`Total data: ${allData.length}, Terverifikasi: ${verifiedData.length}`);
+
+            verifiedData.forEach(row => {
+                const kecamatan = row[3]; // Kolom Kecamatan
+                const cabang = row[4];     // Kolom Cabang Lomba
+
+                if (kecamatan && cabang) {
+                    let cabangInfo = null;
+                    let isPutra = false;
+
+                    // Find cabang
+                    for (let c of CABANG_LIST) {
+                        if (cabang.includes(c.name)) {
+                            cabangInfo = c;
+                            isPutra = cabang.toLowerCase().includes('putra');
+                            break;
+                        }
+                    }
+
+                    if (cabangInfo && summary[kecamatan]) {
+                        const participantCount = countParticipants(row, cabangInfo);
+                        const key = isPutra ? `${cabangInfo.code}_putra` : `${cabangInfo.code}_putri`;
+                        summary[kecamatan][key] += participantCount;
+                        
+                        console.log(`${kecamatan} - ${cabang}: +${participantCount} ${isPutra ? 'Putra' : 'Putri'}`);
+                    }
+                }
+            });
+
+            renderTable1(summary); // Per Cabang
+            renderTable2(summary); // Total Per Kecamatan
+        }
+
+        function renderTable1(summary) {
+            // TABLE 1: Per Cabang Lomba
+            const thead1 = document.getElementById('tableHead1');
+            thead1.innerHTML = `
+                <tr>
+                    <th rowspan="2">No</th>
+                    <th rowspan="2">Kecamatan</th>
+                    ${CABANG_LIST.map(c => `<th colspan="2" class="center">${c.name}</th>`).join('')}
+                    <th rowspan="2" class="center">Total</th>
+                </tr>
+                <tr>
+                    ${CABANG_LIST.map(c => `<th class="center">♂ Putra</th><th class="center">♀ Putri</th>`).join('')}
+                </tr>
+            `;
+
+            const tbody1 = document.getElementById('tableBody1');
+            tbody1.innerHTML = '';
+
+            const columnTotals = {};
+            CABANG_LIST.forEach(cabang => {
+                columnTotals[`${cabang.code}_putra`] = 0;
+                columnTotals[`${cabang.code}_putri`] = 0;
+            });
+
+            KECAMATAN_LIST.forEach((kecamatan, idx) => {
+                const tr = document.createElement('tr');
+                
+                let rowTotal = 0;
+                let html = `<td class="center">${idx + 1}</td><td class="kecamatan">${kecamatan}</td>`;
+
+                CABANG_LIST.forEach(cabang => {
+                    const putraCount = summary[kecamatan][`${cabang.code}_putra`];
+                    const putriCount = summary[kecamatan][`${cabang.code}_putri`];
+                    
+                    columnTotals[`${cabang.code}_putra`] += putraCount;
+                    columnTotals[`${cabang.code}_putri`] += putriCount;
+                    rowTotal += putraCount + putriCount;
+
+                    html += `<td class="center">${putraCount > 0 ? `<span class="badge badge-putra">${putraCount}</span>` : '-'}</td>`;
+                    html += `<td class="center">${putriCount > 0 ? `<span class="badge badge-putri">${putriCount}</span>` : '-'}</td>`;
+                });
+
+                html += `<td class="center"><span class="badge badge-total">${rowTotal}</span></td>`;
+                tr.innerHTML = html;
+                tbody1.appendChild(tr);
+            });
+
+            // Footer
+            const tfoot1 = document.getElementById('tableFoot1');
+            let grandTotal = 0;
+            let footHtml = '<tr><td colspan="2" class="center">TOTAL</td>';
+            
+            CABANG_LIST.forEach(cabang => {
+                const putraTotal = columnTotals[`${cabang.code}_putra`];
+                const putriTotal = columnTotals[`${cabang.code}_putri`];
+                grandTotal += putraTotal + putriTotal;
+                
+                footHtml += `<td class="center">${putraTotal}</td><td class="center">${putriTotal}</td>`;
+            });
+            
+            footHtml += `<td class="center" style="font-size: 1.3em;">${grandTotal}</td></tr>`;
+            tfoot1.innerHTML = footHtml;
+        }
+
+        function renderTable2(summary) {
+            // TABLE 2: Total Per Kecamatan
+            const thead2 = document.getElementById('tableHead2');
+            thead2.innerHTML = `
+                <tr>
+                    <th>No</th>
+                    <th>Kecamatan</th>
+                    <th class="center">♂ Peserta Putra</th>
+                    <th class="center">♀ Peserta Putri</th>
+                    <th class="center">Total Peserta</th>
+                </tr>
+            `;
+
+            const tbody2 = document.getElementById('tableBody2');
+            tbody2.innerHTML = '';
+
+            let totalPutra = 0;
+            let totalPutri = 0;
+            let totalAll = 0;
+
+            KECAMATAN_LIST.forEach((kecamatan, idx) => {
+                let kecPutra = 0;
+                let kecPutri = 0;
+
+                CABANG_LIST.forEach(cabang => {
+                    kecPutra += summary[kecamatan][`${cabang.code}_putra`];
+                    kecPutri += summary[kecamatan][`${cabang.code}_putri`];
+                });
+
+                const kecTotal = kecPutra + kecPutri;
+                totalPutra += kecPutra;
+                totalPutri += kecPutri;
+                totalAll += kecTotal;
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="center">${idx + 1}</td>
+                    <td class="kecamatan">${kecamatan}</td>
+                    <td class="center">${kecPutra > 0 ? `<span class="badge badge-putra">${kecPutra}</span>` : '-'}</td>
+                    <td class="center">${kecPutri > 0 ? `<span class="badge badge-putri">${kecPutri}</span>` : '-'}</td>
+                    <td class="center"><span class="badge badge-total">${kecTotal}</span></td>
+                `;
+                tbody2.appendChild(tr);
+            });
+
+            // Footer
+            const tfoot2 = document.getElementById('tableFoot2');
+            tfoot2.innerHTML = `
+                <tr>
+                    <td colspan="2" class="center">TOTAL KESELURUHAN</td>
+                    <td class="center">${totalPutra}</td>
+                    <td class="center">${totalPutri}</td>
+                    <td class="center" style="font-size: 1.3em;">${totalAll}</td>
+                </tr>
+            `;
+
+            // Update stats cards
+            document.getElementById('totalPutra').textContent = totalPutra;
+            document.getElementById('totalPutri').textContent = totalPutri;
+            document.getElementById('totalAll').textContent = totalAll;
+        }
+
+        function downloadCSV() {
+            if (allData.length === 0) {
+                alert('Tidak ada data untuk didownload. Silakan muat data terlebih dahulu.');
+                return;
+            }
+
+            let csv = '';
+            const timestamp = new Date().toISOString().split('T')[0];
+
+            if (currentTab === 'individu') {
+                // CSV untuk Tab 1
+                csv = 'No,Kecamatan';
+                CABANG_LIST.forEach(c => {
+                    csv += `,${c.name} Putra,${c.name} Putri`;
+                });
+                csv += ',Total\n';
+
+                // Prepare summary
+                const summary = {};
+                KECAMATAN_LIST.forEach(kec => {
+                    summary[kec] = {};
+                    CABANG_LIST.forEach(cabang => {
+                        summary[kec][`${cabang.code}_putra`] = 0;
+                        summary[kec][`${cabang.code}_putri`] = 0;
+                    });
+                });
+
+                // FILTER HANYA TERVERIFIKASI
+                const verifiedData = allData.filter(row => row[75] === 'Terverifikasi');
+
+                verifiedData.forEach(row => {
+                    const kecamatan = row[3];
+                    const cabang = row[4];
+
+                    if (kecamatan && cabang) {
+                        let cabangInfo = null;
+                        let isPutra = false;
+
+                        for (let c of CABANG_LIST) {
+                            if (cabang.includes(c.name)) {
+                                cabangInfo = c;
+                                isPutra = cabang.toLowerCase().includes('putra');
+                                break;
+                            }
+                        }
+
+                        if (cabangInfo && summary[kecamatan]) {
+                            const participantCount = countParticipants(row, cabangInfo);
+                            const key = isPutra ? `${cabangInfo.code}_putra` : `${cabangInfo.code}_putri`;
+                            summary[kecamatan][key] += participantCount;
+                        }
+                    }
+                });
+
+                allData.forEach(row => {
+                    const kecamatan = row[3];
+                    const cabang = row[4];
+
+                    if (kecamatan && cabang) {
+                        let cabangInfo = null;
+                        let isPutra = false;
+
+                        for (let c of CABANG_LIST) {
+                            if (cabang.includes(c.name)) {
+                                cabangInfo = c;
+                                isPutra = cabang.toLowerCase().includes('putra');
+                                break;
+                            }
+                        }
+
+                        if (cabangInfo && summary[kecamatan]) {
+                            const participantCount = countParticipants(row, cabangInfo);
+                            const key = isPutra ? `${cabangInfo.code}_putra` : `${cabangInfo.code}_putri`;
+                            summary[kecamatan][key] += participantCount;
+                        }
+                    }
+                });
+
+                KECAMATAN_LIST.forEach((kecamatan, idx) => {
+                    csv += `${idx + 1},${kecamatan}`;
+                    let rowTotal = 0;
+
+                    CABANG_LIST.forEach(cabang => {
+                        const putraCount = summary[kecamatan][`${cabang.code}_putra`];
+                        const putriCount = summary[kecamatan][`${cabang.code}_putri`];
+                        rowTotal += putraCount + putriCount;
+                        csv += `,${putraCount},${putriCount}`;
+                    });
+
+                    csv += `,${rowTotal}\n`;
+                });
+
+                // Total row
+                csv += 'TOTAL,';
+                let grandTotal = 0;
+                CABANG_LIST.forEach(cabang => {
+                    let putraTotal = 0;
+                    let putriTotal = 0;
+                    KECAMATAN_LIST.forEach(kec => {
+                        putraTotal += summary[kec][`${cabang.code}_putra`];
+                        putriTotal += summary[kec][`${cabang.code}_putri`];
+                    });
+                    grandTotal += putraTotal + putriTotal;
+                    csv += `,${putraTotal},${putriTotal}`;
+                });
+                csv += `,${grandTotal}\n`;
+
+            } else {
+                // CSV untuk Tab 2
+                csv = 'No,Kecamatan,Peserta Putra,Peserta Putri,Total Peserta\n';
+
+                const summary = {};
+                KECAMATAN_LIST.forEach(kec => {
+                    summary[kec] = {};
+                    CABANG_LIST.forEach(cabang => {
+                        summary[kec][`${cabang.code}_putra`] = 0;
+                        summary[kec][`${cabang.code}_putri`] = 0;
+                    });
+                });
+
+                // FILTER HANYA TERVERIFIKASI
+                const verifiedData = allData.filter(row => row[75] === 'Terverifikasi');
+
+                verifiedData.forEach(row => {
+                    const kecamatan = row[3];
+                    const cabang = row[4];
+
+                    if (kecamatan && cabang) {
+                        let cabangInfo = null;
+                        let isPutra = false;
+
+                        for (let c of CABANG_LIST) {
+                            if (cabang.includes(c.name)) {
+                                cabangInfo = c;
+                                isPutra = cabang.toLowerCase().includes('putra');
+                                break;
+                            }
+                        }
+
+                        if (cabangInfo && summary[kecamatan]) {
+                            const participantCount = countParticipants(row, cabangInfo);
+                            const key = isPutra ? `${cabangInfo.code}_putra` : `${cabangInfo.code}_putri`;
+                            summary[kecamatan][key] += participantCount;
+                        }
+                    }
+                });
+
+                allData.forEach(row => {
+                    const kecamatan = row[3];
+                    const cabang = row[4];
+
+                    if (kecamatan && cabang) {
+                        let cabangInfo = null;
+                        let isPutra = false;
+
+                        for (let c of CABANG_LIST) {
+                            if (cabang.includes(c.name)) {
+                                cabangInfo = c;
+                                isPutra = cabang.toLowerCase().includes('putra');
+                                break;
+                            }
+                        }
+
+                        if (cabangInfo && summary[kecamatan]) {
+                            const participantCount = countParticipants(row, cabangInfo);
+                            const key = isPutra ? `${cabangInfo.code}_putra` : `${cabangInfo.code}_putri`;
+                            summary[kecamatan][key] += participantCount;
+                        }
+                    }
+                });
+
+                let totalPutra = 0;
+                let totalPutri = 0;
+                let totalAll = 0;
+
+                KECAMATAN_LIST.forEach((kecamatan, idx) => {
+                    let kecPutra = 0;
+                    let kecPutri = 0;
+
+                    CABANG_LIST.forEach(cabang => {
+                        kecPutra += summary[kecamatan][`${cabang.code}_putra`];
+                        kecPutri += summary[kecamatan][`${cabang.code}_putri`];
+                    });
+
+                    const kecTotal = kecPutra + kecPutri;
+                    totalPutra += kecPutra;
+                    totalPutri += kecPutri;
+                    totalAll += kecTotal;
+
+                    csv += `${idx + 1},${kecamatan},${kecPutra},${kecPutri},${kecTotal}\n`;
+                });
+
+                csv += `TOTAL,KESELURUHAN,${totalPutra},${totalPutri},${totalAll}\n`;
+            }
+
+            // Download
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            
+            const filename = currentTab === 'individu' 
+                ? `MTQ55_Summary_PerCabang_${timestamp}.csv`
+                : `MTQ55_Summary_PerKecamatan_${timestamp}.csv`;
+            
+            link.setAttribute('href', url);
+            link.setAttribute('download', filename);
+            link.style.visibility = 'hidden';
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            console.log('CSV downloaded:', filename);
+        }
+
+        // Auto load on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            console.log('Page loaded, loading data...');
+            loadData();
+        });
+    </script>
+</body>
+</html>
