@@ -87,16 +87,24 @@ export class RegistrationTimeManager {
         
         const pesertaDitolakClosed = document.getElementById('pesertaDitolakClosed');
         const pesertaDitolakOpen = document.getElementById('pesertaDitolakOpen');
+        const rejectedDataSection = document.getElementById('rejectedDataSection');
+        const searchDataSection = document.getElementById('searchDataSection');
         
         logger.log('Checking registration status for rejected data tab - isOpen:', isOpen);
         
         if (isOpen) {
+            // Jika pendaftaran terbuka, tampilkan semua bagian
             if (pesertaDitolakClosed) pesertaDitolakClosed.style.display = 'none';
             if (pesertaDitolakOpen) pesertaDitolakOpen.style.display = 'block';
+            if (rejectedDataSection) rejectedDataSection.style.display = 'block';
+            if (searchDataSection) searchDataSection.style.display = 'block';
         } else {
-            if (pesertaDitolakClosed) pesertaDitolakClosed.style.display = 'block';
-            if (pesertaDitolakOpen) pesertaDitolakOpen.style.display = 'none';
-            logger.log('Registration closed - hiding rejected data content');
+            // Jika pendaftaran ditutup, hanya tampilkan bagian pencarian NIK
+            if (pesertaDitolakClosed) pesertaDitolakClosed.style.display = 'none';
+            if (pesertaDitolakOpen) pesertaDitolakOpen.style.display = 'block';
+            if (rejectedDataSection) rejectedDataSection.style.display = 'none';
+            if (searchDataSection) searchDataSection.style.display = 'block';
+            logger.log('Registration closed - showing only search section');
         }
     }
 }
