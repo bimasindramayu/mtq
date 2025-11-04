@@ -1005,91 +1005,68 @@
                 csv += `,${grandTotal}\n`;
 
             } else {
-                // CSV untuk Tab 2
-                csv = 'No,Kecamatan,Peserta Putra,Peserta Putri,Total Peserta\n';
+            // CSV untuk Tab 2
+            csv = 'No,Kecamatan,Peserta Putra,Peserta Putri,Total Peserta\n';
 
-                const summary = {};
-                KECAMATAN_LIST.forEach(kec => {
-                    summary[kec] = {};
-                    CABANG_LIST.forEach(cabang => {
-                        summary[kec][`${cabang.code}_putra`] = 0;
-                        summary[kec][`${cabang.code}_putri`] = 0;
-                    });
+            const summary = {};
+            KECAMATAN_LIST.forEach(kec => {
+                summary[kec] = {};
+                CABANG_LIST.forEach(cabang => {
+                    summary[kec][`${cabang.code}_putra`] = 0;
+                    summary[kec][`${cabang.code}_putri`] = 0;
                 });
+            });
 
-                // FILTER HANYA TERVERIFIKASI
-                const verifiedData = allData.filter(row => row[75] === 'Terverifikasi');
+            // FILTER HANYA TERVERIFIKASI
+            const verifiedData = allData.filter(row => row[75] === 'Terverifikasi');
 
-                verifiedData.forEach(row => {
-                    const kecamatan = row[3];
-                    const cabang = row[4];
+            verifiedData.forEach(row => {
+                const kecamatan = row[3];
+                const cabang = row[4];
 
-                    if (kecamatan && cabang) {
-                        let cabangInfo = null;
-                        let isPutra = false;
+                if (kecamatan && cabang) {
+                    let cabangInfo = null;
+                    let isPutra = false;
 
-                        for (let c of CABANG_LIST) {
-                            if (cabang.includes(c.name)) {
-                                cabangInfo = c;
-                                isPutra = cabang.toLowerCase().includes('putra');
-                                break;
-                            }
-                        }
-
-                        if (cabangInfo && summary[kecamatan]) {
-                            const participantCount = countParticipants(row, cabangInfo);
-                            const key = isPutra ? `${cabangInfo.code}_putra` : `${cabangInfo.code}_putri`;
-                            summary[kecamatan][key] += participantCount;
+                    for (let c of CABANG_LIST) {
+                        if (cabang.includes(c.name)) {
+                            cabangInfo = c;
+                            isPutra = cabang.toLowerCase().includes('putra');
+                            break;
                         }
                     }
-                });
 
-                allData.forEach(row => {
-                    const kecamatan = row[3];
-                    const cabang = row[4];
-
-                    if (kecamatan && cabang) {
-                        let cabangInfo = null;
-                        let isPutra = false;
-
-                        for (let c of CABANG_LIST) {
-                            if (cabang.includes(c.name)) {
-                                cabangInfo = c;
-                                isPutra = cabang.toLowerCase().includes('putra');
-                                break;
-                            }
-                        }
-
-                        if (cabangInfo && summary[kecamatan]) {
-                            const participantCount = countParticipants(row, cabangInfo);
-                            const key = isPutra ? `${cabangInfo.code}_putra` : `${cabangInfo.code}_putri`;
-                            summary[kecamatan][key] += participantCount;
-                        }
+                    if (cabangInfo && summary[kecamatan]) {
+                        const participantCount = countParticipants(row, cabangInfo);
+                        const key = isPutra ? `${cabangInfo.code}_putra` : `${cabangInfo.code}_putri`;
+                        summary[kecamatan][key] += participantCount;
                     }
+                }
+            });
+
+            let totalPutra = 0;
+            let totalPutri = 0;
+            let totalAll = 0;
+
+            KECAMATAN_LIST.forEach((kecamatan, idx) => {
+                let kecPutra = 0;
+                let kecPutri = 0;
+
+                CABANG_LIST.forEach(cabang => {
+                    kecPutra += summary[kecamatan][`${cabang.code}_putra`];
+                    kecPutri += summary[kecamatan][`${cabang.code}_putri`];
                 });
 
-                let totalPutra = 0;
-                let totalPutri = 0;
-                let totalAll = 0;
+                const kecTotal = kecPutra + kecPutri;
+                totalPutra += kecPutra;
+                totalPutri += kecPutri;
+                totalAll += kecTotal;
 
-                KECAMATAN_LIST.forEach((kecamatan, idx) => {
-                    let kecPutra = 0;
-                    let kecPutri = 0;
+                csv += `${idx + 1},${kecamatan},${kecPutra},${kecPutri},${kecTotal}\n`;
+            });
 
-                    CABANG_LIST.forEach(cabang => {
-                        kecPutra += summary[kecamatan][`${cabang.code}_putra`];
-                        kecPutri += summary[kecamatan][`${cabang.code}_putri`];
-                    });
+            csv += `TOTAL,KESELURUHAN,${totalPutra},${totalPutri},${totalAll}\n`;
 
-                    const kecTotal = kecPutra + kecPutri;
-                    totalPutra += kecPutra;
-                    totalPutri += kecPutri;
-                    totalAll += kecTotal;
-
-                    csv += `${idx + 1},${kecamatan},${kecPutra},${kecPutri},${kecTotal}\n`;
-                });
-
-                csv += `TOTAL,KESELURUHAN,${totalPutra},${totalPutri},${totalAll}\n`;
             }
 
             // Download
