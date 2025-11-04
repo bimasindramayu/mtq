@@ -177,8 +177,6 @@
 
         .table-wrapper {
             overflow-x: auto;
-            overflow-y: auto;
-            max-height: calc(100vh - 400px);
         }
 
         table {
@@ -321,6 +319,33 @@
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
+        }
+
+        /* Tambahkan di bagian CSS */
+        .check-mark {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            font-weight: bold;
+            font-size: 1em;
+            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+        }
+
+        .empty-mark {
+            display: inline-block;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: #f3f4f6;
+            color: #d1d5db;
+            text-align: center;
+            line-height: 28px;
+            font-size: 1.2em;
         }
 
         /* Responsive */
@@ -607,7 +632,7 @@
         }
 
         function renderTable1(summary) {
-            // TABLE 1: Per Cabang Lomba
+            // TABLE 1: Per Cabang Lomba - CHECKLIST ONLY
             const thead1 = document.getElementById('tableHead1');
             thead1.innerHTML = `
                 <tr>
@@ -643,9 +668,12 @@
                     columnTotals[`${cabang.code}_putra`] += putraCount;
                     columnTotals[`${cabang.code}_putri`] += putriCount;
                     rowTotal += putraCount + putriCount;
-
-                    html += `<td class="center">${putraCount > 0 ? `<span class="badge badge-putra">${putraCount}</span>` : '-'}</td>`;
-                    html += `<td class="center">${putriCount > 0 ? `<span class="badge badge-putri">${putriCount}</span>` : '-'}</td>`;
+                    // Ganti bagian checklist di renderTable1:
+                    html += `<td class="center">${putraCount > 0 ? '<span class="check-mark">✓</span>' : '<span class="empty-mark">-</span>'}</td>`;
+                    html += `<td class="center">${putriCount > 0 ? '<span class="check-mark">✓</span>' : '<span class="empty-mark">-</span>'}</td>`;
+                    // CHECKLIST ONLY - tidak tampilkan angka
+                    // html += `<td class="center">${putraCount > 0 ? '<span style="color: #10b981; font-size: 1.2em; font-weight: bold;">✓</span>' : '<span style="color: #d1d5db;">-</span>'}</td>`;
+                    // html += `<td class="center">${putriCount > 0 ? '<span style="color: #10b981; font-size: 1.2em; font-weight: bold;">✓</span>' : '<span style="color: #d1d5db;">-</span>'}</td>`;
                 });
 
                 html += `<td class="center"><span class="badge badge-total">${rowTotal}</span></td>`;
@@ -653,10 +681,10 @@
                 tbody1.appendChild(tr);
             });
 
-            // Footer
+            // Footer - tampilkan angka total per cabang
             const tfoot1 = document.getElementById('tableFoot1');
             let grandTotal = 0;
-            let footHtml = '<tr><td colspan="2" class="center">TOTAL</td>';
+            let footHtml = '<tr><td colspan="2" class="center">TOTAL PESERTA</td>';
             
             CABANG_LIST.forEach(cabang => {
                 const putraTotal = columnTotals[`${cabang.code}_putra`];
