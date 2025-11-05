@@ -1,10 +1,8 @@
 import logger from './logger.js';
-import {
-    CONFIG
-} from './config.js';
-import {
-    APIService
-} from './apiService.js';
+import { CONFIG, isMaqraDrawTimeActive } from './config.js';
+import { APIService } from './apiService.js';
+import { isMaqraEnabled } from './maqraConfig.js';
+
 export class ViewManager {
     constructor() {
         this.apiService = new APIService();
@@ -13,7 +11,29 @@ export class ViewManager {
         this.currentKecamatan = '';
         this.sortColumn = null;
         this.sortDirection = 'asc';
+        this.maqraDrawActive = false;
         logger.log('📊 ViewManager initialized');
+    }
+
+    // ===== CHECK MAQRA DRAW TIME =====
+    checkMaqraDrawTime() {
+        this.maqraDrawActive = isMaqraDrawTimeActive();
+        logger.log('Maqra draw active:', this.maqraDrawActive);
+        
+        if (!this.maqraDrawActive) {
+            if (!CONFIG.MAQRA_DRAW_ENABLED) {
+                logger.log('Maqra draw globally disabled');
+            } else {
+                const now = new Date();
+                if (now < CONFIG.MAQRA_DRAW_START) {
+                    logger.log('Maqra draw not started yet. Starts:', CONFIG.MAQRA_DRAW_START);
+                } else if (now > CONFIG.MAQRA_DRAW_END) {
+                    logger.log('Maqra draw has ended. Ended:', CONFIG.MAQRA_DRAW_END);
+                }
+            }
+        }
+        
+        return this.maqraDrawActive;
     }
 
     // ===== GET KECAMATAN FROM URL =====
@@ -69,6 +89,7 @@ export class ViewManager {
             const cabangIdx = result.headers.indexOf('Cabang Lomba');
             const nikIdx = result.headers.indexOf('NIK');
             const statusIdx = result.headers.indexOf('Status');
+            const maqraIdx = result.headers.indexOf('Maqra');
 
             // Filter data by kecamatan
             this.allData = result.data
@@ -79,7 +100,8 @@ export class ViewManager {
                     cabang: row[cabangIdx] || '-',
                     nik: row[nikIdx] || '-',
                     status: row[statusIdx] || 'Menunggu Verifikasi',
-                    kecamatan: row[kecamatanIdx] || '-'
+                    kecamatan: row[kecamatanIdx] || '-',
+                    maqra: row[maqraIdx] || '-'
                 }))
                 .filter(item => item.kecamatan === this.currentKecamatan);
 
@@ -94,7 +116,7 @@ export class ViewManager {
         }
     }
 
-    // ===== RENDER DATA =====
+    // ===== RENDER DATA (Updated) =====
     renderData() {
         const tbody = document.getElementById('dataTableBody');
         tbody.innerHTML = '';
@@ -105,6 +127,9 @@ export class ViewManager {
         }
 
         document.getElementById('noResults').style.display = 'none';
+        
+        // Check maqra draw time
+        const maqraActive = this.checkMaqraDrawTime();
 
         this.filteredData.forEach((item, index) => {
             const row = document.createElement('tr');
@@ -122,18 +147,120 @@ export class ViewManager {
                 statusText = 'Menunggu Verifikasi';
             }
 
-            row.innerHTML = `
-            <td>${index + 1}</td>
-            <td><strong>${item.nomorPeserta}</strong></td>
-            <td>${item.nama}</td>
-            <td>${item.cabang}</td>
-            <td><span class="status-badge ${statusClass}">${statusText}</span></td>
-        `;
+            // Maqra cell - only show if active
+            let maqraCell = '';
+            if (maqraActive) {
+                if (item.maqra && item.maqra !== '-' && item.maqra.trim() !== '') {
+                    // Already has maqra - display it
+                    maqraCell = `<span class="maqra-badge">${item.maqra}</span>`;
+                } else if (statusText === 'Terverifikasi') {
+                    // Check if branch is enabled for maqra
+                    const branchCode = this.extractBranchCode(item.cabang);
+                    if (branchCode && isMaqraEnabled(branchCode)) {
+                        // Can draw maqra
+                        const dataIndex = `maqra-data-${index}`;
+                        window[dataIndex] = item;
+                        maqraCell = `<button class="btn-draw-maqra-small" id="btn-draw-${index}" onclick="window.maqraManager.showDrawModalWithLoader(window['${dataIndex}'], 'btn-draw-${index}')">🎲 Ambil Maqra</button>`;
+                    } else {
+                        // Branch not enabled for maqra
+                        maqraCell = '<span style="color: #999; font-size: 0.85em;">Tidak tersedia</span>';
+                    }
+                } else {
+                    // Not eligible
+                    maqraCell = '<span style="color: #999;">-</span>';
+                }
+            } else {
+                // Maqra draw not active
+                if (item.maqra && item.maqra !== '-' && item.maqra.trim() !== '') {
+                    // Show existing maqra even when draw is inactive
+                    maqraCell = `<span class="maqra-badge">${item.maqra}</span>`;
+                } else {
+                    maqraCell = '<span style="color: #999;">-</span>';
+                }
+            }
 
+            // Build row HTML
+            let rowHTML = `
+                <td>${index + 1}</td>
+                <td><strong>${item.nomorPeserta}</strong></td>
+                <td>${item.nama}</td>
+                <td>${item.cabang}</td>
+                <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+            `;
+            
+            // Only add maqra column if draw is active OR there's existing maqra data
+            if (maqraActive || this.allData.some(d => d.maqra && d.maqra !== '-' && d.maqra.trim() !== '')) {
+                rowHTML += `<td class="maqra-cell">${maqraCell}</td>`;
+            }
+
+            row.innerHTML = rowHTML;
             tbody.appendChild(row);
         });
 
         this.updateStatistics();
+        this.updateTableHeaders();
+    }
+
+    // Extract branch code helper
+    extractBranchCode(cabangName) {
+        const branchMap = {
+            'Tartil Al Qur\'an': 'TA',
+            'Tilawah Anak-anak': 'TLA',
+            'Tilawah Remaja': 'TLR',
+            'Tilawah Dewasa': 'TLD',
+            'Qira\'at Mujawwad': 'QM',
+            'Hafalan 1 Juz': 'H1J',
+            'Hafalan 5 Juz': 'H5J',
+            'Hafalan 10 Juz': 'H10J',
+            'Hafalan 20 Juz': 'H20J',
+            'Hafalan 30 Juz': 'H30J',
+            'Tafsir Indonesia': 'TFI',
+            'Tafsir Arab': 'TFA',
+            'Tafsir Inggris': 'TFE',
+            'Fahm Al Qur\'an': 'FAQ',
+            'Syarh Al Qur\'an': 'SAQ',
+            'Kaligrafi Naskah': 'KN',
+            'Kaligrafi Hiasan': 'KH',
+            'Kaligrafi Dekorasi': 'KD',
+            'Kaligrafi Kontemporer': 'KK',
+            'KTIQ': 'KTIQ'
+        };
+
+        for (let key in branchMap) {
+            if (cabangName.includes(key)) {
+                return branchMap[key];
+            }
+        }
+        return null;
+    }
+
+    // ===== UPDATE TABLE HEADERS =====
+    updateTableHeaders() {
+        const thead = document.querySelector('.data-table thead');
+        if (!thead) return;
+        
+        const maqraActive = this.maqraDrawActive;
+        const hasMaqraData = this.allData.some(d => d.maqra && d.maqra !== '-' && d.maqra.trim() !== '');
+        
+        // Check if maqra header exists
+        let maqraHeader = thead.querySelector('th.maqra-header');
+        
+        if (maqraActive || hasMaqraData) {
+            // Show maqra column
+            if (!maqraHeader) {
+                // Add maqra header if not exists
+                const headerRow = thead.querySelector('tr');
+                const th = document.createElement('th');
+                th.className = 'maqra-header';
+                th.textContent = 'Maqra';
+                headerRow.appendChild(th);
+            }
+        } else {
+            // Hide maqra column
+            if (maqraHeader) {
+                maqraHeader.remove();
+            }
+        }
     }
 
     // ===== UPDATE STATISTICS =====

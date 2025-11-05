@@ -1,16 +1,31 @@
 // Configuration & Constants
 export const CONFIG = {
-    APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbzGiDuz-tQYpAWwSW3vqB3Sa3JRkUeTJ7vvaHG7p9nz1JArINxwGUMpHoVVw1f0eqJ3/exec',
+    APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbzsdXvLsHn8ua89TJ__U1lF2axIj4GSuD9YQ5k-kN-pXDl58bQukE3gJ6r4bcJSaTjH/exec',
     REGISTRATION_START: new Date('2025-10-29T00:00:00+07:00'),
     REGISTRATION_END: new Date('2025-11-04T00:00:00+07:00'),
     MAX_FILE_SIZE_MB: 5,
     MAX_FILE_SIZE_BYTES: 5 * 1024 * 1024,
+    
+    // MAQRA DRAW CONFIGURATION
+    MAQRA_DRAW_ENABLED: true, // Master switch untuk pengambilan maqra
+    MAQRA_DRAW_START: new Date('2025-11-04T08:00:00+07:00'), // Mulai pengambilan maqra
+    MAQRA_DRAW_END: new Date('2025-11-04T23:59:59+07:00'),   // Akhir pengambilan maqra
     
     DEV_MODE: {
         enabled: false,
         loggerEnabled: true
     }
 };
+
+// Helper function to check if maqra draw is currently allowed
+export function isMaqraDrawTimeActive() {
+    if (!CONFIG.MAQRA_DRAW_ENABLED) {
+        return true;
+    }
+    
+    const now = new Date();
+    return now >= CONFIG.MAQRA_DRAW_START && now <= CONFIG.MAQRA_DRAW_END;
+}
 
 export const CABANG_DATA = {
     'Tartil Al Qur\'an Putra|12-11-29|personal|male|TA': { 

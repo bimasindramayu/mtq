@@ -2,9 +2,13 @@ import logger from './logger.js';
 import {
     ViewManager
 } from './viewManager.js';
+import { MaqraManager } from './maqraManager.js';
+
 class ViewApp {
     constructor() {
         this.viewManager = new ViewManager();
+        this.maqraManager = new MaqraManager();
+        window.maqraManager = this.maqraManager; // Expose globally
         logger.log('🚀 View App initialized');
     }
     init() {

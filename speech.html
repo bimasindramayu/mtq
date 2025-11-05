@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pembaca Teks Interaktif</title>
+  <style>
+    body {
+      font-family: "Segoe UI", Arial, sans-serif;
+      background: linear-gradient(135deg, #74ebd5, #acb6e5);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 20px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+      text-align: center;
+      width: 90%;
+      max-width: 500px;
+    }
+    h2 {
+      color: #333;
+      margin-bottom: 20px;
+    }
+    textarea {
+      width: 100%;
+      height: 120px;
+      font-size: 16px;
+      padding: 10px;
+      border-radius: 10px;
+      border: 1px solid #ccc;
+      resize: none;
+    }
+    select, input[type=range] {
+      width: 100%;
+      margin: 10px 0;
+    }
+    label {
+      font-weight: 600;
+      display: block;
+      margin-top: 15px;
+    }
+    .buttons {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-top: 20px;
+    }
+    button {
+      flex: 1;
+      padding: 10px 15px;
+      border: none;
+      border-radius: 10px;
+      background: #4a90e2;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    button:hover {
+      background: #357abd;
+    }
+    button.stop {
+      background: #e94e77;
+    }
+    button.stop:hover {
+      background: #c63d62;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>🔊 Pembaca Teks Interaktif</h2>
+    <textarea id="textInput" placeholder="Ketik teks yang ingin dibacakan..."></textarea>
+
+    <label for="voiceSelect">Pilih Suara:</label>
+    <select id="voiceSelect"></select>
+
+    <label for="rate">Kecepatan: <span id="rateValue">1</span></label>
+    <input type="range" id="rate" min="0.5" max="2" value="1" step="0.1">
+
+    <label for="pitch">Nada Suara: <span id="pitchValue">1</span></label>
+    <input type="range" id="pitch" min="0.5" max="2" value="1" step="0.1">
+
+    <div class="buttons">
+      <button id="playBtn">▶️ Putar</button>
+      <button id="pauseBtn">⏸️ Jeda</button>
+      <button id="stopBtn" class="stop">⏹️ Stop</button>
+    </div>
+  </div>
+
+  <script>
+    const textInput = document.getElementById('textInput');
+    const voiceSelect = document.getElementById('voiceSelect');
+    const rateInput = document.getElementById('rate');
+    const pitchInput = document.getElementById('pitch');
+    const rateValue = document.getElementById('rateValue');
+    const pitchValue = document.getElementById('pitchValue');
+    const playBtn = document.getElementById('playBtn');
+    const pauseBtn = document.getElementById('pauseBtn');
+    const stopBtn = document.getElementById('stopBtn');
+
+    let voices = [];
+    let utterance;
+
+    function loadVoices() {
+      voices = speechSynthesis.getVoices();
+      voiceSelect.innerHTML = voices
+        .filter(v => v.lang.startsWith('id') || v.lang.startsWith('en'))
+        .map(v => `<option value="${v.name}">${v.name} (${v.lang})</option>`)
+        .join('');
+    }
+
+    loadVoices();
+    if (speechSynthesis.onvoiceschanged !== undefined) {
+      speechSynthesis.onvoiceschanged = loadVoices;
+    }
+
+    rateInput.oninput = () => rateValue.textContent = rateInput.value;
+    pitchInput.oninput = () => pitchValue.textContent = pitchInput.value;
+
+    playBtn.addEventListener('click', () => {
+      const text = textInput.value.trim();
+      if (!text) return alert('Masukkan teks terlebih dahulu!');
+
+      if (speechSynthesis.speaking && !speechSynthesis.paused) {
+        alert('Masih membaca. Tekan stop untuk menghentikan.');
+        return;
+      }
+
+      if (speechSynthesis.paused) {
+        speechSynthesis.resume();
+        return;
+      }
+
+      utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'id-ID';
+      utterance.rate = parseFloat(rateInput.value);
+      utterance.pitch = parseFloat(pitchInput.value);
+      const selectedVoice = voices.find(v => v.name === voiceSelect.value);
+      if (selectedVoice) utterance.voice = selectedVoice;
+
+      speechSynthesis.speak(utterance);
+    });
+
+    pauseBtn.addEventListener('click', () => {
+      if (speechSynthesis.speaking && !speechSynthesis.paused) {
+        speechSynthesis.pause();
+      } else if (speechSynthesis.paused) {
+        speechSynthesis.resume();
+      }
+    });
+
+    stopBtn.addEventListener('click', () => {
+      speechSynthesis.cancel();
+    });
+  </script>
+</body>
+</html>

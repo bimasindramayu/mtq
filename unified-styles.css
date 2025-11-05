@@ -2092,3 +2092,537 @@ button:disabled {
         transform: none;
     }
 }
+
+/* ===== MAQRA STYLES - IMPROVED ===== */
+
+.btn-draw-maqra-small {
+    padding: 8px 16px;
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 0.85em;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
+    white-space: nowrap;
+}
+
+.btn-draw-maqra-small:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+}
+
+.maqra-badge {
+    display: inline-block;
+    padding: 8px 16px;
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+    border-radius: 12px;
+    font-weight: 700;
+    font-size: 0.85em;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+    max-width: 200px;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+/* Button Loader */
+.btn-loader {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top: 2px solid white;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    vertical-align: middle;
+    margin-right: 5px;
+}
+
+.maqra-badge:hover {
+    max-width: none;
+    white-space: normal;
+}
+
+/* Maqra Modal - Fully Responsive */
+.maqra-modal {
+    display: none;
+    position: fixed;
+    z-index: 10000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(6, 78, 59, 0.95);
+    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    padding: 20px;
+    overflow-y: auto;
+}
+
+.maqra-modal.show {
+    display: flex;
+    opacity: 1;
+}
+
+.maqra-modal-content {
+    background: rgba(255, 255, 255, 0.98);
+    -webkit-backdrop-filter: blur(30px);
+    backdrop-filter: blur(30px);
+    padding: 40px;
+    border-radius: 30px;
+    max-width: 600px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    animation: modalSlideIn 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    margin: auto;
+}
+
+.maqra-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+    padding-bottom: 20px;
+    border-bottom: 3px solid var(--primary);
+}
+
+.maqra-header h2 {
+    color: var(--primary);
+    font-size: 1.8em;
+    font-weight: 800;
+    margin: 0;
+}
+
+.maqra-close-btn {
+    background: none;
+    border: none;
+    font-size: 1.8em;
+    cursor: pointer;
+    color: #999;
+    transition: all 0.3s ease;
+    padding: 0;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.maqra-close-btn:hover {
+    color: var(--danger);
+    transform: rotate(90deg);
+}
+
+.maqra-info {
+    background: linear-gradient(135deg, rgba(240, 253, 244, 0.8), rgba(220, 252, 231, 0.8));
+    padding: 20px;
+    border-radius: 15px;
+    margin-bottom: 30px;
+    border-left: 5px solid var(--primary);
+}
+
+.maqra-info p {
+    margin: 8px 0;
+    color: #065f46;
+    font-size: 0.95em;
+}
+
+.maqra-info strong {
+    color: var(--primary);
+    font-weight: 700;
+}
+
+/* Maqra Card Container - Responsive */
+.maqra-card-container {
+    perspective: 1000px;
+    margin: 30px auto;
+    width: 100%;
+    max-width: 300px;
+    height: 400px;
+}
+
+.maqra-card {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    transform-style: preserve-3d;
+    transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+}
+
+.maqra-card:hover {
+    transform: scale(1.02);
+}
+
+.maqra-card.flipped {
+    transform: rotateY(180deg);
+    cursor: default;
+}
+
+.maqra-card.flipped:hover {
+    transform: rotateY(180deg);
+}
+
+.maqra-card-front,
+.maqra-card-back {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    backface-visibility: hidden;
+    border-radius: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 30px 20px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+
+.maqra-card-front {
+    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    color: white;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+}
+
+.maqra-card-back {
+    background: linear-gradient(135deg, #fbbf24, #f59e0b);
+    color: white;
+    transform: rotateY(180deg);
+    border: 3px solid rgba(255, 255, 255, 0.3);
+}
+
+.maqra-logo {
+    font-size: 5em;
+    margin-bottom: 20px;
+    animation: float 3s ease-in-out infinite;
+    filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.2));
+}
+
+.maqra-card-hint {
+    font-size: 1.1em;
+    font-weight: 700;
+    text-align: center;
+    line-height: 1.6;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.maqra-code {
+    font-size: 2.5em;
+    font-weight: 800;
+    margin-bottom: 15px;
+    text-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    word-break: break-word;
+}
+
+.maqra-surah {
+    font-size: 1.3em;
+    font-weight: 700;
+    margin-bottom: 10px;
+    text-align: center;
+}
+
+.maqra-ayat {
+    font-size: 1em;
+    opacity: 0.95;
+    text-align: center;
+}
+
+/* Maqra Actions */
+.maqra-actions {
+    text-align: center;
+    margin: 20px 0;
+}
+
+.btn-draw-maqra {
+    padding: 16px 40px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    color: white;
+    border: none;
+    border-radius: 15px;
+    font-weight: 700;
+    font-size: 1.1em;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 8px 25px rgba(5, 150, 105, 0.3);
+    width: 100%;
+    max-width: 280px;
+}
+
+.btn-draw-maqra:hover:not(:disabled) {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 35px rgba(5, 150, 105, 0.4);
+}
+
+.btn-draw-maqra:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Maqra Result */
+.maqra-result {
+    text-align: center;
+    padding: 25px;
+    background: linear-gradient(135deg, rgba(240, 253, 244, 0.8), rgba(220, 252, 231, 0.8));
+    border-radius: 20px;
+    animation: fadeInUp 0.5s ease;
+    margin-top: 20px;
+}
+
+.result-animation {
+    font-size: 3.5em;
+    margin-bottom: 15px;
+    animation: bounce 1s ease infinite;
+}
+
+.maqra-result h3 {
+    color: var(--primary);
+    font-size: 1.3em;
+    margin-bottom: 15px;
+    font-weight: 700;
+}
+
+.result-code {
+    font-size: 2.2em;
+    font-weight: 800;
+    color: var(--primary);
+    margin: 15px 0;
+}
+
+.result-details {
+    font-size: 1.1em;
+    color: #065f46;
+    margin-bottom: 20px;
+}
+
+.result-details p {
+    margin: 8px 0;
+}
+
+.result-details strong {
+    font-weight: 700;
+}
+
+.btn-confirm-maqra {
+    padding: 14px 35px;
+    background: linear-gradient(135deg, var(--success), #059669);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-weight: 700;
+    font-size: 1.05em;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.3);
+    width: 100%;
+    max-width: 280px;
+}
+
+.btn-confirm-maqra:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+}
+
+.btn-confirm-maqra:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Tablet */
+@media (max-width: 768px) {
+    .maqra-modal {
+        padding: 15px;
+    }
+    
+    .maqra-modal-content {
+        padding: 30px 25px;
+        border-radius: 25px;
+    }
+    
+    .maqra-header h2 {
+        font-size: 1.5em;
+    }
+    
+    .maqra-close-btn {
+        font-size: 1.6em;
+        width: 36px;
+        height: 36px;
+    }
+    
+    .maqra-card-container {
+        max-width: 260px;
+        height: 350px;
+    }
+    
+    .maqra-logo {
+        font-size: 4em;
+    }
+    
+    .maqra-card-hint {
+        font-size: 1em;
+    }
+    
+    .maqra-code {
+        font-size: 2.2em;
+    }
+    
+    .maqra-surah {
+        font-size: 1.2em;
+    }
+    
+    .maqra-ayat {
+        font-size: 0.95em;
+    }
+    
+    .btn-draw-maqra {
+        font-size: 1em;
+        padding: 14px 35px;
+    }
+    
+    .result-code {
+        font-size: 2em;
+    }
+}
+
+/* Mobile */
+@media (max-width: 480px) {
+    .maqra-modal {
+        padding: 10px;
+    }
+    
+    .maqra-modal-content {
+        padding: 25px 20px;
+        border-radius: 20px;
+        max-height: 95vh;
+    }
+    
+    .maqra-header {
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+    }
+    
+    .maqra-header h2 {
+        font-size: 1.3em;
+    }
+    
+    .maqra-close-btn {
+        font-size: 1.5em;
+        width: 32px;
+        height: 32px;
+    }
+    
+    .maqra-info {
+        padding: 15px;
+    }
+    
+    .maqra-info p {
+        font-size: 0.9em;
+        margin: 6px 0;
+    }
+    
+    .maqra-card-container {
+        max-width: 220px;
+        height: 300px;
+        margin: 25px auto;
+    }
+    
+    .maqra-card-front,
+    .maqra-card-back {
+        padding: 25px 15px;
+        border-radius: 15px;
+    }
+    
+    .maqra-logo {
+        font-size: 3.5em;
+        margin-bottom: 15px;
+    }
+    
+    .maqra-card-hint {
+        font-size: 0.95em;
+    }
+    
+    .maqra-code {
+        font-size: 1.8em;
+        margin-bottom: 10px;
+    }
+    
+    .maqra-surah {
+        font-size: 1.1em;
+        margin-bottom: 8px;
+    }
+    
+    .maqra-ayat {
+        font-size: 0.9em;
+    }
+    
+    .btn-draw-maqra {
+        font-size: 0.95em;
+        padding: 12px 30px;
+    }
+    
+    .maqra-result {
+        padding: 20px 15px;
+    }
+    
+    .result-animation {
+        font-size: 3em;
+        margin-bottom: 12px;
+    }
+    
+    .maqra-result h3 {
+        font-size: 1.2em;
+        margin-bottom: 12px;
+    }
+    
+    .result-code {
+        font-size: 1.8em;
+        margin: 12px 0;
+    }
+    
+    .result-details {
+        font-size: 1em;
+        margin-bottom: 18px;
+    }
+    
+    .btn-confirm-maqra {
+        font-size: 0.95em;
+        padding: 12px 30px;
+    }
+}
+
+/* Small Mobile */
+@media (max-width: 360px) {
+    .maqra-header h2 {
+        font-size: 1.1em;
+    }
+    
+    .maqra-card-container {
+        max-width: 200px;
+        height: 280px;
+    }
+    
+    .maqra-logo {
+        font-size: 3em;
+    }
+    
+    .maqra-code {
+        font-size: 1.6em;
+    }
+    
+    .maqra-surah {
+        font-size: 1em;
+    }
+}
