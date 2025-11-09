@@ -8,8 +8,11 @@ export class MaqraManager {
         this.currentModal = null;
         this.currentDrawData = null;
         this.drawnMaqra = null;
-        this.isProcessingAnyDraw = false; // NEW: Global lock untuk semua tombol
+        this.isProcessingAnyDraw = false;
         logger.log('🎴 MaqraManager initialized');
+        
+        // Debug: Log available methods
+        logger.log('Available methods:', Object.getOwnPropertyNames(Object.getPrototypeOf(this)));
     }
 
     // ===== CHECK IF MAQRA CAN BE DRAWN =====
@@ -169,6 +172,8 @@ export class MaqraManager {
     // ===== SHOW DRAW MODAL WITH LOADER & ANTI-SPAM =====
     async showDrawModalWithLoader(rowData, buttonId) {
         logger.log('=== SHOW DRAW MODAL WITH LOADER ===');
+        logger.log('Button ID:', buttonId);
+        logger.log('Row data:', rowData);
         
         // Check if any draw is in progress
         if (this.isProcessingAnyDraw) {
@@ -189,11 +194,24 @@ export class MaqraManager {
         if (button) {
             button.disabled = true;
             button.innerHTML = '<span class="btn-loader"></span> Memuat...';
+            logger.log('✅ Button loader shown');
+        } else {
+            logger.log('⚠️ Button not found:', buttonId);
         }
         
         try {
-            // Call original showDrawModal
+            // Check if showDrawModal exists
+            logger.log('Checking showDrawModal method...');
+            logger.log('typeof this.showDrawModal:', typeof this.showDrawModal);
+            
+            if (typeof this.showDrawModal !== 'function') {
+                throw new Error('showDrawModal is not a function');
+            }
+            
+            // Call showDrawModal
+            logger.log('Calling showDrawModal...');
             await this.showDrawModal(rowData);
+            logger.log('showDrawModal completed');
             
             // If modal failed to open, release lock
             if (!this.currentModal) {
@@ -215,6 +233,8 @@ export class MaqraManager {
                 button.disabled = false;
                 button.innerHTML = '🎲 Ambil Maqra';
             }
+            
+            alert('❌ Terjadi kesalahan: ' + error.message);
         }
     }
 
@@ -222,6 +242,7 @@ export class MaqraManager {
     disableAllDrawButtons() {
         logger.log('Disabling all draw buttons');
         const buttons = document.querySelectorAll('.btn-draw-maqra-small');
+        logger.log('Found buttons:', buttons.length);
         buttons.forEach(btn => {
             btn.disabled = true;
             btn.style.opacity = '0.5';
@@ -233,11 +254,54 @@ export class MaqraManager {
     enableAllDrawButtons() {
         logger.log('Enabling all draw buttons');
         const buttons = document.querySelectorAll('.btn-draw-maqra-small');
+        logger.log('Found buttons:', buttons.length);
         buttons.forEach(btn => {
             btn.disabled = false;
             btn.style.opacity = '1';
             btn.style.cursor = 'pointer';
         });
+    }
+
+    // ===== SHOW MAQRA DRAW MODAL (METHOD UTAMA) =====
+    async showDrawModal(rowData) {
+        logger.log('=== SHOW DRAW MODAL START ===');
+        logger.log('Is drawing:', this.isDrawing);
+        logger.log('Row data:', JSON.stringify(rowData));
+        
+        // ❌ JANGAN CEK isDrawing di sini - hanya cek global lock
+        
+        logger.log('Checking eligibility...');
+        const eligibility = await this.canDrawMaqra(rowData);
+        logger.log('Eligibility result:', JSON.stringify(eligibility));
+        
+        if (!eligibility.canDraw) {
+            logger.log('❌ Cannot draw:', eligibility.reason);
+            alert(`❌ ${eligibility.reason}`);
+            
+            // Release locks
+            this.isProcessingAnyDraw = false;
+            this.enableAllDrawButtons();
+            return;
+        }
+
+        logger.log('✅ Eligible to draw, creating modal...');
+        
+        // ❌ JANGAN set isDrawing = true di sini!
+        // Biarkan false sampai user BENAR-BENAR klik kartu/button
+
+        // Create modal
+        const modal = this.createDrawModal(rowData, eligibility);
+        logger.log('Modal created');
+        
+        document.body.appendChild(modal);
+        this.currentModal = modal;
+        logger.log('Modal appended to body');
+
+        // Show modal with animation
+        setTimeout(() => {
+            logger.log('Adding show class to modal');
+            modal.classList.add('show');
+        }, 10);
     }
 
     // ===== CREATE DRAW MODAL =====
@@ -365,12 +429,16 @@ export class MaqraManager {
     // ===== TRIGGER DRAW FROM CARD =====
     triggerDrawFromCard() {
         logger.log('=== TRIGGER DRAW FROM CARD ===');
-        logger.log('Is drawing:', this.isDrawing);
-        logger.log('Drawn maqra:', this.drawnMaqra);
         
-        if (this.isDrawing && this.drawnMaqra) {
-            logger.log('❌ Already drawn');
-            return; // Already drawn
+        // Prevent multiple draws
+        if (this.drawnMaqra) {
+            logger.log('❌ Already drawn, ignoring click');
+            return;
+        }
+        
+        if (this.isDrawing) {
+            logger.log('❌ Draw in progress, ignoring click');
+            return;
         }
         
         if (!this.currentDrawData) {
@@ -378,6 +446,9 @@ export class MaqraManager {
             alert('Data tidak tersedia');
             return;
         }
+        
+        logger.log('✅ Setting isDrawing = true NOW');
+        this.isDrawing = true; // ✅ SET TRUE SEKARANG
         
         logger.log('Current draw data exists');
         const { nomorPeserta, rowIndex, branchCode, availableMaqra } = this.currentDrawData;
@@ -387,10 +458,18 @@ export class MaqraManager {
         if (!availableMaqra || availableMaqra.length === 0) {
             logger.log('❌ No available maqra');
             alert('Tidak ada maqra tersedia');
+            this.isDrawing = false;
             return;
         }
         
-        // Hide button, start card animation
+        // Disable card click
+        const card = document.getElementById('maqraCard');
+        if (card) {
+            card.style.pointerEvents = 'none';
+            card.style.cursor = 'default';
+        }
+        
+        // Hide button
         const drawBtn = document.getElementById('drawMaqraBtn');
         if (drawBtn) {
             logger.log('Hiding draw button');
@@ -404,11 +483,15 @@ export class MaqraManager {
     // ===== TRIGGER DRAW FROM BUTTON =====
     triggerDrawFromButton() {
         logger.log('=== TRIGGER DRAW FROM BUTTON ===');
-        logger.log('Is drawing:', this.isDrawing);
-        logger.log('Drawn maqra:', this.drawnMaqra);
         
-        if (this.isDrawing && this.drawnMaqra) {
-            logger.log('❌ Already drawn');
+        // Prevent multiple draws
+        if (this.drawnMaqra) {
+            logger.log('❌ Already drawn, ignoring click');
+            return;
+        }
+        
+        if (this.isDrawing) {
+            logger.log('❌ Draw in progress, ignoring click');
             return;
         }
         
@@ -418,6 +501,9 @@ export class MaqraManager {
             return;
         }
         
+        logger.log('✅ Setting isDrawing = true NOW');
+        this.isDrawing = true; // ✅ SET TRUE SEKARANG
+        
         logger.log('Current draw data exists');
         const { nomorPeserta, rowIndex, branchCode, availableMaqra } = this.currentDrawData;
         
@@ -426,7 +512,20 @@ export class MaqraManager {
         if (!availableMaqra || availableMaqra.length === 0) {
             logger.log('❌ No available maqra');
             alert('Tidak ada maqra tersedia');
+            this.isDrawing = false;
             return;
+        }
+        
+        // Disable button and card
+        const drawBtn = document.getElementById('drawMaqraBtn');
+        if (drawBtn) {
+            drawBtn.disabled = true;
+        }
+        
+        const card = document.getElementById('maqraCard');
+        if (card) {
+            card.style.pointerEvents = 'none';
+            card.style.cursor = 'default';
         }
         
         logger.log('Starting draw...');
@@ -637,9 +736,12 @@ export class MaqraManager {
         }, 1000);
     }
 
-    // Update confirmMaqra untuk refresh setelah sukses
+    // ===== CONFIRM AND SAVE MAQRA =====
     async confirmMaqra() {
-        logger.log('=== CONFIRM MAQRA ===');
+        logger.log('=== CONFIRM MAQRA DEBUG ===');
+        logger.log('window.viewApp exists:', !!window.viewApp);
+        logger.log('window.viewApp.updateMaqraCell exists:', !!(window.viewApp && window.viewApp.updateMaqraCell));
+        logger.log('window._maqraCellIndex:', window._maqraCellIndex);
         logger.log('Drawn maqra:', this.drawnMaqra);
         
         if (!this.drawnMaqra) {
@@ -655,20 +757,42 @@ export class MaqraManager {
         }
 
         try {
-            logger.log('Maqra already saved during draw, closing modal...');
+            logger.log('Maqra already saved during draw');
+            
+            const maqraText = `${this.drawnMaqra.surat} ayat ${this.drawnMaqra.ayat}`;
+            logger.log('Maqra text:', maqraText);
+            
+            // Update the cell in table BEFORE closing modal
+            if (typeof window._maqraCellIndex !== 'undefined') {
+                logger.log('Updating maqra cell in table, index:', window._maqraCellIndex);
+                if (window.viewApp && window.viewApp.updateMaqraCell) {
+                    window.viewApp.updateMaqraCell(window._maqraCellIndex, maqraText);
+                } else {
+                    logger.log('❌ viewApp.updateMaqraCell not found');
+                }
+            } else {
+                logger.log('⚠️ _maqraCellIndex not found');
+            }
             
             setTimeout(() => {
-                alert(`✅ Maqra ${this.drawnMaqra.code} berhasil disimpan!\n\n${this.drawnMaqra.surat} ayat ${this.drawnMaqra.ayat}`);
+                alert(`✅ Maqra berhasil disimpan!\n\n${maqraText}`);
+                
+                // Clean up
+                delete window._maqraCellIndex;
+                delete window._maqraRowData;
+                
                 this.closeDrawModal();
                 
-                // Refresh page data
-                logger.log('Refreshing view data...');
-                if (window.viewApp && window.viewApp.viewManager) {
-                    window.viewApp.viewManager.refreshData();
-                } else {
-                    logger.log('⚠️ viewApp not found, reloading page');
-                    location.reload();
-                }
+                // Refresh to ensure sync with server
+                setTimeout(() => {
+                    logger.log('Refreshing data after draw');
+                    if (window.viewApp && window.viewApp.viewManager) {
+                        window.viewApp.viewManager.refreshData();
+                    } else {
+                        logger.log('Reloading page as fallback');
+                        location.reload();
+                    }
+                }, 1500);
             }, 500);
 
         } catch (error) {
@@ -714,27 +838,6 @@ export class MaqraManager {
             // Ensure lock is released
             this.isProcessingAnyDraw = false;
             this.enableAllDrawButtons();
-        }
-    }
-
-    // ===== SHOW DRAW MODAL WITH LOADER =====
-    async showDrawModalWithLoader(rowData, buttonId) {
-        logger.log('=== SHOW DRAW MODAL WITH LOADER ===');
-        
-        // Show loader on button
-        const button = document.getElementById(buttonId);
-        if (button) {
-            button.disabled = true;
-            button.innerHTML = '<span class="btn-loader"></span> Memuat...';
-        }
-        
-        // Call original showDrawModal
-        await this.showDrawModal(rowData);
-        
-        // Reset button if modal failed to open
-        if (!this.currentModal && button) {
-            button.disabled = false;
-            button.innerHTML = '🎲 Ambil Maqra';
         }
     }
 }

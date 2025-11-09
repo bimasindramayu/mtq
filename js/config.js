@@ -1,15 +1,15 @@
 // Configuration & Constants
 export const CONFIG = {
-    APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbyskPRje2uJy5GqE82m4vtoEfrCjRjqXMbsOr8RaDDY0uNgWRdPDbfj8oy6AEQL27cC/exec',
+    APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbyw4CWhUl1i5_FSM02kREeFb8r5ktSUDu0rn3WIwTeCx1iGDiE0BwwuheQpZ2ncWb63/exec',
     REGISTRATION_START: new Date('2025-10-29T00:00:00+07:00'),
-    REGISTRATION_END: new Date('2025-11-06T11:00:00+07:00'),
+    REGISTRATION_END: new Date('2025-11-04T00:00:00+07:00'),
     MAX_FILE_SIZE_MB: 5,
     MAX_FILE_SIZE_BYTES: 5 * 1024 * 1024,
     
     // MAQRA DRAW CONFIGURATION
     MAQRA_DRAW_ENABLED: true, // Master switch untuk pengambilan maqra
     MAQRA_DRAW_START: new Date('2025-11-04T08:00:00+07:00'), // Mulai pengambilan maqra
-    MAQRA_DRAW_END: new Date('2025-11-04T23:59:59+07:00'),   // Akhir pengambilan maqra
+    MAQRA_DRAW_END: new Date('2025-11-08T23:59:59+07:00'),   // Akhir pengambilan maqra
     
     DEV_MODE: {
         enabled: false,

@@ -152,7 +152,7 @@ export class ViewManager {
             if (maqraActive) {
                 if (item.maqra && item.maqra !== '-' && item.maqra.trim() !== '') {
                     // Already has maqra - display it
-                    maqraCell = `<span class="maqra-badge">${item.maqra}</span>`;
+                    maqraCell = `<span class="maqra-badge" id="maqra-result-${index}">${item.maqra}</span>`;
                 } else if (statusText === 'Terverifikasi') {
                     // Check if branch is enabled for maqra
                     const branchCode = this.extractBranchCode(item.cabang);
@@ -160,21 +160,20 @@ export class ViewManager {
                         // Can draw maqra
                         const dataIndex = `maqra-data-${index}`;
                         window[dataIndex] = item;
-                        maqraCell = `<button class="btn-draw-maqra-small" id="btn-draw-${index}" onclick="window.maqraManager.showDrawModalWithLoader(window['${dataIndex}'], 'btn-draw-${index}')">🎲 Ambil Maqra</button>`;
+                        maqraCell = `
+                            <div id="maqra-cell-${index}">
+                                <button class="btn-draw-maqra-small" id="btn-draw-${index}" 
+                                        onclick="window.viewApp.handleMaqraDraw(window['${dataIndex}'], ${index})">
+                                    🎲 Ambil Maqra
+                                </button>
+                            </div>
+                        `;
                     } else {
                         // Branch not enabled for maqra
                         maqraCell = '<span style="color: #999; font-size: 0.85em;">Tidak tersedia</span>';
                     }
                 } else {
                     // Not eligible
-                    maqraCell = '<span style="color: #999;">-</span>';
-                }
-            } else {
-                // Maqra draw not active
-                if (item.maqra && item.maqra !== '-' && item.maqra.trim() !== '') {
-                    // Show existing maqra even when draw is inactive
-                    maqraCell = `<span class="maqra-badge">${item.maqra}</span>`;
-                } else {
                     maqraCell = '<span style="color: #999;">-</span>';
                 }
             }
@@ -188,8 +187,8 @@ export class ViewManager {
                 <td><span class="status-badge ${statusClass}">${statusText}</span></td>
             `;
             
-            // Only add maqra column if draw is active OR there's existing maqra data
-            if (maqraActive || this.allData.some(d => d.maqra && d.maqra !== '-' && d.maqra.trim() !== '')) {
+            // Only add maqra column if draw is active
+            if (maqraActive) {
                 rowHTML += `<td class="maqra-cell">${maqraCell}</td>`;
             }
 
@@ -198,7 +197,6 @@ export class ViewManager {
         });
 
         this.updateStatistics();
-        this.updateTableHeaders();
     }
 
     // Extract branch code helper
@@ -431,6 +429,10 @@ export class ViewManager {
             logger.log('Current Kecamatan:', this.currentKecamatan);
 
             document.getElementById('kecamatanBadge').textContent = this.currentKecamatan;
+            
+            // Setup headers FIRST before loading data
+            this.setupTableHeaders();
+            
             this.setupEventListeners();
             await this.loadData();
             this.renderData();
@@ -440,6 +442,51 @@ export class ViewManager {
             logger.error('Init error:', error);
             this.showErrorState(error.message);
         }
+    }
+
+    // ===== SETUP TABLE HEADERS =====
+    setupTableHeaders() {
+        const thead = document.querySelector('.data-table thead tr');
+        if (!thead) return;
+        
+        // Clear existing headers
+        thead.innerHTML = '';
+        
+        // Add fixed headers
+        const headers = [
+            { text: 'No', sortable: false },
+            { text: 'Nomor Peserta', sortable: true, key: 'nomorPeserta' },
+            { text: 'Nama/Tim', sortable: true, key: 'nama' },
+            { text: 'Cabang', sortable: true, key: 'cabang' },
+            { text: 'Status', sortable: true, key: 'status' }
+        ];
+        
+        headers.forEach(header => {
+            const th = document.createElement('th');
+            th.textContent = header.text;
+            
+            if (header.sortable) {
+                th.setAttribute('data-sort', header.key);
+                th.style.cursor = 'pointer';
+                
+                const indicator = document.createElement('span');
+                indicator.className = 'sort-indicator';
+                th.appendChild(indicator);
+            }
+            
+            thead.appendChild(th);
+        });
+        
+        // Add maqra header if active
+        const maqraActive = this.checkMaqraDrawTime();
+        if (maqraActive) {
+            const th = document.createElement('th');
+            th.className = 'maqra-header';
+            th.textContent = 'Maqra';
+            thead.appendChild(th);
+        }
+        
+        logger.log('Table headers setup complete');
     }
 
     // ===== SETUP EVENT LISTENERS =====

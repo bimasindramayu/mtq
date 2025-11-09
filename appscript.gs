@@ -7,6 +7,11 @@ const SHEET_NAME = 'Peserta';
 const REGISTRATION_START = new Date('2025-10-29T00:00:00+07:00');
 const REGISTRATION_END = new Date('2025-11-04T00:00:00+07:00');
 
+// ===== MAQRA DRAW TIME CONFIGURATION =====
+const MAQRA_DRAW_ENABLED = true; // Master switch
+const MAQRA_DRAW_START = new Date('2025-11-05T08:00:00+07:00');
+const MAQRA_DRAW_END = new Date('2025-11-10T23:59:59+07:00');
+
 // ===== MAQRA CONFIGURATION =====
 const MAQRA_ENABLED_BRANCHES = [
   'TA', 'TLA', 'TLR', 'QM', 
@@ -14,6 +19,24 @@ const MAQRA_ENABLED_BRANCHES = [
   'TFI', 'TFA', 'TFE'
   // TLD, FAQ, SAQ, KN, KH, KD, KK, KTIQ are DISABLED
 ];
+
+// Check if maqra draw is currently allowed
+function isMaqraDrawTimeActive() {
+  if (!MAQRA_DRAW_ENABLED) {
+    Logger.log('Maqra draw globally disabled');
+    return false;
+  }
+  
+  const now = new Date();
+  const isActive = now >= MAQRA_DRAW_START && now <= MAQRA_DRAW_END;
+  
+  Logger.log('Current time: ' + now.toISOString());
+  Logger.log('Draw start: ' + MAQRA_DRAW_START.toISOString());
+  Logger.log('Draw end: ' + MAQRA_DRAW_END.toISOString());
+  Logger.log('Is active: ' + isActive);
+  
+  return isActive;
+}
 
 // ===== CONCURRENCY PROTECTION - OPTIMIZED =====
 const LOCK_TIMEOUT_MS = 45000;      // 45 detik (lebih pendek)
@@ -1298,6 +1321,15 @@ function drawMaqraForParticipant(e) {
   try {
     Logger.log('=== DRAW MAQRA START ===');
     
+    // ===== CHECK TIME WINDOW FIRST =====
+    if (!isMaqraDrawTimeActive()) {
+      Logger.log('❌ Maqra draw not active');
+      return ContentService.createTextOutput(JSON.stringify({
+        success: false,
+        message: 'Pengambilan maqra tidak aktif saat ini. Silakan coba pada waktu yang ditentukan.'
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
     const nomorPeserta = e.parameter.nomorPeserta;
     const rowIndex = parseInt(e.parameter.rowIndex);
     const branchCode = e.parameter.branchCode;
@@ -1305,10 +1337,10 @@ function drawMaqraForParticipant(e) {
     Logger.log('Nomor Peserta: ' + nomorPeserta);
     Logger.log('Row Index: ' + rowIndex);
     Logger.log('Branch Code: ' + branchCode);
-
-    // Check if branch is enabled
+    
+    // ===== CHECK BRANCH ENABLED =====
     if (!isBranchEnabledForMaqra(branchCode)) {
-      if (lockAcquired) lock.releaseLock();
+      Logger.log('❌ Branch not enabled for maqra');
       return ContentService.createTextOutput(JSON.stringify({
         success: false,
         message: 'Pengambilan maqra tidak diaktifkan untuk cabang ini'
@@ -1321,7 +1353,7 @@ function drawMaqraForParticipant(e) {
     if (!lockAcquired) {
       return ContentService.createTextOutput(JSON.stringify({
         success: false,
-        message: 'Server sibuk, coba lagi'
+        message: 'Server sibuk, coba lagi dalam beberapa detik'
       })).setMimeType(ContentService.MimeType.JSON);
     }
     
@@ -1346,30 +1378,39 @@ function drawMaqraForParticipant(e) {
       })).setMimeType(ContentService.MimeType.JSON);
     }
     
-    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    const lastCol = sheet.getLastColumn();
+    const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
     const maqraIdx = headers.indexOf('Maqra');
     const statusIdx = headers.indexOf('Status');
+    
+    Logger.log('Maqra index: ' + maqraIdx);
+    Logger.log('Status index: ' + statusIdx);
     
     if (maqraIdx === -1) {
       lock.releaseLock();
       return ContentService.createTextOutput(JSON.stringify({
         success: false,
-        message: 'Kolom Maqra tidak ditemukan'
+        message: 'Kolom "Maqra" tidak ditemukan di spreadsheet'
       })).setMimeType(ContentService.MimeType.JSON);
     }
     
-    // Check if maqra already assigned
+    // ===== CHECK IF ALREADY HAS MAQRA =====
     const currentMaqra = sheet.getRange(actualRow, maqraIdx + 1).getValue();
+    Logger.log('Current maqra value: "' + currentMaqra + '"');
+    
     if (currentMaqra && currentMaqra !== '-' && currentMaqra.toString().trim() !== '') {
       lock.releaseLock();
+      Logger.log('❌ Already has maqra: ' + currentMaqra);
       return ContentService.createTextOutput(JSON.stringify({
         success: false,
-        message: 'Maqra sudah pernah diambil'
+        message: 'Maqra sudah pernah diambil: ' + currentMaqra
       })).setMimeType(ContentService.MimeType.JSON);
     }
     
     // Check status
     const status = sheet.getRange(actualRow, statusIdx + 1).getValue();
+    Logger.log('Status: ' + status);
+    
     if (status !== 'Terverifikasi' && status !== 'Diterima' && status !== 'Verified') {
       lock.releaseLock();
       return ContentService.createTextOutput(JSON.stringify({
@@ -1380,9 +1421,11 @@ function drawMaqraForParticipant(e) {
     
     // Get all taken maqra codes
     const takenCodes = getTakenMaqraCodesSync(sheet, branchCode);
+    Logger.log('Taken codes: ' + takenCodes.length);
     
     // Get maqra data for this branch
     const maqraData = getMaqraDataForBranch(branchCode);
+    Logger.log('Total maqra for branch: ' + maqraData.length);
     
     if (!maqraData || maqraData.length === 0) {
       lock.releaseLock();
@@ -1397,6 +1440,8 @@ function drawMaqraForParticipant(e) {
       return takenCodes.indexOf(m.code) === -1;
     });
     
+    Logger.log('Available maqra: ' + availableMaqra.length);
+    
     if (availableMaqra.length === 0) {
       lock.releaseLock();
       return ContentService.createTextOutput(JSON.stringify({
@@ -1405,15 +1450,17 @@ function drawMaqraForParticipant(e) {
       })).setMimeType(ContentService.MimeType.JSON);
     }
     
-    // Random draw with cryptographic security
+    // Random draw
     const randomIndex = Math.floor(Math.random() * availableMaqra.length);
     const drawnMaqra = availableMaqra[randomIndex];
     
-    // Save to sheet
+    Logger.log('Drawn maqra: ' + drawnMaqra.code);
+    
+    // Save to sheet - format: "Surat ayat X-Y"
     const maqraText = drawnMaqra.surat + ' ayat ' + drawnMaqra.ayat;
     sheet.getRange(actualRow, maqraIdx + 1).setValue(maqraText);
     Logger.log('Maqra saved: ' + maqraText);
-        
+    
     lock.releaseLock();
     lockAcquired = false;
     
@@ -1424,13 +1471,14 @@ function drawMaqraForParticipant(e) {
     })).setMimeType(ContentService.MimeType.JSON);
     
   } catch (error) {
-    Logger.log('Error: ' + error.message);
+    Logger.log('❌ Error: ' + error.message);
+    Logger.log('Stack: ' + error.stack);
     if (lockAcquired) {
       lock.releaseLock();
     }
     return ContentService.createTextOutput(JSON.stringify({
       success: false,
-      message: 'Error: ' + error.toString()
+      message: 'Terjadi kesalahan: ' + error.toString()
     })).setMimeType(ContentService.MimeType.JSON);
   }
 }

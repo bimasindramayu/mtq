@@ -127,6 +127,9 @@ export class DataManager {
             }
             
             this.showSearchLoading(true);
+            this.showSearchEmptyState(false);
+            this.showSearchNotFound(false);
+            this.showSearchResultTable(false);
             
             const result = await this.apiService.getAllData();
             
@@ -137,6 +140,12 @@ export class DataManager {
             const foundRows = this.findRowsByNIK(result, nik);
             
             this.showSearchLoading(false);
+            
+            // Tampilkan container hasil pencarian
+            const searchResultContainer = document.getElementById('searchResultContainer');
+            if (searchResultContainer) {
+                searchResultContainer.style.display = 'block';
+            }
             
             if (foundRows.length === 0) {
                 logger.log('⚠️ No data found for NIK:', nik);
@@ -154,7 +163,7 @@ export class DataManager {
         } catch (error) {
             logger.error('Search error:', error.message);
             this.showSearchLoading(false);
-            throw error;
+            alert('Terjadi kesalahan saat mencari data: ' + error.message);
         }
     }
 
