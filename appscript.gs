@@ -192,9 +192,26 @@ function doPost(e) {
       return createResponse(false, duplicateCheck.message);
     }
     Logger.log('✓ No duplicates found');
+
+    // ===== CHECK DUPLICATE BRANCH PER KECAMATAN =====
+    Logger.log('STEP 1B: Checking duplicate branch per kecamatan...');
+    const branchCheck = checkDuplicateBranchPerKecamatan(
+      sheet, 
+      formData.kecamatan, 
+      formData.cabangCode, 
+      formData.genderCode
+    );
+
+    if (!branchCheck.isValid) {
+      Logger.log('Duplicate branch found:', branchCheck.message);
+      lock.releaseLock();
+      lockAcquired = false;
+      return createResponse(false, branchCheck.message);
+    }
+    Logger.log('✓ No duplicate branch found');
     
     // ===== GENERATE NOMOR PESERTA =====
-    Logger.log('STEP 1B: Generating nomor peserta...');
+    Logger.log('STEP 1C: Generating nomor peserta...');
     const isTeam = formData.isTeam === 'true';
     const nomorPeserta = generateNomorPeserta(sheet, formData.cabangCode, formData.genderCode || formData.memberGenderCode1, isTeam);
     if (!nomorPeserta.success) {
@@ -204,7 +221,7 @@ function doPost(e) {
       return createResponse(false, nomorPeserta.message);
     }
     Logger.log('✓ Nomor peserta generated: ' + nomorPeserta.number);
-    
+
     // ===== STEP 2: PREPARE & APPEND DATA KE SHEET (MASIH DALAM LOCK) =====
     Logger.log('STEP 2: Preparing and appending data to sheet...');
     const rowData = prepareRowData(formData, {}, sheet, nomorPeserta.number);
@@ -245,6 +262,149 @@ function doPost(e) {
       }
     }
   }
+}
+
+// ===== CHECK DUPLICATE BRANCH PER KECAMATAN =====
+function checkDuplicateBranchPerKecamatan(sheet, kecamatan, cabangCode, genderCode) {
+  try {
+    Logger.log('=== CHECK DUPLICATE BRANCH PER KECAMATAN ===');
+    Logger.log('Kecamatan:', kecamatan);
+    Logger.log('Cabang Code:', cabangCode);
+    Logger.log('Gender Code:', genderCode);
+    
+    const lastRow = sheet.getLastRow();
+    if (lastRow <= 1) {
+      Logger.log('No existing data, check passed');
+      return { isValid: true };
+    }
+    
+    const dataRange = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn());
+    const data = dataRange.getValues();
+    
+    Logger.log('Checking against ' + data.length + ' existing registrations');
+    
+    const kecamatanCol = 3;
+    const cabangCol = 4;
+    
+    // Extract base branch name (without Putra/Putri)
+    const baseBranchName = extractBaseBranchName(cabangCode);
+    Logger.log('Base branch name:', baseBranchName);
+    
+    for (let i = 0; i < data.length; i++) {
+      const row = data[i];
+      const rowKecamatan = row[kecamatanCol];
+      const rowCabang = row[cabangCol];
+      
+      // Skip if different kecamatan
+      if (!rowKecamatan || rowKecamatan.toString().trim() !== kecamatan.trim()) {
+        continue;
+      }
+      
+      // Extract existing branch info
+      const existingBranchCode = extractBranchCodeFromCabangName(rowCabang);
+      const existingBaseBranch = extractBaseBranchName(existingBranchCode);
+      const existingGender = extractGenderFromCabangName(rowCabang);
+      
+      Logger.log('Row ' + (i + 2) + ':', {
+        kecamatan: rowKecamatan,
+        cabang: rowCabang,
+        branchCode: existingBranchCode,
+        baseBranch: existingBaseBranch,
+        gender: existingGender
+      });
+      
+      // Check if same base branch and same gender
+      if (existingBaseBranch === baseBranchName && existingGender === genderCode) {
+        const genderText = genderCode === 'male' ? 'Putra' : 'Putri';
+        const message = `Kecamatan ${kecamatan} sudah memiliki peserta di cabang ${baseBranchName} ${genderText}. Setiap kecamatan hanya boleh mendaftar 1 peserta per cabang (Putra dan Putri terpisah).`;
+        Logger.log('DUPLICATE BRANCH FOUND:', message);
+        return { isValid: false, message: message };
+      }
+    }
+    
+    Logger.log('No duplicate branch found - validation passed');
+    return { isValid: true };
+    
+  } catch (error) {
+    Logger.log('Error in checkDuplicateBranchPerKecamatan:', error.message);
+    return { 
+      isValid: false, 
+      message: 'Terjadi kesalahan saat validasi cabang. Silakan coba lagi.' 
+    };
+  }
+}
+
+// Helper: Extract gender from cabang name
+function extractGenderFromCabangName(cabangName) {
+  if (!cabangName) return null;
+  
+  if (cabangName.includes('Putra')) return 'male';
+  if (cabangName.includes('Putri')) return 'female';
+  
+  return null;
+}
+
+function extractBaseBranchName(branchCode) {
+  const branchMap = {
+    'TA': 'Tartil Al Qur\'an',
+    'TLA': 'Tilawah Anak-anak',
+    'TLR': 'Tilawah Remaja',
+    'TLD': 'Tilawah Dewasa',
+    'QM': 'Qira\'at Mujawwad',
+    'H1J': 'Hafalan 1 Juz',
+    'H5J': 'Hafalan 5 Juz',
+    'H10J': 'Hafalan 10 Juz',
+    'H20J': 'Hafalan 20 Juz',
+    'H30J': 'Hafalan 30 Juz',
+    'TFI': 'Tafsir Indonesia',
+    'TFA': 'Tafsir Arab',
+    'TFE': 'Tafsir Inggris',
+    'KN': 'Kaligrafi Naskah',
+    'KH': 'Kaligrafi Hiasan',
+    'KD': 'Kaligrafi Dekorasi',
+    'KK': 'Kaligrafi Kontemporer',
+    'KTIQ': 'KTIQ',
+    'FAQ': 'Fahm Al Qur\'an',
+    'SAQ': 'Syarh Al Qur\'an'
+  };
+  
+  return branchMap[branchCode] || branchCode;
+}
+
+// Helper: Extract branch code from cabang name
+function extractBranchCodeFromCabangName(cabangName) {
+  if (!cabangName) return null;
+  
+  const branchMap = {
+    'Tartil Al Qur\'an': 'TA',
+    'Tilawah Anak-anak': 'TLA',
+    'Tilawah Remaja': 'TLR',
+    'Tilawah Dewasa': 'TLD',
+    'Qira\'at Mujawwad': 'QM',
+    'Hafalan 1 Juz': 'H1J',
+    'Hafalan 5 Juz': 'H5J',
+    'Hafalan 10 Juz': 'H10J',
+    'Hafalan 20 Juz': 'H20J',
+    'Hafalan 30 Juz': 'H30J',
+    'Tafsir Indonesia': 'TFI',
+    'Tafsir Arab': 'TFA',
+    'Tafsir Inggris': 'TFE',
+    'Kaligrafi Naskah': 'KN',
+    'Kaligrafi Hiasan': 'KH',
+    'Kaligrafi Dekorasi': 'KD',
+    'Kaligrafi Kontemporer': 'KK',
+    'KTIQ': 'KTIQ',
+    'Fahm Al Qur\'an': 'FAQ',
+    'Syarh Al Qur\'an': 'SAQ'
+  };
+  
+  for (let key in branchMap) {
+    if (cabangName.includes(key)) {
+      return branchMap[key];
+    }
+  }
+  
+  return null;
 }
 
 function handleFileUploadOnly(e) {
