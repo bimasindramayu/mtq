@@ -108,11 +108,11 @@
 
         <!-- REGISTRASI TAB -->
         <div id="registrasi" class="content-section">
-            <div id="registrationClosed" class="registration-closed" style="display: none;">
+            <div id="registrationClosed" class="registration-closed">
                 <div class="closed-icon">🔒</div>
                 <h2>Pendaftaran Ditutup</h2>
                 <p id="closedMessage">Mohon maaf, pendaftaran peserta MTQ ke-55 saat ini ditutup.</p>
-                <div id="countdownTimer" class="countdown-timer" style="display: none;">
+                <div id="countdownTimer" class="countdown-timer">
                     <p>Pendaftaran dibuka dalam:</p>
                     <div class="countdown-display">
                         <div class="countdown-item">
@@ -135,7 +135,7 @@
                 </div>
             </div>
 
-            <div id="registrationOpen" style="display: none;">
+            <div id="registrationOpen">
                 <h2 class="section-title">✍️ Form Registrasi Peserta MTQ ke-55</h2>
 
                 <div class="warning-message">
@@ -260,7 +260,7 @@
                                     <option value="Syarh Al Qur'an Putri|18-11-29|tim|3|female|SAQ">Syarh Al Qur'an Putri (Tim)</option>
                                 </optgroup>
                             </select>
-                            <div id="ageRequirement" class="age-info" style="display: none;"></div>
+                            <div id="ageRequirement" class="age-info"></div>
                         </div>
                         <div class="form-group">
                             <label for="kecamatan">Kecamatan Asal *</label>
@@ -303,7 +303,7 @@
 
                     <!-- Data Diri Peserta Section -->
                     <h3 style="color: var(--primary); margin-top: 40px; margin-bottom: 25px; font-size: 1.4em;" id="dataDiriHeader">📋 Data Diri Peserta</h3>
-                    <div id="dataDiriSection" style="display: none;">
+                    <div id="dataDiriSection">
                         <div class="form-row">
                             <div class="form-group">
                                 <label for="nik">NIK *</label>
@@ -361,7 +361,7 @@
                     </div>
 
                     <!-- Team Section -->
-                    <div id="teamSection" style="display: none;">
+                    <div id="teamSection">
                         <h3 style="color: var(--primary); margin-bottom: 25px; font-size: 1.4em;">👥 Data Regu/Tim</h3>
                         <div class="form-group">
                             <label for="namaRegu">Nama Regu/Tim *</label>
@@ -371,7 +371,7 @@
                     </div>
 
                     <!-- Rekening Section -->
-                    <div id="rekeningPersonalSection" style="display: none;">
+                    <div id="rekeningPersonalSection">
                         <h3 style="color: var(--primary); margin-top: 40px; margin-bottom: 25px; font-size: 1.4em;">💳 Informasi Rekening</h3>
                         <div class="form-row">
                             <div class="form-group">
@@ -395,13 +395,13 @@
                         Format: PDF, JPG, PNG | Max 5MB per file
                     </p>
 
-                    <div id="personalSection" style="display: none;">
+                    <div id="personalSection">
                         <h4 style="color: var(--primary); margin-bottom: 20px; font-size: 1.2em;">Dokumen Peserta Perorangan</h4>
                         <div id="personalDocs"></div>
                     </div>
 
                     <!-- Submit Status Info -->
-                    <div id="submitStatusInfo" class="submit-status-info" style="display: none;"></div>
+                    <div id="submitStatusInfo" class="submit-status-info"></div>
 
                     <div style="margin-top: 35px; padding: 20px; background: linear-gradient(135deg, #e6f3ff 0%, #d4e9ff 100%); border-radius: 12px; border-left: 5px solid var(--primary);">
                         <p style="margin: 0; color: var(--primary); line-height: 1.8; font-size: 0.95em;">
@@ -419,16 +419,16 @@
 
         <!-- DATA PESERTA DITOLAK TAB -->
         <div id="pesertaDitolak" class="content-section">
-            <div id="pesertaDitolakClosed" class="registration-closed" style="display: none;">
+            <div id="pesertaDitolakClosed" class="registration-closed">
                 <div class="closed-icon">🔒</div>
                 <h2>Akses Ditutup</h2>
                 <p>Fitur ini hanya dapat diakses ketika pendaftaran sedang dibuka.</p>
             </div>
 
-            <div id="pesertaDitolakOpen" style="display: none;">
+            <div id="pesertaDitolakOpen">
                 <div id="rejectedDataSection" style="margin-bottom: 60px;">
                 <h2 class="section-title">📋 Data Peserta dengan Status Ditolak</h2>
-                <div id="pageLoadingIndicator" class="page-loading-container" style="display: none;">
+                <div id="pageLoadingIndicator" class="page-loading-container">
                     <div class="page-loading-content">
                         <div class="page-loading-spinner"></div>
                         <p class="page-loading-text">⏳ Mengambil data...</p>
@@ -444,7 +444,7 @@
                     </div>
                 </div>
 
-                <div id="rejectedDataContainer" style="display: none;">
+                <div id="rejectedDataContainer">
                     <div class="table-wrapper">
                         <table class="rejected-data-table">
                             <thead>
@@ -490,19 +490,19 @@
                         </button>
                     </div>
 
-                <div id="searchLoadingIndicator" class="page-loading-container" style="display: none;">
+                <div id="searchLoadingIndicator" class="page-loading-container">
                     <div class="page-loading-content">
                         <div class="page-loading-spinner"></div>
                         <p class="page-loading-text">⏳ Mencari data...</p>
                     </div>
                 </div>
 
-                <div id="searchResultContainer" style="display: none;">
+                <div id="searchResultContainer">
                     <div id="searchNotFound" style="display: none; text-align: center; padding: 40px; background: linear-gradient(135deg, rgba(254, 243, 199, 0.9), rgba(253, 230, 138, 0.9)); border-radius: 15px; border-left: 5px solid var(--warning);">
                         <p style="font-size: 1.2em; color: #856404; margin: 0;">⚠️ Data dengan NIK tersebut tidak ditemukan</p>
                     </div>
 
-                    <div id="searchResultTable" style="display: none;">
+                    <div id="searchResultTable">
                         <div class="table-wrapper">
                             <table class="rejected-data-table">
                                 <thead>

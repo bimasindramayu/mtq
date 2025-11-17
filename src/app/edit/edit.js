@@ -26,13 +26,13 @@ class EditApp {
         this.editManager.uiManager.closeResultModal();
         // Redirect to home after success
         if (this.editManager.uiManager.lastRegistrationWasSuccessful) {
-            window.location.href = './';
+            globalThis.location.href = './';
         }
     }
 }
 // Initialize
 const editApp = new EditApp();
-window.editApp = editApp; // Expose for global access
+globalThis.editApp = editApp; // Expose for global access
 document.addEventListener('DOMContentLoaded', () => {
     logger.log('DOM Content Loaded - Edit Page');
     editApp.init();
@@ -40,4 +40,4 @@ document.addEventListener('DOMContentLoaded', () => {
     once: true
 });
 // Global functions
-window.closeResultModal = () => editApp.closeResultModal();
+globalThis.closeResultModal = () => editApp.closeResultModal();
