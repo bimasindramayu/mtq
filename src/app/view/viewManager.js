@@ -1,7 +1,7 @@
-import logger from './logger.js';
-import { CONFIG, isMaqraDrawTimeActive } from './config.js';
-import { APIService } from './apiService.js';
-import { isMaqraEnabled } from './maqraConfig.js';
+import logger from '../../utils/logger.js';
+import { CONFIG, isMaqraDrawTimeActive } from '../../utils/config.js';
+import { APIService } from '../../utils/apiService.js';
+import { isMaqraEnabled } from '../../maqraConfig.js';
 
 export class ViewManager {
     constructor() {

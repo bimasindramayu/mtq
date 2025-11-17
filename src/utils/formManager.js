@@ -357,6 +357,24 @@ export class FormManager {
         return errors;
     }
 
+    validateTeamForm() {
+        const errors = [];
+        
+        // Validate nama regu
+        const namaRegu = document.getElementById('namaRegu')?.value;
+        if (!namaRegu || namaRegu.trim() === '') {
+            errors.push('Nama Regu/Tim belum diisi');
+        }
+        
+        // Validate members
+        for (let i = 1; i <= this.currentTeamMemberCount; i++) {
+            const memberErrors = this.validateTeamMember(i, i <= 2);
+            errors.push(...memberErrors);
+        }
+        
+        return errors;
+    }
+    
     validateTeamMember(memberIndex, isRequired) {
         const errors = [];
         const prefix = `Anggota #${memberIndex}`;
@@ -399,45 +417,6 @@ export class FormManager {
                 logger.log(`❌ Missing required file: ${fileKey}`);
             } else {
                 logger.log(`✅ File exists: ${fileKey} - ${hasFile.name}`);
-            }
-        });
-
-        return errors;
-    }
-
-    validateTeamMember(memberIndex, isRequired) {
-        const errors = [];
-        const prefix = `Anggota #${memberIndex}`;
-
-        const memberFields = [
-            { name: `memberNik${memberIndex}`, label: 'NIK' },
-            { name: `memberName${memberIndex}`, label: 'Nama' },
-            { name: `memberJenisKelamin${memberIndex}`, label: 'Jenis kelamin' },
-            { name: `memberTempatLahir${memberIndex}`, label: 'Tempat lahir' },
-            { name: `memberBirthDate${memberIndex}`, label: 'Tanggal lahir' },
-            { name: `memberAlamat${memberIndex}`, label: 'Alamat' },
-            { name: `memberNoTelepon${memberIndex}`, label: 'No telepon' },
-            { name: `memberEmail${memberIndex}`, label: 'Email' }
-        ];
-
-        memberFields.forEach(field => {
-            const value = document.querySelector(`[name="${field.name}"]`)?.value;
-            if (!value || value.trim() === '') {
-                errors.push(`${prefix}: ${field.label} belum diisi`);
-            }
-        });
-
-        const memberNik = document.querySelector(`[name="memberNik${memberIndex}"]`)?.value;
-        if (memberNik && memberNik.length !== 16) {
-            errors.push(`${prefix}: NIK harus terdiri dari 16 digit`);
-        }
-
-        // Check required files
-        const requiredDocs = [1, 2, 5];
-        requiredDocs.forEach(docNum => {
-            if (!this.fileHandler.getFile(`teamDoc${memberIndex}_${docNum}`)) {
-                const docNames = { 1: 'Surat Mandat', 2: 'KTP/KK/KIA', 5: 'Pas Photo' };
-                errors.push(`${prefix}: Dokumen ${docNames[docNum]} belum diupload`);
             }
         });
 

@@ -45,6 +45,20 @@ class ProgressTracker {
         }
         return step;
     }
+
+    // ADD NEW METHOD
+    getLoadingMessage(progress) {
+        const steps = ['Validasi Data', 'Konversi File', 'Upload ke Server'];
+        const step = steps[this.currentStep] || 'Memproses';
+        
+        let message = `Progress: ${progress}%\n${step}`;
+        
+        if (this.filesTotal > 0 && this.currentStep > 0) {
+            message += `\n(${this.filesProcessed}/${this.filesTotal} file)`;
+        }
+        
+        return message;
+    }
 }
 
 export default new ProgressTracker();

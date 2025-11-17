@@ -8,6 +8,40 @@ import { APIService } from './apiService.js';
 import { UIManager } from './uiManager.js';
 import { DataManager } from './dataManager.js';
 import { RegistrationTimeManager } from './registrationTimeManager.js';
+import { DeveloperMode } from '../app/dev/devMode.js';
+
+// CSV Sanitization Utilities
+function sanitizeForCSV(value) {
+    if (!value) return '';
+    
+    // Convert to string
+    let sanitized = String(value);
+    
+    // Replace newlines with space
+    sanitized = sanitized.replace(/[\r\n]+/g, ' ');
+    
+    // Replace tabs with space
+    sanitized = sanitized.replace(/\t/g, ' ');
+    
+    // Escape double quotes by doubling them (CSV standard)
+    sanitized = sanitized.replace(/"/g, '""');
+    
+    // Remove control characters
+    sanitized = sanitized.replace(/[\x00-\x1F\x7F]/g, '');
+    
+    // Trim extra spaces
+    sanitized = sanitized.trim().replace(/\s+/g, ' ');
+    
+    return sanitized;
+}
+
+function preventMultiline(event) {
+    // Prevent Enter key in textarea
+    if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        return false;
+    }
+}
 
 class MTQRegistrationApp {
     constructor() {
@@ -18,6 +52,7 @@ class MTQRegistrationApp {
         this.uiManager = new UIManager();
         this.dataManager = new DataManager();
         this.timeManager = new RegistrationTimeManager();
+        this.devMode = new DeveloperMode(this);
         
         logger.log('🚀 MTQ Registration App initialized');
     }
@@ -39,7 +74,7 @@ class MTQRegistrationApp {
         
         // Initialize developer mode if enabled
         if (CONFIG.DEV_MODE.enabled) {
-            this.initDeveloperMode();
+            this.devMode.init(); // CHANGE THIS LINE
         }
         
         logger.log('✅ APP INITIALIZATION COMPLETE');
@@ -137,6 +172,16 @@ class MTQRegistrationApp {
         if (namaReguEl) {
             namaReguEl.addEventListener('input', () => this.updateSubmitButton());
             namaReguEl.addEventListener('change', () => this.updateSubmitButton());
+        }
+
+        // Sanitize alamat (textarea)
+        const alamatEl = document.getElementById('alamat');
+        if (alamatEl) {
+            alamatEl.addEventListener('keydown', preventMultiline);
+            alamatEl.addEventListener('blur', function() {
+                this.value = sanitizeForCSV(this.value);
+            });
+            alamatEl.addEventListener('input', () => this.updateSubmitButton());
         }
     }
 
@@ -552,6 +597,15 @@ class MTQRegistrationApp {
                     }
                 });
             }
+
+            // Sanitize alamat team member
+            const alamatInput = document.querySelector(`textarea[name="memberAlamat${i}"]`);
+            if (alamatInput) {
+                alamatInput.addEventListener('keydown', preventMultiline);
+                alamatInput.addEventListener('blur', function() {
+                    this.value = sanitizeForCSV(this.value);
+                });
+            }
             
             // All other inputs
             const allInputs = document.querySelectorAll(`#teamMember${i} input, #teamMember${i} select, #teamMember${i} textarea`);
@@ -684,12 +738,14 @@ class MTQRegistrationApp {
             this.uiManager.showProgressBar(true);
             progressTracker.currentStep = 0;
             this.uiManager.updateProgress(15, 'Validasi & Penyimpanan Data');
+            this.uiManager.showLoadingOverlay(true, progressTracker.getLoadingMessage(15));
             
             // Prepare form data
             const formData = this.prepareFormData();
-            
+                    
             // Submit registration
             this.uiManager.updateProgress(30, 'Upload Data Registrasi...');
+            this.uiManager.showLoadingOverlay(true, progressTracker.getLoadingMessage(30));
             const result = await this.apiService.submitRegistration(formData);
             
             if (!result.success) {
@@ -701,20 +757,56 @@ class MTQRegistrationApp {
             const responseDetails = this.prepareResponseDetails(result.nomorPeserta);
             
             this.uiManager.updateProgress(50, 'Data Registrasi Tersimpan!');
+            this.uiManager.showLoadingOverlay(true, progressTracker.getLoadingMessage(50));
             
-            // Upload files
+            // ===== CRITICAL: UPLOAD FILES WITH VERIFICATION =====
             const uploadedFiles = this.fileHandler.getAllFiles();
+            let filesUploadedSuccessfully = false;
+            
             if (Object.keys(uploadedFiles).length > 0) {
-                await this.uploadFiles(result.nomorPeserta, uploadedFiles);
+                logger.log(`📤 Starting file upload for ${Object.keys(uploadedFiles).length} files`);
+                
+                try {
+                    const fileUploadResult = await this.uploadFiles(result.nomorPeserta, uploadedFiles);
+                    
+                    // Verify files were uploaded
+                    if (fileUploadResult && fileUploadResult.success) {
+                        filesUploadedSuccessfully = true;
+                        logger.log('✅ Files uploaded successfully');
+                    } else {
+                        logger.error('❌ File upload failed:', fileUploadResult?.message);
+                        throw new Error('File upload gagal: ' + (fileUploadResult?.message || 'Unknown error'));
+                    }
+                } catch (uploadError) {
+                    logger.error('❌ File upload error:', uploadError);
+                    
+                    // Show error but don't lose registration
+                    this.uiManager.showLoadingOverlay(false);
+                    this.uiManager.showResultModal(false, 
+                        'Registrasi Tersimpan, Namun File Gagal Diupload', 
+                        `Nomor Peserta Anda: ${result.nomorPeserta}\n\n` +
+                        `Data registrasi sudah tersimpan, namun file dokumen gagal diupload.\n\n` +
+                        `Error: ${uploadError.message}\n\n` +
+                        `Silakan hubungi admin dengan memberikan nomor peserta Anda untuk upload ulang dokumen.`,
+                        responseDetails
+                    );
+                    return;
+                }
+            } else {
+                logger.log('ℹ️ No files to upload');
+                filesUploadedSuccessfully = true; // No files required case
             }
             
             this.uiManager.updateProgress(100, '✅ Selesai!');
+            this.uiManager.showLoadingOverlay(true, progressTracker.getLoadingMessage(100));
             
             setTimeout(() => {
                 this.uiManager.showLoadingOverlay(false);
-                this.uiManager.showResultModal(true, 'Registrasi Berhasil!', 
-                    'Data Anda telah tersimpan' + (Object.keys(uploadedFiles).length > 0 ? ' dan dokumen telah diupload.' : '.'), 
-                    responseDetails);
+                const successMessage = filesUploadedSuccessfully 
+                    ? 'Data Anda telah tersimpan dan dokumen telah diupload.' 
+                    : 'Data Anda telah tersimpan.';
+                
+                this.uiManager.showResultModal(true, 'Registrasi Berhasil!', successMessage, responseDetails);
                 logger.log('=== FORM SUBMISSION SUCCESS ===');
             }, 500);
             
@@ -734,8 +826,8 @@ class MTQRegistrationApp {
         const kecamatan = document.getElementById('kecamatan').value;
         const currentCabang = this.formManager.getCurrentCabang();
         
-        formData.append('kecamatan', kecamatan);
-        formData.append('cabang', currentCabang.name);
+        formData.append('kecamatan', sanitizeForCSV(kecamatan));
+        formData.append('cabang', sanitizeForCSV(currentCabang.name));
         formData.append('cabangCode', currentCabang.code);
         formData.append('maxAge', currentCabang.maxAge);
         formData.append('genderCode', currentCabang.genderRestriction);
@@ -744,43 +836,43 @@ class MTQRegistrationApp {
         const nikList = [];
         
         if (!currentCabang.isTeam) {
-            // Personal data
+            // Personal data - SANITIZE ALL
             const nik = document.getElementById('nik').value;
             nikList.push(nik);
             
-            formData.append('nik', nik);
-            formData.append('nama', document.getElementById('nama').value);
-            formData.append('jenisKelamin', document.getElementById('jenisKelamin').value);
-            formData.append('tempatLahir', document.getElementById('tempatLahir').value);
+            formData.append('nik', sanitizeForCSV(nik));
+            formData.append('nama', sanitizeForCSV(document.getElementById('nama').value));
+            formData.append('jenisKelamin', sanitizeForCSV(document.getElementById('jenisKelamin').value));
+            formData.append('tempatLahir', sanitizeForCSV(document.getElementById('tempatLahir').value));
             formData.append('tglLahir', document.getElementById('tglLahir').value);
             formData.append('umur', document.getElementById('umur').value);
-            formData.append('alamat', document.getElementById('alamat').value);
-            formData.append('noTelepon', document.getElementById('noTelepon').value);
-            formData.append('email', document.getElementById('email').value);
-            formData.append('namaRek', document.getElementById('namaRek').value);
-            formData.append('noRek', document.getElementById('noRek').value);
-            formData.append('namaBank', document.getElementById('namaBank').value);
+            formData.append('alamat', sanitizeForCSV(document.getElementById('alamat').value));
+            formData.append('noTelepon', sanitizeForCSV(document.getElementById('noTelepon').value));
+            formData.append('email', sanitizeForCSV(document.getElementById('email').value));
+            formData.append('namaRek', sanitizeForCSV(document.getElementById('namaRek').value));
+            formData.append('noRek', sanitizeForCSV(document.getElementById('noRek').value));
+            formData.append('namaBank', sanitizeForCSV(document.getElementById('namaBank').value));
         } else {
-            // Team data
+            // Team data - SANITIZE ALL
             const namaRegu = document.getElementById('namaRegu').value;
-            formData.append('namaRegu', namaRegu);
+            formData.append('namaRegu', sanitizeForCSV(namaRegu));
             
             for (let i = 1; i <= this.formManager.getTeamMemberCount(); i++) {
                 const nik = document.querySelector(`[name="memberNik${i}"]`).value;
                 if (nik) nikList.push(nik);
                 
-                formData.append(`memberNik${i}`, nik);
-                formData.append(`memberName${i}`, document.querySelector(`[name="memberName${i}"]`).value);
-                formData.append(`memberJenisKelamin${i}`, document.querySelector(`[name="memberJenisKelamin${i}"]`).value);
-                formData.append(`memberTempatLahir${i}`, document.querySelector(`[name="memberTempatLahir${i}"]`).value);
+                formData.append(`memberNik${i}`, sanitizeForCSV(nik));
+                formData.append(`memberName${i}`, sanitizeForCSV(document.querySelector(`[name="memberName${i}"]`).value));
+                formData.append(`memberJenisKelamin${i}`, sanitizeForCSV(document.querySelector(`[name="memberJenisKelamin${i}"]`).value));
+                formData.append(`memberTempatLahir${i}`, sanitizeForCSV(document.querySelector(`[name="memberTempatLahir${i}"]`).value));
                 formData.append(`memberBirthDate${i}`, document.querySelector(`[name="memberBirthDate${i}"]`).value);
                 formData.append(`memberUmur${i}`, document.querySelector(`[name="memberUmur${i}"]`).value);
-                formData.append(`memberAlamat${i}`, document.querySelector(`[name="memberAlamat${i}"]`).value);
-                formData.append(`memberNoTelepon${i}`, document.querySelector(`[name="memberNoTelepon${i}"]`).value);
-                formData.append(`memberEmail${i}`, document.querySelector(`[name="memberEmail${i}"]`).value);
-                formData.append(`memberNamaRek${i}`, document.querySelector(`[name="memberNamaRek${i}"]`).value);
-                formData.append(`memberNoRek${i}`, document.querySelector(`[name="memberNoRek${i}"]`).value);
-                formData.append(`memberNamaBank${i}`, document.querySelector(`[name="memberNamaBank${i}"]`).value);
+                formData.append(`memberAlamat${i}`, sanitizeForCSV(document.querySelector(`[name="memberAlamat${i}"]`).value));
+                formData.append(`memberNoTelepon${i}`, sanitizeForCSV(document.querySelector(`[name="memberNoTelepon${i}"]`).value));
+                formData.append(`memberEmail${i}`, sanitizeForCSV(document.querySelector(`[name="memberEmail${i}"]`).value));
+                formData.append(`memberNamaRek${i}`, sanitizeForCSV(document.querySelector(`[name="memberNamaRek${i}"]`).value));
+                formData.append(`memberNoRek${i}`, sanitizeForCSV(document.querySelector(`[name="memberNoRek${i}"]`).value));
+                formData.append(`memberNamaBank${i}`, sanitizeForCSV(document.querySelector(`[name="memberNamaBank${i}"]`).value));
             }
             
             formData.append('memberGenderCode1', document.querySelector('[name="memberJenisKelamin1"]').value === 'Laki-laki' ? 'male' : 'female');
@@ -819,8 +911,6 @@ class MTQRegistrationApp {
     }
 
     async uploadFiles(nomorPeserta, uploadedFiles) {
-        this.uiManager.showLoadingOverlay(true, 'Mengupload dokumen...\nJangan tutup ataupun refresh halaman ini..');
-        
         progressTracker.currentStep = 1;
         progressTracker.setFilesTotal(Object.keys(uploadedFiles).length);
         
@@ -844,19 +934,28 @@ class MTQRegistrationApp {
                 progressTracker.incrementFile();
                 const currentProgress = progressTracker.calculateProgress();
                 const message = progressTracker.getDetailedMessage();
+                
+                // UPDATE WITH LOADING MESSAGE
                 this.uiManager.updateProgress(currentProgress, message);
+                this.uiManager.showLoadingOverlay(true, progressTracker.getLoadingMessage(currentProgress));
             }
         }
         
         this.uiManager.updateProgress(70, 'Mengirim File...');
+        this.uiManager.showLoadingOverlay(true, progressTracker.getLoadingMessage(70));
         
         const fileResult = await this.apiService.uploadFiles(fileFormData);
         
         if (!fileResult.success) {
             logger.log('File upload failed:', fileResult.message);
+            throw new Error(fileResult.message || 'File upload failed');
         }
         
         this.uiManager.updateProgress(85, 'File Terupload!');
+        this.uiManager.showLoadingOverlay(true, progressTracker.getLoadingMessage(85));
+        
+        // RETURN RESULT
+        return fileResult;
     }
 
     cleanupFormBeforeSubmit() {
@@ -948,12 +1047,6 @@ class MTQRegistrationApp {
         
         this.updateSubmitButton();
     }
-
-    // ===== DEVELOPER MODE =====
-    initDeveloperMode() {
-        logger.log('Developer mode enabled');
-        // Developer mode implementation can be added here if needed
-    }
 }
 
 // ===== INITIALIZE APP =====
@@ -972,3 +1065,11 @@ window.searchPesertaByNIK = () => mtqApp.handleSearchNIK();
 window.closeResultModal = () => mtqApp.uiManager.closeResultModal();
 window.closeConfirmModal = (result) => mtqApp.uiManager.closeConfirmModal(result);
 window.resetForm = () => mtqApp.resetForm();
+
+// Developer mode functions
+window.closeDevModal = () => mtqApp.devMode.closeModal();
+window.fillPersonalDataRandom = () => mtqApp.devMode.fillPersonalDataRandom();
+window.fillTeamMember1Random = () => mtqApp.devMode.fillTeamMember1Random();
+window.fillTeamMember2Random = () => mtqApp.devMode.fillTeamMember2Random();
+window.fillTeamMember3Random = () => mtqApp.devMode.fillTeamMember3Random();
+window.clearAllDevData = () => mtqApp.devMode.clearAllDevData();

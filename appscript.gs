@@ -5,12 +5,12 @@ const SHEET_NAME = 'Peserta';
 
 // REGISTRATION TIME WINDOW (WIB = UTC+7)
 const REGISTRATION_START = new Date('2025-10-29T00:00:00+07:00');
-const REGISTRATION_END = new Date('2025-11-04T00:00:00+07:00');
+const REGISTRATION_END = new Date('2026-11-04T00:00:00+07:00');
 
 // ===== MAQRA DRAW TIME CONFIGURATION =====
 const MAQRA_DRAW_ENABLED = true; // Master switch
 const MAQRA_DRAW_START = new Date('2025-11-05T08:00:00+07:00');
-const MAQRA_DRAW_END = new Date('2025-11-10T23:59:59+07:00');
+const MAQRA_DRAW_END = new Date('2026-11-10T23:59:59+07:00');
 
 // ===== MAQRA CONFIGURATION =====
 const MAQRA_ENABLED_BRANCHES = [
@@ -960,7 +960,7 @@ function addHeaders(sheet) {
     'Link - Doc Pas Photo Team 1', 'Link - Doc Surat Mandat Team 2', 'Link - Doc KTP Team 2',
     'Link - Doc Sertifikat Team 2', 'Link - Doc Rekening Team 2', 'Link - Doc Pas Photo Team 2',
     'Link - Doc Surat Mandat Team 3', 'Link - Doc KTP Team 3', 'Link - Doc Sertifikat Team 3',
-    'Link - Doc Rekening Team 3', 'Link - Doc Pas Photo Team 3', 'Status', 'Alasan Ditolak'
+    'Link - Doc Rekening Team 3', 'Link - Doc Pas Photo Team 3', 'Status', 'Alasan Ditolak', 'Maqra'
   ];
   sheet.appendRow(headers);
 }

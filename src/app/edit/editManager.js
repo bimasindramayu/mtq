@@ -1,19 +1,19 @@
-import logger from './logger.js';
+import logger from '../../utils/logger.js';
 import {
     CONFIG
-} from './config.js';
+} from '../../utils/config.js';
 import {
     Validator
-} from './validator.js';
+} from '../../utils/validator.js';
 import {
     FileHandler
-} from './fileHandler.js';
+} from '../../utils/fileHandler.js';
 import {
     APIService
-} from './apiService.js';
+} from '../../utils/apiService.js';
 import {
     UIManager
-} from './uiManager.js';
+} from '../../utils/uiManager.js';
 export class EditManager {
     constructor() {
         this.fileHandler = new FileHandler();

@@ -1,5 +1,5 @@
-import logger from './logger.js';
-import { CONFIG } from './config.js';
+import logger from '../../utils/logger.js';
+import { CONFIG } from '../../utils/config.js';
 import { isMaqraEnabled, getAvailableMaqra } from './maqraConfig.js';
 
 export class MaqraManager {

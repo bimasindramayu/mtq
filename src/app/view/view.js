@@ -1,6 +1,6 @@
-import logger from './logger.js';
-import { ViewManager } from './viewManager.js';
-import { MaqraManager } from './maqraManager.js';
+import logger from '../../utils/logger.js';
+import { ViewManager } from '../../viewManager.js';
+import { MaqraManager } from '../../maqraManager.js';
 
 class ViewApp {
     constructor() {
