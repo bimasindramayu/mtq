@@ -164,7 +164,7 @@ export class ViewManager {
                             <div id="maqra-cell-${index}">
                                 <button class="btn-draw-maqra-small" id="btn-draw-${index}" 
                                         onclick="window.viewApp.handleMaqraDraw(window['${dataIndex}'], ${index})">
-                                    🎲 Ambil Maqra
+                                    ✨ Ambil Maqra
                                 </button>
                             </div>
                         `;
