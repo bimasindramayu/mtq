@@ -6,7 +6,7 @@ class ViewApp {
     constructor() {
         this.viewManager = new ViewManager();
         this.maqraManager = new MaqraManager();
-        window.maqraManager = this.maqraManager;
+        globalThis.maqraManager = this.maqraManager;
         logger.log('🚀 View App initialized');
     }
 
@@ -37,8 +37,8 @@ class ViewApp {
         const buttonId = `btn-draw-${cellIndex}`;
         
         // Store cell index globally for later update
-        window._maqraCellIndex = cellIndex;
-        window._maqraRowData = rowData;
+        globalThis._maqraCellIndex = cellIndex;
+        globalThis._maqraRowData = rowData;
         
         logger.log('Calling showDrawModalWithLoader...');
         
@@ -66,10 +66,10 @@ class ViewApp {
         } else {
             logger.log('❌ Cell not found:', cellId);
             // Fallback: try to find by button and replace parent
-            const button = document.getElementById(`btn-draw-${cellIndex}`);
-            if (button && button.parentElement) {
+            const parent = document.getElementById(`btn-draw-${cellIndex}`)?.parentElement;
+            if (parent) {
                 logger.log('Found button parent, updating...');
-                button.parentElement.innerHTML = `<span class="maqra-badge">${maqraText}</span>`;
+                parent.innerHTML = `<span class="maqra-badge">${maqraText}</span>`;
                 logger.log('✅ Updated via button parent');
             }
         }
@@ -78,7 +78,7 @@ class ViewApp {
 
 // Initialize
 const viewApp = new ViewApp();
-window.viewApp = viewApp;
+globalThis.viewApp = viewApp;
 
 document.addEventListener('DOMContentLoaded', () => {
     logger.log('DOM Content Loaded - View Page');
@@ -86,7 +86,7 @@ document.addEventListener('DOMContentLoaded', () => {
 }, { once: true });
 
 // Global functions
-window.refreshData = () => viewApp.refreshData();
-window.exportToCSV = () => viewApp.exportToCSV();
-window.sortData = (column) => viewApp.sortData(column);
-window.searchData = () => viewApp.viewManager.searchData();
+globalThis.refreshData = () => viewApp.refreshData();
+globalThis.exportToCSV = () => viewApp.exportToCSV();
+globalThis.sortData = (column) => viewApp.sortData(column);
+globalThis.searchData = () => viewApp.viewManager.searchData();

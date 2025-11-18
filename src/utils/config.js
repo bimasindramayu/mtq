@@ -1,6 +1,6 @@
 // Configuration & Constants
 export const CONFIG = {
-    APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbzX9XMxHgXLjJ6Iy3dqqCGj5p-V0Ut2gY3HF8JK4O2H9gN_LyLqRGV5Tw14yegzn9B_/exec',
+    APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbwP9hIiC0RVxocGznZrXLadfZXhKPsJ2P7Y2ykNu966_BZfHy9I42IQgkeAxYs6Ga7Q/exec',
     REGISTRATION_START: new Date('2025-10-29T00:00:00+07:00'),
     REGISTRATION_END: new Date('2026-11-04T00:00:00+07:00'),
     MAX_FILE_SIZE_MB: 5,

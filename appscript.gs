@@ -117,6 +117,11 @@ function doPost(e) {
       return handleFileUploadOnly(e);
     }
 
+    // Handle penilaian submission
+    if (e.parameter.action === 'submitPenilaian') {
+      return submitPenilaian(e);
+    }
+
     // ===== HANDLE DRAW MAQRA ACTION =====
     if (e.parameter.action === 'drawMaqra') {
       return drawMaqraForParticipant(e);
@@ -960,7 +965,7 @@ function addHeaders(sheet) {
     'Link - Doc Pas Photo Team 1', 'Link - Doc Surat Mandat Team 2', 'Link - Doc KTP Team 2',
     'Link - Doc Sertifikat Team 2', 'Link - Doc Rekening Team 2', 'Link - Doc Pas Photo Team 2',
     'Link - Doc Surat Mandat Team 3', 'Link - Doc KTP Team 3', 'Link - Doc Sertifikat Team 3',
-    'Link - Doc Rekening Team 3', 'Link - Doc Pas Photo Team 3', 'Status', 'Alasan Ditolak', 'Maqra'
+    'Link - Doc Rekening Team 3', 'Link - Doc Pas Photo Team 3', 'Status', 'Alasan Ditolak', 'Maqra', 'Penilaian'
   ];
   sheet.appendRow(headers);
 }
@@ -1156,10 +1161,15 @@ function deleteRowData(rowIndex) {
   }
 }
 
+// Update doGet to handle checkJuriSubmission
 function doGet(e) {
   const action = e.parameter.action;
   
-  if (action === 'getData') {
+  if (action === 'checkJuriSubmission') {
+    return checkJuriSubmission(e.parameter.cabang, e.parameter.juri);
+  } else if (action === 'getPesertaByCabang') {
+    return getPesertaByCabang(e.parameter.cabang);
+  } else if (action === 'getData') {
     return getAllDataAsJSON();
   } else if (action === 'getRejectedData') {
     return getRejectedDataAsJSON();
@@ -3076,4 +3086,389 @@ function generateMaqraData(branchCode, count) {
   }
   
   return maqraList;
+}
+
+// Check if juri has already submitted for this cabang
+function checkJuriSubmission(cabang, juri) {
+  try {
+    Logger.log('=== CHECK JURI SUBMISSION ===');
+    Logger.log('Cabang:', cabang);
+    Logger.log('Juri:', juri);
+    
+    const ss = SpreadsheetApp.openById(SHEET_ID);
+    const sheet = ss.getSheetByName(SHEET_NAME);
+    
+    if (!sheet) {
+      return ContentService.createTextOutput(JSON.stringify({
+        success: false,
+        message: 'Sheet tidak ditemukan'
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    const lastRow = sheet.getLastRow();
+    if (lastRow <= 1) {
+      return ContentService.createTextOutput(JSON.stringify({
+        success: true,
+        hasSubmitted: false
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    const cabangIdx = headers.indexOf('Cabang Lomba');
+    const penilaianIdx = headers.indexOf('Penilaian');
+    
+    if (cabangIdx === -1 || penilaianIdx === -1) {
+      return ContentService.createTextOutput(JSON.stringify({
+        success: false,
+        message: 'Kolom tidak ditemukan'
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    const dataRange = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn());
+    const data = dataRange.getValues();
+    
+    for (let i = 0; i < data.length; i++) {
+      const row = data[i];
+      const rowCabang = row[cabangIdx];
+      const rowPenilaian = row[penilaianIdx];
+      
+      // Check if cabang matches
+      if (rowCabang && rowCabang.toString().includes(cabang)) {
+        if (rowPenilaian && rowPenilaian !== '-') {
+          try {
+            const penilaianData = JSON.parse(rowPenilaian);
+            
+            // Check if this juri has already submitted
+            if (penilaianData.juri && Array.isArray(penilaianData.juri)) {
+              for (let j = 0; j < penilaianData.juri.length; j++) {
+                if (penilaianData.juri[j].namaJuri === juri) {
+                  Logger.log('Juri already submitted');
+                  return ContentService.createTextOutput(JSON.stringify({
+                    success: true,
+                    hasSubmitted: true,
+                    data: penilaianData.juri[j]
+                  })).setMimeType(ContentService.MimeType.JSON);
+                }
+              }
+            }
+          } catch (e) {
+            Logger.log('Error parsing penilaian JSON:', e.message);
+          }
+        }
+      }
+    }
+    
+    return ContentService.createTextOutput(JSON.stringify({
+      success: true,
+      hasSubmitted: false
+    })).setMimeType(ContentService.MimeType.JSON);
+    
+  } catch (error) {
+    Logger.log('Error:', error.message);
+    return ContentService.createTextOutput(JSON.stringify({
+      success: false,
+      message: 'Error: ' + error.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// Submit penilaian juri
+function submitPenilaian(e) {
+  const lock = LockService.getScriptLock();
+  let lockAcquired = false;
+  
+  try {
+    Logger.log('=== SUBMIT PENILAIAN START ===');
+    Logger.log('Step 1: Acquiring lock...');
+    
+    lockAcquired = acquireLockWithRetry(lock, LOCK_TIMEOUT_MS, LOCK_WAIT_TIME_MS, MAX_LOCK_ATTEMPTS);
+    
+    if (!lockAcquired) {
+      Logger.log('ERROR: Failed to acquire lock');
+      return createResponse(false, 'Server sibuk, coba lagi dalam beberapa detik');
+    }
+    
+    Logger.log('Step 2: Lock acquired successfully');
+    
+    const cabang = e.parameter.cabang;
+    const namaJuri = e.parameter.namaJuri;
+    const nomorPeserta = e.parameter.nomorPeserta;
+    const nilaiAspek = JSON.parse(e.parameter.nilaiAspek);
+    const nilaiTotal = parseFloat(e.parameter.nilaiTotal);
+    
+    const catatan = e.parameter.catatan || '';
+    
+    Logger.log('Step 3: Parameters received:');
+    Logger.log('  - Cabang: ' + cabang);
+    Logger.log('  - Juri: ' + namaJuri);
+    Logger.log('  - Nomor Peserta: ' + nomorPeserta);
+    Logger.log('  - Nilai Aspek: ' + JSON.stringify(nilaiAspek));
+    Logger.log('  - Nilai Total: ' + nilaiTotal);
+    
+    Logger.log('Step 4: Opening spreadsheet...');
+    const ss = SpreadsheetApp.openById(SHEET_ID);
+    const sheet = ss.getSheetByName(SHEET_NAME);
+    
+    if (!sheet) {
+      Logger.log('ERROR: Sheet not found - ' + SHEET_NAME);
+      lock.releaseLock();
+      return createResponse(false, 'Sheet tidak ditemukan');
+    }
+    
+    Logger.log('Step 5: Sheet opened successfully - ' + SHEET_NAME);
+    
+    // Find the row with matching nomor peserta and cabang
+    const lastRow = sheet.getLastRow();
+    Logger.log('Step 6: Total rows in sheet: ' + lastRow);
+    
+    const lastCol = sheet.getLastColumn();
+    Logger.log('Step 7: Total columns in sheet: ' + lastCol);
+    
+    const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+    Logger.log('Step 8: Headers retrieved, total: ' + headers.length);
+    
+    // Log all headers for debugging
+    Logger.log('Step 9: All headers:');
+    for (let i = 0; i < headers.length; i++) {
+      Logger.log('  Column ' + (i + 1) + ': "' + headers[i] + '"');
+    }
+    
+    const nomorPesertaIdx = headers.indexOf('Nomor Peserta');
+    const cabangIdx = headers.indexOf('Cabang Lomba');
+    const penilaianIdx = headers.indexOf('Penilaian');
+    
+    Logger.log('Step 10: Column indices:');
+    Logger.log('  - Nomor Peserta index: ' + nomorPesertaIdx);
+    Logger.log('  - Cabang Lomba index: ' + cabangIdx);
+    Logger.log('  - Penilaian index: ' + penilaianIdx);
+    
+    if (nomorPesertaIdx === -1) {
+      Logger.log('ERROR: Column "Nomor Peserta" not found in headers');
+      lock.releaseLock();
+      return createResponse(false, 'Kolom "Nomor Peserta" tidak ditemukan di spreadsheet');
+    }
+    
+    if (cabangIdx === -1) {
+      Logger.log('ERROR: Column "Cabang Lomba" not found in headers');
+      lock.releaseLock();
+      return createResponse(false, 'Kolom "Cabang Lomba" tidak ditemukan di spreadsheet');
+    }
+    
+    if (penilaianIdx === -1) {
+      Logger.log('ERROR: Column "Penilaian" not found in headers');
+      lock.releaseLock();
+      return createResponse(false, 'Kolom "Penilaian" tidak ditemukan di spreadsheet');
+    }
+    
+    Logger.log('Step 11: All required columns found successfully');
+    
+    const dataRange = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn());
+    const data = dataRange.getValues();
+    
+    let targetRow = -1;
+    let existingPenilaian = null;
+    
+    for (let i = 0; i < data.length; i++) {
+      const row = data[i];
+      const rowNomor = row[nomorPesertaIdx].toString().trim();
+      const rowCabang = row[cabangIdx];
+      
+      if (rowNomor === nomorPeserta.trim() && rowCabang && rowCabang.toString().includes(cabang)) {
+        targetRow = i + 2;
+        const existingData = row[penilaianIdx];
+        
+        if (existingData && existingData !== '-') {
+          try {
+            existingPenilaian = JSON.parse(existingData);
+          } catch (e) {
+            existingPenilaian = { juri: [] };
+          }
+        } else {
+          existingPenilaian = { juri: [] };
+        }
+        
+        break;
+      }
+    }
+    
+    if (targetRow === -1) {
+      lock.releaseLock();
+      return createResponse(false, 'Data peserta tidak ditemukan. Pastikan nomor peserta benar.');
+    }
+    
+    // Check if juri already submitted
+    if (existingPenilaian.juri && Array.isArray(existingPenilaian.juri)) {
+      for (let j = 0; j < existingPenilaian.juri.length; j++) {
+        if (existingPenilaian.juri[j].namaJuri === namaJuri) {
+          lock.releaseLock();
+          return createResponse(false, 'Anda sudah memberikan penilaian untuk peserta ini.');
+        }
+      }
+    }
+    
+    // Upload bukti penilaian
+    const filesData = JSON.parse(e.parameter.files);
+    const buktiLinks = [];
+    const folder = DriveApp.getFolderById(FOLDER_ID);
+    const timestamp = new Date().getTime();
+    
+    for (let i = 0; i < filesData.length; i++) {
+      const fileData = filesData[i];
+      const fileName = `Penilaian_${namaJuri}_${nomorPeserta}_${timestamp}_${i}.${fileData.type.split('/')[1]}`;
+      
+      const blob = Utilities.newBlob(
+        Utilities.base64Decode(fileData.data),
+        fileData.type,
+        fileName
+      );
+      
+      const file = folder.createFile(blob);
+      file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      buktiLinks.push(file.getUrl());
+    }
+    
+    // Add new penilaian
+    const nilaiTotal = (nilaiTajwid + nilaiFasohah + nilaiSuara + nilaiAdab) / 4;
+    
+    const newPenilaian = {
+      namaJuri: namaJuri,
+      nomorPeserta: nomorPeserta,
+      nilaiAspek: nilaiAspek,
+      nilaiTotal: nilaiTotal,
+      catatan: catatan,
+      buktiPenilaian: buktiLinks,
+      timestamp: new Date().toISOString()
+    };
+    
+    existingPenilaian.juri.push(newPenilaian);
+    
+    // Calculate rata-rata from all juri
+    let totalNilai = 0;
+    for (let j = 0; j < existingPenilaian.juri.length; j++) {
+      totalNilai += existingPenilaian.juri[j].nilaiTotal;
+    }
+    existingPenilaian.rataRata = totalNilai / existingPenilaian.juri.length;
+    
+    // Update sheet
+    sheet.getRange(targetRow, penilaianIdx + 1).setValue(JSON.stringify(existingPenilaian));
+    
+    lock.releaseLock();
+    lockAcquired = false;
+    
+    Logger.log('✅ Penilaian berhasil disimpan');
+    
+    return createResponse(true, 'Penilaian berhasil dikirim!', null, {
+      nilaiTotal: nilaiTotal,
+      rataRata: existingPenilaian.rataRata
+    });
+    
+  } catch (error) {
+    Logger.log('Error:', error.message);
+    Logger.log('Stack:', error.stack);
+    if (lockAcquired) {
+      lock.releaseLock();
+    }
+    return createResponse(false, 'Terjadi kesalahan: ' + error.toString());
+  }
+}
+
+// Get list peserta for a specific cabang
+function getPesertaByCabang(cabang) {
+  try {
+    Logger.log('=== GET PESERTA BY CABANG ===');
+    Logger.log('Cabang requested: ' + cabang);
+    
+    const ss = SpreadsheetApp.openById(SHEET_ID);
+    const sheet = ss.getSheetByName(SHEET_NAME);
+    
+    if (!sheet) {
+      Logger.log('ERROR: Sheet not found');
+      return ContentService.createTextOutput(JSON.stringify({
+        success: false,
+        message: 'Sheet tidak ditemukan'
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    const lastRow = sheet.getLastRow();
+    Logger.log('Total rows: ' + lastRow);
+    
+    if (lastRow <= 1) {
+      Logger.log('No data in sheet');
+      return ContentService.createTextOutput(JSON.stringify({
+        success: true,
+        peserta: []
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    const nomorPesertaIdx = headers.indexOf('Nomor Peserta');
+    const namaIdx = headers.indexOf('Nama Lengkap');
+    const namaReguIdx = headers.indexOf('Nama Regu/Tim');
+    const cabangIdx = headers.indexOf('Cabang Lomba');
+    const statusIdx = headers.indexOf('Status');
+    const maqraIdx = headers.indexOf('Maqra');
+    
+    Logger.log('Column indices:');
+    Logger.log('  - Nomor Peserta: ' + nomorPesertaIdx);
+    Logger.log('  - Nama Lengkap: ' + namaIdx);
+    Logger.log('  - Nama Regu/Tim: ' + namaReguIdx);
+    Logger.log('  - Cabang Lomba: ' + cabangIdx);
+    Logger.log('  - Status: ' + statusIdx);
+    
+    if (nomorPesertaIdx === -1 || cabangIdx === -1) {
+      Logger.log('ERROR: Required columns not found');
+      return ContentService.createTextOutput(JSON.stringify({
+        success: false,
+        message: 'Kolom tidak ditemukan'
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+    
+    const dataRange = sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn());
+    const data = dataRange.getValues();
+    
+    const pesertaList = [];
+    
+    for (let i = 0; i < data.length; i++) {
+      const row = data[i];
+      const rowCabang = row[cabangIdx];
+      const rowStatus = row[statusIdx];
+      
+      // Check if cabang matches and status is verified
+      if (rowCabang && rowCabang.toString().includes(cabang)) {
+        // Only include verified participants
+        if (rowStatus === 'Terverifikasi' || rowStatus === 'Diterima' || rowStatus === 'Verified') {
+          const nomorPeserta = row[nomorPesertaIdx] ? row[nomorPesertaIdx].toString() : '';
+          const nama = row[namaIdx] ? row[namaIdx].toString() : '';
+          const namaRegu = row[namaReguIdx] ? row[namaReguIdx].toString() : '';
+          const maqra = row[maqraIdx] ? row[maqraIdx].toString() : '';
+
+          // Use team name if exists, otherwise use personal name
+          const displayName = (namaRegu && namaRegu !== '-') ? namaRegu : nama;
+          
+          if (nomorPeserta) {
+            pesertaList.push({
+              nomorPeserta: nomorPeserta,
+              nama: displayName,
+              display: nomorPeserta + ' - ' + displayName,
+              maqra: maqra
+            });
+          }
+        }
+      }
+    }
+    
+    Logger.log('Found ' + pesertaList.length + ' verified peserta for cabang: ' + cabang);
+    
+    return ContentService.createTextOutput(JSON.stringify({
+      success: true,
+      peserta: pesertaList
+    })).setMimeType(ContentService.MimeType.JSON);
+    
+  } catch (error) {
+    Logger.log('Error: ' + error.message);
+    return ContentService.createTextOutput(JSON.stringify({
+      success: false,
+      message: 'Error: ' + error.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
 }

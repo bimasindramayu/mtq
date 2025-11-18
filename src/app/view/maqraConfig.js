@@ -287,14 +287,14 @@ function generateMaqraList(branchCode, count, surahData) {
 // Function to check if maqra is enabled for a branch
 export function isMaqraEnabled(branchCode) {
     const enabled = MAQRA_CONFIG.ENABLED_BRANCHES.includes(branchCode);
-    // logger.log(`Checking maqra enabled for ${branchCode}: ${enabled}`);
+    logger.log(`Checking maqra enabled for ${branchCode}: ${enabled}`);
     return enabled;
 }
 
 // Function to get available maqra for a branch
 export function getAvailableMaqra(branchCode, takenMaqraCodes = []) {
     if (!isMaqraEnabled(branchCode)) {
-        // logger.log(`Maqra not enabled for branch: ${branchCode}`);
+        logger.log(`Maqra not enabled for branch: ${branchCode}`);
         return [];
     }
     
