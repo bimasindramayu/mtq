@@ -61,7 +61,7 @@ export class DataManager {
         
         if (noDataMsg) noDataMsg.style.display = 'none';
         
-        data.forEach((item, index) => {
+        for (const [index, item] of data.entries()) {
             const row = document.createElement('tr');
             row.innerHTML = `
                 <td>${index + 1}</td>
@@ -73,7 +73,7 @@ export class DataManager {
                 <td>${item.alasan || '-'}</td>
             `;
             if (tbody) tbody.appendChild(row);
-        });
+        }
         
         logger.log(`✅ ${data.length} rows displayed successfully`);
     }
@@ -231,7 +231,7 @@ export class DataManager {
         
         tbody.innerHTML = '';
         
-        data.forEach((item, index) => {
+        for (const [index, item] of data.entries()) {
             const row = document.createElement('tr');
             
             let statusClass = 'status-menunggu-verifikasi';
@@ -254,7 +254,7 @@ export class DataManager {
                 <td>${item.alasan || '-'}</td>
             `;
             tbody.appendChild(row);
-        });
+        }
         
         logger.log('✅ Search results displayed');
     }

@@ -13,7 +13,7 @@ export class Validator {
         if (isTeam) {
             for (let i = 1; i <= memberCount; i++) {
                 const nikInput = document.getElementById(`memberNik${i}`);
-                if (nikInput && nikInput.value) {
+                if (nikInput?.value) {
                     const validation = this.validateNIKLength(nikInput.value);
                     if (!validation.isValid) {
                         errors.push(`Anggota #${i}: ${validation.message}`);
@@ -22,7 +22,7 @@ export class Validator {
             }
         } else {
             const nikInput = document.getElementById('nik');
-            if (nikInput && nikInput.value) {
+            if (nikInput?.value) {
                 const validation = this.validateNIKLength(nikInput.value);
                 if (!validation.isValid) {
                     errors.push(validation.message);
@@ -77,15 +77,7 @@ export class Validator {
         
         const requiredGender = genderRestriction === 'male' ? 'Laki-laki' : 'Perempuan';
         
-        if (!isTeam) {
-            const selectedGender = document.getElementById('jenisKelamin')?.value;
-            if (selectedGender && selectedGender !== requiredGender) {
-                return { 
-                    isValid: false, 
-                    message: `Jenis kelamin tidak sesuai! Cabang ini khusus untuk ${genderRestriction === 'male' ? 'Laki-laki (Putra)' : 'Perempuan (Putri)'}` 
-                };
-            }
-        } else {
+        if (isTeam) {
             const expectedGender = genderRestriction === 'male' ? 'Laki-laki' : 'Perempuan';
             for (let i = 1; i <= memberCount; i++) {
                 const memberGender = document.querySelector(`[name="memberJenisKelamin${i}"]`)?.value;
@@ -95,6 +87,14 @@ export class Validator {
                         message: `Peserta #${i}: Jenis kelamin tidak sesuai! Semua peserta tim harus ${expectedGender}` 
                     };
                 }
+            }
+        } else {
+            const selectedGender = document.getElementById('jenisKelamin')?.value;
+            if (selectedGender && selectedGender !== requiredGender) {
+                return { 
+                    isValid: false, 
+                    message: `Jenis kelamin tidak sesuai! Cabang ini khusus untuk ${genderRestriction === 'male' ? 'Laki-laki (Putra)' : 'Perempuan (Putri)'}` 
+                };
             }
         }
         
