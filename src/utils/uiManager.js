@@ -1,10 +1,8 @@
 import logger from './logger.js';
 
 export class UIManager {
-    constructor() {
-        this.confirmCallback = null;
-        this.lastRegistrationWasSuccessful = false;
-    }
+    confirmCallback = null;
+    lastRegistrationWasSuccessful = false;
 
     // ===== LOADING OVERLAY =====
     showLoadingOverlay(show, message = 'Memproses...') {
@@ -63,9 +61,9 @@ export class UIManager {
                 teamData += `Nomor Peserta: ${details.nomorPeserta || '-'}\n\n`;
                 teamData += `=== Anggota Tim ===\n`;
                 
-                details.teamMembers.forEach((member, i) => {
+                for (const [i, member] of details.teamMembers.entries()) {
                     teamData += `${i + 1}. ${member.nama}\n   NIK: ${member.nik}\n`;
-                });
+                }
                 messageText = teamData;
             } else {
                 messageText = `${message}\n\n=== Data Registrasi Anda ===\nNIK: ${details.nik}\nNama: ${details.nama}\nCabang: ${details.cabang}\nNomor Peserta: ${details.nomorPeserta}`;

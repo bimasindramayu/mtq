@@ -136,7 +136,7 @@ export class FormManager {
     }
 
     restoreTeamData() {
-        if (!this.savedTeamData || !this.savedTeamData.members) return;
+        if (!this.savedTeamData?.members) return;
 
         if (this.savedTeamData.namaRegu) {
             document.getElementById('namaRegu').value = this.savedTeamData.namaRegu;
@@ -191,12 +191,12 @@ export class FormManager {
             { saved: 'namaBank', team: 'memberNamaBank1' }
         ];
 
-        fields.forEach(field => {
+        for (const field of fields) {
             const input = document.querySelector(`[name="${field.team}"]`);
             if (input && this.savedPersonalData[field.saved]) {
                 input.value = this.savedPersonalData[field.saved];
             }
-        });
+        }
 
         if (this.savedPersonalData.files) {
             for (let docKey in this.savedPersonalData.files) {

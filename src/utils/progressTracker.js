@@ -1,12 +1,10 @@
 import logger from './logger.js';
 
 class ProgressTracker {
-    constructor() {
-        this.totalSteps = 3;
-        this.currentStep = 0;
-        this.filesTotal = 0;
-        this.filesProcessed = 0;
-    }
+    totalSteps = 3;
+    currentStep = 0;
+    filesTotal = 0;
+    filesProcessed = 0;
 
     reset() {
         this.currentStep = 0;
