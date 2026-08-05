@@ -17,7 +17,7 @@
 const MTQ_CONFIG = {
 
   // ── Google Apps Script Web App URL — SATU-SATUNYA tempat edit ──
-  API_URL: 'https://script.google.com/macros/s/AKfycbzTJ37NZmDbvziQF68N9rufyfJgfEkWelI5PyS0oM4lK0VjHgknVHc0JoFnmCw6Fzp-/exec',
+  API_URL: 'https://script.google.com/macros/s/AKfycbxgyMj4H6ZjbpoSXNMegZaTshOrBkpsj8N2AIogWIG76rniEUITj6Qe9Cgub56sF069/exec',
 
   // ── Tanggal pendaftaran & cutoff umur ────────────────────────
   // Fallback bila API tidak terjangkau — akan ditimpa nilai live
@@ -87,14 +87,14 @@ const MTQ_CONFIG = {
   // ── Developer Mode ───────────────────────────────────────────
   // true  = tampilkan tombol Random Fill (untuk testing)
   // false = sembunyikan (untuk produksi)
-  DEV_MODE: true,
+  DEV_MODE: false,
 
   // ── Logger — SATU PINTU on/off untuk SEMUA logger frontend ────
   // Dipakai oleh objek `log` di bawah, adminLog (admin.html), dan
   // MTQ_LOG (penilaian.html). true = tampil di console (dan panel
   // logger di penilaian.html), false = senyap di semua halaman.
   // Ganti HANYA di sini — jangan hardcode ulang di file lain.
-  LOGGER_ENABLED: true,
+  LOGGER_ENABLED: false,
 };
 
 // ── Turunan otomatis: nama cabang saja (untuk dropdown/filter) ──
