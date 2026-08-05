@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MTQ 2026 – Kabupaten Indramayu</title>
+  <meta name="description" content="Pendaftaran resmi MTQ ke-56 Tingkat Kabupaten Indramayu 2026.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="icon" type="image/png" href="assets/mtq.png">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    /* Hero logos */
+    .hero-logos{display:flex;align-items:center;justify-content:center;gap:20px;flex-wrap:wrap;margin-bottom:24px;animation:fadeInUp .6s .05s ease both}
+    .hero-logo-item{display:flex;flex-direction:column;align-items:center;gap:6px}
+    .hero-logo-item img{height:64px;width:auto;object-fit:contain;filter:drop-shadow(0 2px 8px rgba(0,0,0,.25));transition:transform .2s}
+    .hero-logo-item img:hover{transform:scale(1.08)}
+    .hero-logo-sep{width:1px;height:48px;background:rgba(255,255,255,.25);flex-shrink:0}
+    @media(max-width:480px){.hero-logo-item img{height:44px}.hero-logo-sep{display:none}.hero-logos{gap:12px}}
+
+    /* Countdown states */
+    .cd-state{display:none}
+    .cd-state.show{display:block}
+    .cd-label{text-align:center;font-size:14px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:rgba(255,255,255,.75);margin-bottom:20px}
+    .cd-status-pill{display:inline-flex;align-items:center;gap:8px;padding:6px 18px;border-radius:999px;font-size:13px;font-weight:700;margin:0 auto 16px;display:flex;justify-content:center}
+    .cd-status-pill.open{background:rgba(16,185,129,.2);color:#a7f3d0;border:1px solid rgba(16,185,129,.35)}
+    .cd-status-pill.closed{background:rgba(239,68,68,.15);color:#fca5a5;border:1px solid rgba(239,68,68,.3)}
+    .cd-status-pill.soon{background:rgba(245,158,11,.15);color:#fde68a;border:1px solid rgba(245,158,11,.3)}
+    .cd-closed-box{text-align:center;padding:32px 24px}
+    .cd-closed-box .icon{font-size:48px;margin-bottom:12px}
+    .cd-closed-box h3{color:#fff;font-size:22px;font-weight:700;margin-bottom:6px}
+    .cd-closed-box p{color:rgba(255,255,255,.65);font-size:14px}
+
+    /* Reg status banner on hero */
+    .hero-reg-banner{display:inline-flex;align-items:center;gap:8px;padding:8px 20px;border-radius:999px;font-size:13px;font-weight:700;margin-bottom:20px;animation:fadeInUp .6s .1s ease both}
+    .hero-reg-banner.open{background:rgba(16,185,129,.2);color:#a7f3d0;border:1px solid rgba(16,185,129,.35)}
+    .hero-reg-banner.soon{background:rgba(245,158,11,.15);color:#fde68a;border:1px solid rgba(245,158,11,.3)}
+    .hero-reg-banner.closed{background:rgba(239,68,68,.12);color:#fca5a5;border:1px solid rgba(239,68,68,.25)}
+
+    .btn-daftar-disabled{opacity:.45;cursor:not-allowed;pointer-events:none}
+
+    /* Cabang & Golongan Musabaqah */
+    .cabang-note{max-width:700px;margin:0 auto 32px;background:var(--gold-pale);border:1px solid var(--gold-bright);border-radius:var(--radius-md);padding:14px 20px;display:flex;align-items:center;gap:10px;font-size:13px;color:var(--gold)}
+    .cabang-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:20px}
+    .cabang-card{background:var(--white);border:1px solid var(--gray-200);border-radius:var(--radius-lg);padding:22px;box-shadow:var(--shadow-sm);transition:all var(--transition)}
+    .cabang-card:hover{transform:translateY(-4px);box-shadow:var(--shadow-md)}
+    .cabang-card-header{display:flex;align-items:center;gap:12px;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--gray-100)}
+    .cabang-icon{width:44px;height:44px;border-radius:12px;background:var(--emerald-xs);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+    .cabang-title{font-size:15px;font-weight:700;color:var(--gray-800);line-height:1.3}
+    .cabang-sub{font-size:12px;color:var(--gray-400);margin-top:2px}
+    .cabang-sub.team{color:var(--gold);font-weight:600}
+    .golongan-list{display:flex;flex-direction:column;gap:6px}
+    .golongan-row{padding:9px 12px;background:var(--gray-50);border-radius:8px;border:1px solid transparent;transition:border-color .2s}
+    .golongan-row:hover{border-color:var(--emerald-light)}
+    .golongan-name{font-size:13px;font-weight:600;color:var(--gray-700);line-height:1.3}
+    .golongan-age{font-size:11.5px;font-weight:600;color:var(--emerald);margin-top:3px}
+    .cabang-card.team .golongan-row:hover{border-color:var(--gold-light)}
+    .cabang-card.team .golongan-age{color:var(--gold)}
+  </style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar" id="navbar">
+  <div class="nav-logo">
+    <img src="assets/mtq.png" alt="MTQ" style="height:34px;width:auto;border-radius:6px">
+    <div>
+      <div class="logo-text">MTQ 2026</div>
+      <div class="logo-sub">Kab. Indramayu</div>
+    </div>
+  </div>
+  <ul class="nav-links">
+    <li><a href="#beranda" class="active">Beranda</a></li>
+    <li><a href="#pengumuman">Pengumuman</a></li>
+    <li><a href="#jadwal">Jadwal</a></li>
+    <li><a href="#cabang-lomba">Cabang Lomba</a></li>
+    <li><a href="#hasil-penilaian">Hasil Penilaian</a></li>
+    <li><a href="#faq">FAQ</a></li>
+    <li><a href="#kontak">Kontak</a></li>
+    <li><a href="cekstatus.html">Cek Status</a></li>
+    <li><a href="daftar.html" class="nav-cta btn-daftar-disabled" id="navDaftarBtn" aria-disabled="true">Daftar Sekarang</a></li>
+  </ul>
+  <div class="nav-actions">
+    <button class="dark-toggle" id="darkToggle">🌙</button>
+    <button class="hamburger" id="hamburger"><span></span><span></span><span></span></button>
+  </div>
+</nav>
+<nav class="mobile-nav" id="mobileNav">
+  <a href="#beranda">🏠 Beranda</a>
+  <a href="#pengumuman">📢 Pengumuman</a>
+  <a href="#jadwal">📅 Jadwal</a>
+  <a href="#cabang-lomba">🎯 Cabang Lomba</a>
+  <a href="#faq">❓ FAQ</a>
+  <a href="#kontak">📞 Kontak</a>
+  <a href="cekstatus.html">🔍 Cek Status Pendaftaran</a>
+  <a href="daftar.html" id="mobileNavDaftarBtn" class="btn-daftar-disabled" aria-disabled="true" style="color:var(--gold-bright);font-weight:700">✨ Daftar Sekarang</a>
+</nav>
+
+<!-- HERO -->
+<section class="hero" id="beranda">
+  <!-- 4 Logo Institusi -->
+  <div class="hero-logos">
+    <div class="hero-logo-item"><img src="assets/mtq.png"       alt="MTQ"        title="MTQ 2026"></div>
+    <div class="hero-logo-sep"></div>
+    <div class="hero-logo-item"><img src="assets/indramayu.png" alt="Indramayu"  title="Kab. Indramayu"></div>
+    <div class="hero-logo-sep"></div>
+    <div class="hero-logo-item"><img src="assets/kemenag.png"   alt="Kemenag"    title="Kementerian Agama"></div>
+    <div class="hero-logo-sep"></div>
+    <div class="hero-logo-item"><img src="assets/baznas.png"    alt="BAZNAS"     title="BAZNAS"></div>
+  </div>
+
+  <!-- Status Pendaftaran Banner -->
+  <div id="heroRegBanner" class="hero-reg-banner soon">⏳ Memuat status pendaftaran...</div>
+
+  <h1 style="font-family:var(--font-display);font-size:clamp(32px,6vw,64px);font-weight:700;color:#fff;line-height:1.15;margin-bottom:16px;animation:fadeInUp .6s .2s ease both">
+    Pendaftaran <span style="background:linear-gradient(135deg,#f59e0b,#d97706);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">MTQ</span><br>Tahun 2026
+  </h1>
+  <p style="font-size:clamp(15px,2vw,18px);color:rgba(255,255,255,.75);max-width:600px;margin:0 auto 40px;animation:fadeInUp .6s .3s ease both">
+    Musabaqah Tilawatil Qur'an ke-56 Tingkat Kabupaten Indramayu — ajang pembinaan Al-Qur'an bagi generasi terbaik bangsa.
+  </p>
+
+  <div class="hero-actions" style="animation:fadeInUp .6s .4s ease both">
+    <a href="daftar.html" class="btn btn-primary btn-lg btn-daftar-disabled" id="heroDaftarBtn" aria-disabled="true">✨ Daftar Sekarang</a>
+    <a href="#jadwal"     class="btn btn-secondary btn-lg">📅 Lihat Jadwal</a>
+  </div>
+
+  <div class="hero-info" style="animation:fadeInUp .6s .5s ease both">
+    <div class="hero-info-card">
+      <div class="icon">📅</div><div class="label">Tanggal</div>
+      <div class="value" data-info="date">26–28 Agustus 2026</div>
+    </div>
+    <div class="hero-info-card">
+      <div class="icon">📍</div><div class="label">Lokasi</div>
+      <div class="value" data-info="location">Kec. Jatibarang</div>
+    </div>
+    <div class="hero-info-card">
+      <div class="icon">📝</div><div class="label">Pendaftaran</div>
+      <div class="value" id="heroRegPeriod" style="font-size:12px">5–15 Agustus 2026</div>
+    </div>
+    <div class="hero-info-card">
+      <div class="icon">✂️</div><div class="label">Cutoff Usia</div>
+      <div class="value" id="heroCutoff" style="font-size:12px">1 November 2026</div>
+    </div>
+  </div>
+
+  <div class="scroll-hint"><span class="arrow">↓</span><span>Scroll</span></div>
+</section>
+
+<!-- COUNTDOWN (smart 3 state) -->
+<div id="countdownSection" class="countdown-section">
+
+  <!-- State: belum buka -->
+  <div id="cdStateSoon" class="cd-state">
+    <div class="cd-status-pill soon">🔔 Pendaftaran Belum Dibuka</div>
+    <div class="cd-label">Pendaftaran Dibuka Dalam</div>
+    <div class="countdown-grid">
+      <div class="countdown-box"><span class="num" id="soonDays">00</span><div class="unit">Hari</div></div>
+      <div class="countdown-box"><span class="num" id="soonHours">00</span><div class="unit">Jam</div></div>
+      <div class="countdown-box"><span class="num" id="soonMins">00</span><div class="unit">Menit</div></div>
+      <div class="countdown-box"><span class="num" id="soonSecs">00</span><div class="unit">Detik</div></div>
+    </div>
+  </div>
+
+  <!-- State: sedang buka -->
+  <div id="cdStateOpen" class="cd-state">
+    <div class="cd-status-pill open">🟢 Pendaftaran Sedang Berlangsung</div>
+    <div class="cd-label">Pendaftaran Ditutup Dalam</div>
+    <div class="countdown-grid">
+      <div class="countdown-box"><span class="num" id="openDays">00</span><div class="unit">Hari</div></div>
+      <div class="countdown-box"><span class="num" id="openHours">00</span><div class="unit">Jam</div></div>
+      <div class="countdown-box"><span class="num" id="openMins">00</span><div class="unit">Menit</div></div>
+      <div class="countdown-box"><span class="num" id="openSecs">00</span><div class="unit">Detik</div></div>
+    </div>
+  </div>
+
+  <!-- State: tutup -->
+  <div id="cdStateClosed" class="cd-state">
+    <div class="cd-closed-box">
+      <div class="icon">🔒</div>
+      <h3>Pendaftaran Telah Ditutup</h3>
+      <p>Terima kasih kepada seluruh peserta yang telah mendaftar.<br>Nantikan pengumuman selanjutnya.</p>
+    </div>
+  </div>
+
+</div>
+
+<!-- STATISTIK -->
+<section class="stats-section">
+  <div class="container">
+    <div class="section-header animate-in">
+      <div class="section-eyebrow">📊 Realtime</div>
+      <h2 class="section-title">Statistik Pendaftar MTQ 2026</h2>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-card animate-in">
+        <div class="stat-icon">👥</div>
+        <div class="stat-num" data-stat="total">0</div>
+        <div class="stat-label">Total Pendaftar</div>
+      </div>
+      <div class="stat-card animate-in">
+        <div class="stat-icon">✅</div>
+        <div class="stat-num" data-stat="verified">0</div>
+        <div class="stat-label">Terverifikasi</div>
+      </div>
+      <div class="stat-card animate-in">
+        <div class="stat-icon">🏆</div>
+        <div class="stat-num" data-stat="cabangs">0</div>
+        <div class="stat-label">Cabang Lomba</div>
+      </div>
+      <div class="stat-card animate-in">
+        <div class="stat-icon">🕌</div>
+        <div class="stat-num" data-stat="kecamatans">0</div>
+        <div class="stat-label">Kecamatan/Kafilah</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PENGUMUMAN -->
+<section class="section" id="pengumuman" style="background:var(--gray-50)">
+  <div class="container">
+    <div class="section-header animate-in">
+      <div class="section-eyebrow">📢 Terbaru</div>
+      <h2 class="section-title">Pengumuman MTQ</h2>
+    </div>
+    <div class="announcement-grid">
+      <div class="ann-card animate-in">
+        <div class="ann-card-header"><span class="ann-badge info">Info</span><span class="ann-date">5 Agu 2026</span></div>
+        <div class="ann-card-body"><h3>Pendaftaran Resmi Dibuka</h3><p>Pendaftaran online MTQ ke-56 dibuka mulai 5 s.d. 15 Agustus 2026 sesuai Juknis. Daftar sekarang sebelum masa pendaftaran ditutup.</p></div>
+      </div>
+      <div class="ann-card animate-in">
+        <div class="ann-card-header"><span class="ann-badge important">Penting</span><span class="ann-date">30 Jun 2026</span></div>
+        <div class="ann-card-body"><h3>Cutoff Usia: 1 November 2026</h3><p>Batas usia maksimal peserta pada seluruh cabang/golongan dihitung per tanggal 1 November 2026, bukan tanggal pelaksanaan. Pastikan memenuhi syarat sebelum mendaftar.</p></div>
+      </div>
+      <div class="ann-card animate-in">
+        <div class="ann-card-header"><span class="ann-badge update">Update</span><span class="ann-date">30 Jun 2026</span></div>
+        <div class="ann-card-body"><h3>Cabang Beregu: Fahm &amp; Syarh Al-Qur'an</h3><p>Pendaftaran tim (idealnya 3 orang, minimal 2 orang) tersedia untuk cabang Fahm Al-Qur'an (MFQ) dan Syarh Al-Qur'an, usia maksimal 18 tahun 11 bulan 29 hari.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- JADWAL -->
+<section class="section" id="jadwal" style="background:var(--cream)">
+  <div class="container">
+    <div class="section-header animate-in">
+      <div class="section-eyebrow">📅 Timeline</div>
+      <h2 class="section-title">Jadwal Kegiatan</h2>
+    </div>
+    <div class="schedule-list">
+      <div class="schedule-item animate-in">
+        <div class="date-box"><div class="day">05</div><div class="month">Agu</div></div>
+        <div class="info"><h4>📋 Pembukaan Pendaftaran Online</h4><p>Pendaftaran resmi dibuka via website hingga 15 Agustus 2026</p></div>
+        <span class="time-badge">08.00 WIB</span>
+      </div>
+      <div class="schedule-item animate-in">
+        <div class="date-box"><div class="day">15</div><div class="month">Agu</div></div>
+        <div class="info"><h4>🔒 Penutupan Pendaftaran Online</h4><p>Batas akhir pendaftaran online peserta</p></div>
+        <span class="time-badge">23.59 WIB</span>
+      </div>
+      <div class="schedule-item animate-in">
+        <div class="date-box"><div class="day">18</div><div class="month">Agu</div></div>
+        <div class="info"><h4>⚖️ Masa Sanggah</h4><p>18–20 Agustus 2026 — LPTQ Kecamatan dapat mengajukan sanggahan atas data calon peserta kecamatan lain yang terindikasi tidak sah</p></div>
+        <span class="time-badge" style="background:var(--gold-pale);color:var(--gold)">3 Hari</span>
+      </div>
+      <div class="schedule-item animate-in">
+        <div class="date-box"><div class="day">21</div><div class="month">Agu</div></div>
+        <div class="info"><h4>📢 Pengumuman Hasil Sanggahan</h4><p>Pengumuman resmi status akhir peserta setelah masa sanggah ditutup</p></div>
+        <span class="time-badge">08.00 WIB</span>
+      </div>
+      <div class="schedule-item animate-in">
+        <div class="date-box"><div class="day">24</div><div class="month">Agu</div></div>
+        <div class="info"><h4>🎫 Pengambilan Nomor Peserta &amp; Maqra</h4><p>Gedung II Kantor Kementerian Agama Kab. Indramayu — Seksi Bimas Islam</p></div>
+        <span class="time-badge">08.00 WIB</span>
+      </div>
+      <div class="schedule-item animate-in">
+        <div class="date-box" style="background:var(--gold)"><div class="day">26</div><div class="month">Agu</div></div>
+        <div class="info"><h4>🏆 Pelaksanaan MTQ ke-56 Tahun 2026</h4><p>26–28 Agustus 2026 · Kecamatan Jatibarang</p></div>
+        <span class="time-badge" style="background:var(--gold-pale);color:var(--gold)">3 Hari</span>
+      </div>
+      <div class="schedule-item animate-in">
+        <div class="date-box"><div class="day">01</div><div class="month">Nov</div></div>
+        <div class="info"><h4>✂️ Acuan Perhitungan Usia Peserta</h4><p>Bukan tanggal kegiatan — seluruh batas usia golongan dihitung mundur dari tanggal ini</p></div>
+        <span class="time-badge" style="background:#fef2f2;color:#dc2626">Acuan Usia</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CABANG & GOLONGAN MUSABAQAH -->
+<section class="section" id="cabang-lomba" style="background:var(--gray-50)">
+  <div class="container">
+    <div class="section-header animate-in">
+      <div class="section-eyebrow">🎯 Sesuai Juknis</div>
+      <h2 class="section-title">Cabang &amp; Golongan Musabaqah</h2>
+      <p class="section-subtitle">7 cabang, 14 golongan — MTQ ke-56 Tingkat Kabupaten Indramayu Tahun 2026, putera &amp; puteri di setiap golongan</p>
+    </div>
+
+    <div class="cabang-note animate-in">
+      <span style="font-size:20px">✂️</span>
+      <span>Seluruh batas usia di bawah adalah usia <strong>maksimal</strong>, dihitung per <strong>1 November 2026</strong> — bukan tanggal pelaksanaan MTQ.</span>
+    </div>
+
+    <div class="cabang-grid">
+
+      <div class="cabang-card animate-in">
+        <div class="cabang-card-header">
+          <div class="cabang-icon">🎙️</div>
+          <div><div class="cabang-title">A. Seni Baca Al-Qur'an</div><div class="cabang-sub">Individu · Putera &amp; Puteri</div></div>
+        </div>
+        <div class="golongan-list">
+          <div class="golongan-row"><div class="golongan-name">Tartil Al-Qur'an</div><div class="golongan-age">Maks. 12 thn 11 bln 29 hr</div></div>
+          <div class="golongan-row"><div class="golongan-name">Tilawah Anak-anak</div><div class="golongan-age">Maks. 14 thn 11 bln 29 hr</div></div>
+          <div class="golongan-row"><div class="golongan-name">Tilawah Remaja</div><div class="golongan-age">Maks. 24 thn 11 bln 29 hr</div></div>
+          <div class="golongan-row"><div class="golongan-name">Tilawah Dewasa</div><div class="golongan-age">Maks. 40 thn 11 bln 29 hr</div></div>
+        </div>
+      </div>
+
+      <div class="cabang-card animate-in">
+        <div class="cabang-card-header">
+          <div class="cabang-icon">📿</div>
+          <div><div class="cabang-title">B. Qira'at Al-Qur'an</div><div class="cabang-sub">Individu · Putera &amp; Puteri</div></div>
+        </div>
+        <div class="golongan-list">
+          <div class="golongan-row"><div class="golongan-name">Qira'at Mujawwad Dewasa</div><div class="golongan-age">Maks. 40 thn 11 bln 29 hr</div></div>
+        </div>
+      </div>
+
+      <div class="cabang-card animate-in">
+        <div class="cabang-card-header">
+          <div class="cabang-icon">🧠</div>
+          <div><div class="cabang-title">C. Hafalan (Tahfizh) Al-Qur'an</div><div class="cabang-sub">Individu · Putera &amp; Puteri</div></div>
+        </div>
+        <div class="golongan-list">
+          <div class="golongan-row"><div class="golongan-name">1 Juz dan Tilawah</div><div class="golongan-age">Maks. 15 thn 11 bln 29 hr</div></div>
+          <div class="golongan-row"><div class="golongan-name">5 Juz dan Tilawah</div><div class="golongan-age">Maks. 20 thn 11 bln 29 hr</div></div>
+          <div class="golongan-row"><div class="golongan-name">10 Juz</div><div class="golongan-age">Maks. 20 thn 11 bln 29 hr</div></div>
+        </div>
+      </div>
+
+      <div class="cabang-card animate-in">
+        <div class="cabang-card-header">
+          <div class="cabang-icon">📜</div>
+          <div><div class="cabang-title">D. Tafsir Al-Qur'an</div><div class="cabang-sub">Individu · Putera &amp; Puteri</div></div>
+        </div>
+        <div class="golongan-list">
+          <div class="golongan-row"><div class="golongan-name">Bahasa Indonesia (hafalan 30 Juz + tafsir Juz 15)</div><div class="golongan-age">Maks. 34 thn 11 bln 29 hr</div></div>
+        </div>
+      </div>
+
+      <div class="cabang-card team animate-in">
+        <div class="cabang-card-header">
+          <div class="cabang-icon">🧩</div>
+          <div><div class="cabang-title">E. Fahm Al-Qur'an (MFQ)</div><div class="cabang-sub team">👥 Beregu 3 orang, min. 2 · Putera &amp; Puteri</div></div>
+        </div>
+        <div class="golongan-list">
+          <div class="golongan-row"><div class="golongan-name">Cerdas-cermat wawasan Al-Qur'an</div><div class="golongan-age">Maks. 18 thn 11 bln 29 hr</div></div>
+        </div>
+      </div>
+
+      <div class="cabang-card team animate-in">
+        <div class="cabang-card-header">
+          <div class="cabang-icon">🎤</div>
+          <div><div class="cabang-title">F. Syarh Al-Qur'an</div><div class="cabang-sub team">👥 Beregu 3 orang, min. 2 · Putera &amp; Puteri</div></div>
+        </div>
+        <div class="golongan-list">
+          <div class="golongan-row"><div class="golongan-name">Tilawah, terjemahan &amp; pidato tanpa teks</div><div class="golongan-age">Maks. 18 thn 11 bln 29 hr</div></div>
+        </div>
+      </div>
+
+      <div class="cabang-card animate-in">
+        <div class="cabang-card-header">
+          <div class="cabang-icon">🖋️</div>
+          <div><div class="cabang-title">G. Seni Kaligrafi Al-Qur'an</div><div class="cabang-sub">Individu · Putera &amp; Puteri</div></div>
+        </div>
+        <div class="golongan-list">
+          <div class="golongan-row"><div class="golongan-name">Naskah (Penulisan Mushaf)</div><div class="golongan-age">Maks. 34 thn 11 bln 29 hr</div></div>
+          <div class="golongan-row"><div class="golongan-name">Hiasan Mushaf</div><div class="golongan-age">Maks. 34 thn 11 bln 29 hr</div></div>
+          <div class="golongan-row"><div class="golongan-name">Dekorasi</div><div class="golongan-age">Maks. 34 thn 11 bln 29 hr</div></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- HASIL PENILAIAN PUBLIK -->
+<section class="section" id="hasil-penilaian">
+  <div class="container">
+    <div class="section-header animate-in">
+      <div class="section-eyebrow">🏆 HASIL PENILAIAN</div>
+      <h2 class="section-title">Peringkat Peserta MTQ 2026</h2>
+      <p class="section-sub">Nilai rata-rata tertimbang dari seluruh dewan hakim</p>
+    </div>
+
+    <!-- Status gate — diisi oleh JS -->
+    <div id="hasilPenilaianGate" style="text-align:center;padding:48px 24px;background:var(--gray-50);border-radius:16px;border:1.5px dashed var(--gray-200)">
+      <div style="font-size:40px;margin-bottom:12px">⏳</div>
+      <div style="font-size:16px;font-weight:700;color:var(--gray-600)">Memuat status hasil penilaian...</div>
+    </div>
+
+    <!-- Hasil (hidden until status=buka) -->
+    <div id="hasilPenilaianContent" style="display:none">
+
+      <!-- Stats bar -->
+      <div id="hasilStatsBar"
+        style="display:flex;align-items:center;justify-content:center;gap:20px;flex-wrap:wrap;margin-bottom:28px;background:linear-gradient(135deg,var(--emerald),#0d9488);border-radius:14px;padding:16px 24px">
+      </div>
+
+      <!-- Cabang filter pills -->
+      <div id="hasilCabangFilter"
+        style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:24px"></div>
+
+      <!-- Podium -->
+      <div id="hasilPodium" style="margin-bottom:24px"></div>
+
+      <!-- Ranking table -->
+      <div class="admin-card" style="border-radius:14px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,.06)">
+        <div style="padding:16px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--gray-100);flex-wrap:wrap;gap:8px">
+          <div>
+            <div style="font-size:15px;font-weight:700;color:var(--gray-800)">Tabel Peringkat</div>
+            <div id="hasilTableSub" style="font-size:12px;color:var(--gray-400)">Pilih cabang</div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <input type="search" id="hasilSearch" placeholder="🔍 Cari peserta..."
+              oninput="hasilFilterTable(this.value)"
+              style="padding:8px 12px;border:1.5px solid var(--gray-200);border-radius:8px;font-size:13px;background:var(--white);color:var(--gray-800);outline:none;width:200px">
+            <button onclick="loadHasilPenilaian()" class="btn btn-outline" style="font-size:13px">🔄 Refresh</button>
+          </div>
+        </div>
+        <div class="table-wrap" id="hasilTable">
+          <div style="text-align:center;padding:40px;color:var(--gray-400)">
+            <div style="font-size:32px">📊</div><p>Pilih cabang untuk melihat peringkat</p>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:16px;padding:12px 16px;background:var(--emerald-xs);border-radius:10px;font-size:13px;color:var(--emerald)">
+        🔍 <strong>Transparansi:</strong> Nilai merupakan rata-rata tertimbang dari semua dewan hakim. Klik baris peserta untuk detail per hakim.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="section" id="faq" style="background:var(--gray-50)">
+  <div class="container">
+    <div class="section-header animate-in">
+      <div class="section-eyebrow">❓ FAQ</div>
+      <h2 class="section-title">Pertanyaan yang Sering Ditanya</h2>
+    </div>
+    <div class="faq-list">
+      <div class="faq-item animate-in">
+        <div class="faq-question">Bagaimana sistem penentuan usia peserta?<span class="icon">+</span></div>
+        <div class="faq-answer">Usia peserta dihitung berdasarkan tanggal <strong>1 November 2026</strong> (tanggal cutoff sesuai Juknis), bukan tanggal pelaksanaan. Misalnya, peserta lahir 3 November 2016 dihitung berusia 9 tahun 11 bulan 29 hari per tanggal cutoff.</div>
+      </div>
+      <div class="faq-item animate-in">
+        <div class="faq-question">Apa perbedaan cabang individu dan tim?<span class="icon">+</span></div>
+        <div class="faq-answer">Cabang individu (Tilawah, Qira'at, Tahfizh, Tafsir, Kaligrafi) didaftarkan secara perorangan. Cabang beregu (Fahm Al-Qur'an dan Syarh Al-Qur'an) terdiri dari 3 orang anggota — minimal 2 orang bila 3 orang tidak memungkinkan — semua harus dari gender dan kecamatan yang sama, dan setiap anggota wajib memenuhi syarat usia.</div>
+      </div>
+      <div class="faq-item animate-in">
+        <div class="faq-question">Apakah bisa mendaftar cabang berbeda gender?<span class="icon">+</span></div>
+        <div class="faq-answer">Tidak. Setiap cabang sudah ditentukan untuk Putra atau Putri. Sistem akan otomatis menolak jika gender peserta tidak sesuai cabang yang dipilih.</div>
+      </div>
+      <div class="faq-item animate-in">
+        <div class="faq-question">Berkas apa yang wajib diupload?<span class="icon">+</span></div>
+        <div class="faq-answer">Wajib: (1) Pas foto terbaru berlatar belakang biru dan (2) KTP/KK orang tua. Opsional: Surat rekomendasi dari sekolah/pesantren. Format: JPG/PNG/PDF, maksimal 2 MB per file. Untuk pendaftaran tim, setiap anggota wajib mengupload berkasnya masing-masing.</div>
+      </div>
+      <div class="faq-item animate-in">
+        <div class="faq-question">Bagaimana jika pendaftaran masih menampilkan "Belum Dibuka"?<span class="icon">+</span></div>
+        <div class="faq-answer">Pendaftaran online dibuka mulai tanggal 5 Agustus 2026 pukul 08.00 WIB. Tombol daftar akan aktif otomatis saat pendaftaran dibuka. Anda dapat mengecek kembali setelah tanggal tersebut.</div>
+      </div>
+      <div class="faq-item animate-in">
+        <div class="faq-question">Siapa yang berhak mendaftar di MTQ Tingkat Kabupaten?<span class="icon">+</span></div>
+        <div class="faq-answer">Sesuai Juknis, peserta adalah hasil/pemenang MTQ Tingkat Kecamatan se-Kabupaten Indramayu. Pendaftaran diisi atas koordinasi LPTQ Kecamatan (Kafilah) masing-masing menggunakan Surat Mandat yang ditandatangani Ketua LPTQ Kecamatan.</div>
+      </div>
+      <div class="faq-item animate-in">
+        <div class="faq-question">Dokumen apa saja yang dipersyaratkan menurut Juknis?<span class="icon">+</span></div>
+        <div class="faq-answer">Sesuai Juknis MTQ ke-56, dokumen yang dipersyaratkan meliputi: Surat Mandat dari Ketua LPTQ Kecamatan, KTP/KK/KIA (diterbitkan maksimal 6 bulan sebelum 1 November 2026), Sertifikat Kejuaraan, nama nomor rekening beserta foto buku tabungan atas nama peserta, dan pas foto terbaru berlatar belakang biru. Seluruh dokumen wajib discan dari aslinya, dan NIK calon peserta divalidasi melalui Disdukcapil oleh LPTQ Kecamatan.</div>
+      </div>
+      <div class="faq-item animate-in">
+        <div class="faq-question">Apa itu masa sanggah pendaftaran?<span class="icon">+</span></div>
+        <div class="faq-answer">Masa sanggah berlangsung 18–20 Agustus 2026, dengan pengumuman hasil sanggahan pada 21 Agustus 2026. Pada periode ini, LPTQ Kecamatan dapat menyampaikan sanggahan tertulis (ditandatangani Ketua LPTQ Kecamatan, dilampiri bukti otentik) kepada Seksi Bimas Islam Kantor Kemenag Kab. Indramayu jika ada indikasi pemalsuan data pada calon peserta kecamatan lain. Setelah masa sanggah ditutup, sanggahan tidak dapat lagi diajukan.</div>
+      </div>
+      <div class="faq-item animate-in">
+        <div class="faq-question">Bagaimana sistem penilaian Juara Umum tingkat kabupaten?<span class="icon">+</span></div>
+        <div class="faq-answer">Juara Umum ditentukan dari akumulasi poin seluruh kafilah kecamatan: Juara I = 9 poin, Juara II = 7 poin, Juara III = 5 poin, Harapan I = 3 poin, Harapan II = 2 poin, dan Harapan III = 1 poin.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- KONTAK -->
+<section class="section" id="kontak" style="background:var(--cream)">
+  <div class="container">
+    <div class="section-header animate-in">
+      <div class="section-eyebrow">📞 Hubungi Kami</div>
+      <h2 class="section-title">Kontak Panitia MTQ</h2>
+    </div>
+    <div class="contact-grid">
+      <!-- <div class="contact-card animate-in"><div class="icon">📱</div><h4>WhatsApp</h4><a href="https://wa.me/6281234567890">+62 812 3456 7890</a></div> -->
+      <!-- <div class="contact-card animate-in"><div class="icon">📧</div><h4>Email</h4><a href="mailto:panitia.mtq2026@indramayu.go.id">panitia.mtq2026@indramayu.go.id</a></div> -->
+      <div class="contact-card animate-in"><div class="icon">📍</div><h4>Sekretariat</h4><p>Kantor Kemenag Kab. Indramayu<br>Jl. Olahraga No.3, Karanganyar, Kec. Indramayu</p></div>
+      <div class="contact-card animate-in"><div class="icon">🕐</div><h4>Jam Layanan</h4><p>Senin–Jumat: 08.00–16.00 WIB</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+          <img src="assets/mtq.png" alt="MTQ" style="height:36px;border-radius:6px">
+          <div><div class="logo-text" style="color:#fff">MTQ 2026</div><div class="logo-sub">Kab. Indramayu</div></div>
+        </div>
+        <p>Musabaqah Tilawatil Qur'an Kabupaten Indramayu 2026</p>
+      </div>
+      <div class="footer-col">
+        <h5>Navigasi</h5>
+        <a href="#beranda">Beranda</a><a href="#pengumuman">Pengumuman</a>
+        <a href="#jadwal">Jadwal</a><a href="#cabang-lomba">Cabang Lomba</a>
+        <a href="daftar.html">Pendaftaran</a>
+        <a href="cekstatus.html">🔍 Cek Status</a>
+      </div>
+      <div class="footer-col">
+        <h5>Info</h5>
+        <a href="#faq">FAQ</a><a href="#kontak">Kontak</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>© 2026 MTQ Kabupaten Indramayu. All rights reserved.</p>
+    </div>
+  </div>
+</footer>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script src="js/config.js"></script>
+<script src="js/main.js"></script>
+<script>
+// ── Hasil Penilaian Publik — index.html ──────────────────────
+// Variabel CABANG_LIST untuk filter pills (mirror dari penilaian.html)
+// Cabang list: SATU SUMBER di js/config.js → MTQ_CONFIG.CABANG_LIST
+// (jangan hardcode array cabang lagi di sini — edit config.js saja)
+const HASIL_CABANG_LIST = MTQ_CONFIG.CABANG_LIST;
+
+let _hasilActiveCabang = null;
+let _hasilPesertaCache = {};
+let _hasilNilaiCache   = {};
+
+// JSONP helper (tidak perlu library) — mirip jsonp() di main.js
+function hasilJsonp(url, prefix, cb, timeout = 10000) {
+  const name = prefix + '_' + Date.now();
+  const s = document.createElement('script');
+  let done = false;
+  const finish = (data) => { if (done) return; done = true; clearTimeout(t); delete window[name]; s.remove(); cb(data); };
+  window[name] = finish;
+  s.onerror = () => finish(null);
+  s.src = url + (url.includes('?') ? '&' : '?') + 'callback=' + name;
+  const t = setTimeout(() => finish(null), timeout);
+  document.head.appendChild(s);
+}
+
+function hasilGet(action, params, cb) {
+  const apiUrl = (window.MTQ_API_URL || '').trim();
+  if (!apiUrl) { cb(null); return; }
+  const qs = params ? '&' + new URLSearchParams(params).toString() : '';
+  hasilJsonp(apiUrl + '?action=' + action + qs, 'hG_' + action, cb);
+}
+
+// Dipanggil dari main.js DOMContentLoaded (via initHasilPenilaian)
+function initHasilPenilaian() {
+  hasilGet('getHasilPublikStatus', null, (res) => {
+    const gate    = document.getElementById('hasilPenilaianGate');
+    const content = document.getElementById('hasilPenilaianContent');
+    if (!gate || !content) return;
+
+    if (res && res.isOpen) {
+      gate.style.display    = 'none';
+      content.style.display = 'block';
+      loadHasilPenilaian();
+      setInterval(loadHasilPenilaian, 60000); // auto-refresh tiap 1 menit
+    } else {
+      gate.innerHTML = `
+        <div style="font-size:40px;margin-bottom:12px">🔒</div>
+        <div style="font-size:16px;font-weight:700;color:var(--gray-600)">Hasil Penilaian Belum Dibuka</div>
+        <div style="font-size:13px;color:var(--gray-400);margin-top:6px">Panitia akan membuka hasil penilaian setelah proses penilaian selesai.</div>`;
+    }
+  });
+}
+
+function loadHasilPenilaian() {
+  hasilGet('getPeserta', null, (res) => {
+    const allPeserta = (res && res.data) || {};
+    _hasilPesertaCache = allPeserta;
+    const active = HASIL_CABANG_LIST.filter(c => (allPeserta[c]||[]).length > 0);
+
+    // Statistik
+    hasilGet('getPenilaianStats', null, (sRes) => {
+      const bar = document.getElementById('hasilStatsBar');
+      if (bar && sRes && sRes.success) {
+        const t = new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'});
+        bar.innerHTML = `
+          <div style="text-align:center;color:#fff"><div style="font-size:22px;font-weight:800">${sRes.totalHakim||0}</div><div style="font-size:11px;opacity:.7;letter-spacing:.4px;text-transform:uppercase">Dewan Hakim</div></div>
+          <div style="color:rgba(255,255,255,.3);font-size:20px">·</div>
+          <div style="text-align:center;color:#fff"><div style="font-size:22px;font-weight:800">${sRes.totalPeserta||0}</div><div style="font-size:11px;opacity:.7;letter-spacing:.4px;text-transform:uppercase">Total Peserta</div></div>
+          <div style="color:rgba(255,255,255,.3);font-size:20px">·</div>
+          <div style="text-align:center;color:#fff"><div style="font-size:22px;font-weight:800">${sRes.totalNilaiSubmit||0}</div><div style="font-size:11px;opacity:.7;letter-spacing:.4px;text-transform:uppercase">Nilai Disubmit</div></div>
+          <div style="color:rgba(255,255,255,.3);font-size:20px">·</div>
+          <div style="text-align:center;color:#fff"><div style="font-size:18px;font-weight:700">${t}</div><div style="font-size:11px;opacity:.7">Diperbarui</div></div>`;
+      }
+    });
+
+    // Cabang pills
+    const filterEl = document.getElementById('hasilCabangFilter');
+    if (filterEl && active.length) {
+      filterEl.innerHTML = '';
+      active.forEach((c, i) => {
+        const p = document.createElement('button');
+        p.textContent = c;
+        p.style.cssText = `padding:6px 14px;border-radius:999px;font-size:12px;font-weight:600;cursor:pointer;border:1.5px solid ${i===0?'var(--emerald)':'var(--gray-200)'};background:${i===0?'var(--emerald)':'var(--white)'};color:${i===0?'#fff':'var(--gray-600)'};transition:all .2s`;
+        p.onclick = () => {
+          filterEl.querySelectorAll('button').forEach(b => {
+            b.style.background = 'var(--white)'; b.style.color = 'var(--gray-600)'; b.style.borderColor = 'var(--gray-200)';
+          });
+          p.style.background = 'var(--emerald)'; p.style.color = '#fff'; p.style.borderColor = 'var(--emerald)';
+          hasilShowCabang(c, allPeserta);
+        };
+        filterEl.appendChild(p);
+      });
+      if (active.length) hasilShowCabang(active[0], allPeserta);
+    }
+  });
+}
+
+function hasilShowCabang(cabang, pesertaAll) {
+  _hasilActiveCabang = cabang;
+  hasilGet('getNilai', { cabang }, (nRes) => {
+    const nilaiMap = (nRes && nRes.data) || {};
+    Object.assign(_hasilNilaiCache, nilaiMap);
+    const list = (pesertaAll && pesertaAll[cabang]) || [];
+    const ranked = hasilBuildPeringkat(list, _hasilNilaiCache, cabang);
+
+    document.getElementById('hasilTableSub').textContent = `${cabang} — ${ranked.filter(p=>p.avgTotal!==null).length}/${list.length} peserta dinilai`;
+    hasilRenderPodium(ranked.filter(p=>p.avgTotal!==null).slice(0,3));
+    hasilRenderTable(ranked, cabang);
+  });
+}
+
+function hasilBuildPeringkat(list, nilaiMap, cabang) {
+  return list.map(p => {
+    const hakimScores = [];
+    let totalSum = 0, hakimCount = 0;
+    Object.values(nilaiMap).forEach(d => {
+      if (d.pesertaId === p.id && d.cabang === cabang) {
+        hakimScores.push({ hakimNama: d.hakimNama, params: d.params||[], total: d.total, catatan: d.catatan });
+        totalSum += Number(d.total||0);
+        hakimCount++;
+      }
+    });
+    return { ...p, hakimScores, avgTotal: hakimCount > 0 ? totalSum / hakimCount : null, hakimCount };
+  }).sort((a,b) => {
+    if (a.avgTotal===null && b.avgTotal===null) return 0;
+    if (a.avgTotal===null) return 1;
+    if (b.avgTotal===null) return -1;
+    return b.avgTotal - a.avgTotal;
+  });
+}
+
+function hasilRenderPodium(top3) {
+  const el = document.getElementById('hasilPodium');
+  if (!el || !top3.length) { if(el) el.innerHTML=''; return; }
+  const medals = ['🥇','🥈','🥉'];
+  const order  = top3.length===3?[top3[1],top3[0],top3[2]]:top3.length===2?[null,top3[0],top3[1]]:[null,top3[0],null];
+  const heights = ['100px','120px','80px'];
+  el.innerHTML = `<div style="display:flex;justify-content:center;align-items:flex-end;gap:12px;flex-wrap:wrap">
+    ${order.map((p,i) => {
+      if (!p) return '<div style="width:140px"></div>';
+      const ri = top3.indexOf(p);
+      return `<div style="text-align:center;width:160px;background:var(--white);border-radius:14px;border:2px solid ${ri===0?'var(--gold)':ri===1?'var(--gray-200)':'#cd7f32'};padding:16px 12px;box-shadow:0 4px 20px rgba(0,0,0,.08)">
+        <div style="font-size:32px">${medals[ri]}</div>
+        <div style="font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:.4px">${['Juara I','Juara II','Juara III'][ri]}</div>
+        <div style="font-size:14px;font-weight:800;color:var(--gray-900);margin:6px 0 2px;line-height:1.3">${p.nama}</div>
+        <div style="font-size:11px;color:var(--gray-500)">${p.kecamatan||''}</div>
+        <div style="font-size:18px;font-weight:800;color:var(--emerald);margin-top:8px">${p.avgTotal.toFixed(2)}</div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+function hasilRenderTable(ranked, cabang) {
+  const wrap = document.getElementById('hasilTable');
+  if (!ranked.length) { wrap.innerHTML='<div style="text-align:center;padding:40px;color:var(--gray-400)"><p>Belum ada peserta</p></div>'; return; }
+  const sid = s => s.replace(/[^a-z0-9]/gi,'-');
+  wrap.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:13px">
+    <thead style="background:var(--gray-50)"><tr>
+      <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--gray-100)">Peringkat</th>
+      <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--gray-100)">Peserta</th>
+      <th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--gray-100)">Kecamatan</th>
+      <th style="padding:10px 14px;text-align:right;font-size:11px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--gray-100)">Nilai</th>
+      <th style="padding:10px 14px;text-align:center;font-size:11px;font-weight:700;color:var(--gray-500);text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--gray-100)">Status</th>
+    </tr></thead>
+    <tbody>
+    ${ranked.map((p,i) => {
+      const rank = p.avgTotal!==null ? i+1 : '-';
+      const rowBg = rank===1?'rgba(245,158,11,.04)':rank===2?'rgba(156,163,175,.03)':rank===3?'rgba(180,100,35,.03)':'';
+      const did = `hdr-${sid(p.id)}-${sid(cabang)}`;
+      return `
+      <tr style="background:${rowBg};border-bottom:1px solid var(--gray-50);cursor:pointer" onclick="hasilToggleDetail('${did}')">
+        <td style="padding:12px 14px;font-weight:800;color:var(--emerald);font-size:16px">${rank==='-'?'—':'#'+rank}</td>
+        <td style="padding:12px 14px;font-weight:700;color:var(--gray-900)">${p.nama}</td>
+        <td style="padding:12px 14px;color:var(--gray-600)">${p.kecamatan||'—'}</td>
+        <td style="padding:12px 14px;text-align:right">
+          ${p.avgTotal!==null
+            ? `<span style="background:var(--emerald-xs);color:var(--emerald);font-weight:800;font-size:15px;padding:3px 10px;border-radius:8px">${p.avgTotal.toFixed(2)}</span>`
+            : '<span style="color:var(--gray-400);font-size:12px">Belum Dinilai</span>'}
+        </td>
+        <td style="padding:12px 14px;text-align:center">
+          <span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px;background:${p.avgTotal!==null?'var(--emerald-xs)':'var(--gray-100)'};color:${p.avgTotal!==null?'var(--emerald)':'var(--gray-400)'}">
+            ${p.avgTotal!==null?'✅ Dinilai':'⏳ Menunggu'}
+          </span>
+        </td>
+      </tr>
+      <tr id="${did}" style="display:none;background:var(--gray-50)">
+        <td colspan="5" style="padding:12px 20px">
+          ${p.hakimScores.length
+            ? `<div style="font-size:11px;font-weight:700;color:var(--gray-400);margin-bottom:8px;text-transform:uppercase;letter-spacing:.4px">Detail Per Hakim</div>
+               ${p.hakimScores.map(hs=>`
+                 <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap">
+                   <span style="font-size:13px;font-weight:700;color:var(--gray-700);min-width:160px">${hs.hakimNama}</span>
+                   ${(hs.params||[]).map(pr=>`<span style="font-size:11px;background:var(--gray-100);color:var(--gray-700);padding:2px 8px;border-radius:6px">${pr.nama}: <strong>${pr.nilai}</strong></span>`).join('')}
+                   <span style="font-size:11px;background:var(--emerald-xs);color:var(--emerald);padding:2px 10px;border-radius:6px;font-weight:700">Total: ${Number(hs.total).toFixed(2)}</span>
+                   ${hs.catatan?`<span style="font-size:11px;color:var(--gray-400);font-style:italic">"${hs.catatan}"</span>`:''}
+                 </div>`).join('')}`
+            : '<p style="font-size:12px;color:var(--gray-400)">Belum ada nilai dari dewan hakim</p>'}
+        </td>
+      </tr>`;
+    }).join('')}
+    </tbody></table>`;
+}
+
+function hasilToggleDetail(id) {
+  const row = document.getElementById(id);
+  if (row) row.style.display = row.style.display==='none'?'table-row':'none';
+}
+
+function hasilFilterTable(q) {
+  q = q.toLowerCase().trim();
+  document.querySelectorAll('#hasilTable tbody tr:not([id^="hdr-"])').forEach(tr => {
+    tr.style.display = !q || tr.textContent.toLowerCase().includes(q) ? '' : 'none';
+  });
+}
+</script>
+</body>
+</html>

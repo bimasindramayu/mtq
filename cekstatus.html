@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cek Status & Ambil Maqra – MTQ 2026</title>
+  <link rel="stylesheet" href="css/style.css">
+  <!-- FIX #2: DocumentPreviewer — preview dokumen existing (foto/KTP/rekom) -->
+  <link rel="stylesheet" href="js/document-previewer.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📖</text></svg>">
+  <style>
+    :root{
+      --em:#059669;--em-d:#047857;--em-light:#a7f3d0;--em-xs:#ecfdf5;--em-pale:#d1fae5;
+      --gold:#b45309;--gold-b:#fbbf24;--gold-p:#fffbeb;
+      --red:#dc2626;--red-p:#fef2f2;--red-light:#fca5a5;
+      --g50:#f9fafb;--g100:#f3f4f6;--g200:#e5e7eb;--g300:#d1d5db;
+      --g400:#9ca3af;--g500:#6b7280;--g600:#4b5563;--g700:#374151;--g800:#1f2937;
+      --white:#ffffff;
+      --r-sm:8px;--r-md:12px;--r-lg:16px;--r-xl:24px;
+      --display:'Georgia',serif;
+      --shadow:0 4px 24px rgba(0,0,0,.08);
+    }
+    [data-theme="dark"]{
+      --white:#1a1f2e;--g50:#1e2435;--g100:#252b3b;--g200:#2d3448;
+      --g300:#374151;--g500:#9ca3af;--g600:#d1d5db;--g700:#e5e7eb;--g800:#f3f4f6;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html{scroll-behavior:smooth}
+    body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--g50);color:var(--g800);min-height:100vh;overflow-x:hidden}
+
+    /* ── Navbar ── */
+    .navbar{position:fixed;top:0;left:0;right:0;z-index:200;background:rgba(255,255,255,.96);backdrop-filter:blur(12px);border-bottom:1px solid var(--g200);padding:0 24px;height:64px;display:flex;align-items:center;justify-content:space-between}
+    [data-theme="dark"] .navbar{background:rgba(26,31,46,.96)}
+    .nav-logo{display:flex;align-items:center;gap:10px}.logo-icon{font-size:24px}.logo-text{font-weight:800;font-size:16px;color:var(--em)}.logo-sub{font-size:11px;color:var(--g400)}
+    .nav-links{list-style:none;display:flex;gap:4px}.nav-links a{padding:8px 14px;border-radius:var(--r-sm);text-decoration:none;color:var(--g600);font-size:14px;font-weight:500;transition:all .2s}.nav-links a:hover{background:var(--g100);color:var(--em)}
+    .nav-links a.nav-link-disabled{opacity:.45;pointer-events:none;cursor:not-allowed}
+    .nav-links a.nav-link-disabled:hover{background:none;color:var(--g600)}
+    .dark-toggle{background:var(--g100);border:none;border-radius:var(--r-sm);width:36px;height:36px;cursor:pointer;font-size:16px;transition:all .2s}
+
+    /* ── Hero ── */
+    .page-hero{margin-top:64px;background:linear-gradient(135deg,#064e3b 0%,#047857 50%,#059669 100%);padding:44px 24px 56px;text-align:center;position:relative;overflow:hidden}
+    .hero-bg{position:absolute;inset:0;background-image:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fill-opacity='0.04'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")}
+    .page-hero h1{font-family:var(--display);font-size:clamp(22px,4vw,32px);font-weight:700;color:#fff;margin-bottom:8px;position:relative}
+    .page-hero p{color:rgba(255,255,255,.8);font-size:15px;position:relative;max-width:520px;margin:0 auto}
+    .hero-ornament{display:flex;justify-content:center;gap:8px;margin:14px 0;position:relative}
+    .hero-ornament span{display:inline-block;width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.4)}
+    .hero-ornament span:nth-child(2),.hero-ornament span:nth-child(4){width:24px;border-radius:3px;background:rgba(255,255,255,.7)}
+
+    /* ── Main ── */
+    .main{max-width:720px;margin:0 auto;padding:32px 16px 100px}
+
+    /* ── NIK Search Card ── */
+    .search-card{background:var(--white);border-radius:var(--r-xl);box-shadow:var(--shadow);padding:28px;margin-bottom:24px}
+    .search-title{font-size:17px;font-weight:700;color:var(--g800);margin-bottom:4px;display:flex;align-items:center;gap:8px}
+    .search-sub{font-size:13px;color:var(--g500);margin-bottom:20px}
+    .search-row{display:flex;gap:10px}
+    .search-input-wrap{flex:1;position:relative}
+    .search-icon{position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:20px;pointer-events:none}
+    .search-input{width:100%;padding:13px 14px 13px 46px;border:2px solid var(--g200);border-radius:var(--r-md);font-size:15px;color:var(--g800);background:var(--white);outline:none;transition:all .2s}
+    .search-input:focus{border-color:var(--em);box-shadow:0 0 0 3px rgba(5,150,105,.1)}
+    .btn-search{padding:13px 24px;background:var(--em);color:#fff;border:none;border-radius:var(--r-md);font-size:15px;font-weight:700;cursor:pointer;white-space:nowrap;transition:all .2s}
+    .btn-search:hover{background:var(--em-d)}
+    .btn-search:disabled{opacity:.55;cursor:not-allowed}
+
+    /* ── Status Card ── */
+    .result-card{background:var(--white);border-radius:var(--r-xl);box-shadow:var(--shadow);overflow:hidden;margin-bottom:24px;animation:slideUp .4s ease}
+    @keyframes slideUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+    .result-header{padding:20px 24px;display:flex;align-items:center;gap:14px}
+    .result-header.status-menunggu{background:linear-gradient(135deg,#fffbeb,#fef3c7)}
+    .result-header.status-terverifikasi{background:linear-gradient(135deg,#ecfdf5,#d1fae5)}
+    .result-header.status-ditolak{background:linear-gradient(135deg,#fef2f2,#fee2e2)}
+    .result-header.status-nonaktif{background:linear-gradient(135deg,#f9fafb,#f3f4f6)}
+    .status-icon-big{font-size:40px;flex-shrink:0}
+    .status-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:999px;font-size:12px;font-weight:700;letter-spacing:.3px}
+    .badge-menunggu{background:#fef3c7;color:#b45309}
+    .badge-terverifikasi{background:#d1fae5;color:#065f46}
+    .badge-ditolak{background:#fee2e2;color:#dc2626}
+    .badge-nonaktif{background:#f3f4f6;color:var(--g500)}
+    .nomor-highlight{font-family:monospace;font-size:18px;font-weight:800;color:var(--em);letter-spacing:1px}
+    .result-body{padding:20px 24px}
+    .info-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:16px}
+    .info-item label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--g400);display:block;margin-bottom:3px}
+    .info-item .val{font-size:14px;font-weight:600;color:var(--g700)}
+    .info-divider{border:none;border-top:1px solid var(--g100);margin:14px 0}
+
+    /* ── Banners ── */
+    .info-banner{display:flex;align-items:flex-start;gap:12px;padding:14px 16px;border-radius:var(--r-md);font-size:14px;margin-bottom:16px}
+    .info-banner.info-gold{background:#fffbeb;border:1px solid #fde68a;color:#b45309}
+    .info-banner.info-green{background:var(--em-xs);border:1px solid var(--em-light);color:#065f46}
+    .info-banner.info-red{background:#fef2f2;border:1px solid #fca5a5;color:#dc2626}
+    .info-banner.info-lock{background:#f9fafb;border:1px solid var(--g200);color:var(--g600)}
+    .info-banner-icon{font-size:20px;flex-shrink:0;margin-top:1px}
+    .info-banner strong{display:block;font-size:14px;font-weight:700;margin-bottom:2px}
+
+    /* ── Action row ── */
+    .action-row{display:flex;gap:10px;flex-wrap:wrap;padding:16px 24px;border-top:1px solid var(--g100);background:var(--g50)}
+    .btn{padding:10px 18px;border-radius:var(--r-sm);font-size:14px;font-weight:600;cursor:pointer;border:none;transition:all .2s;display:inline-flex;align-items:center;gap:6px;text-decoration:none}
+    .btn-emerald{background:var(--em);color:#fff}.btn-emerald:hover{background:var(--em-d)}
+    .btn-outline{background:transparent;color:var(--g600);border:1.5px solid var(--g200)}.btn-outline:hover{border-color:var(--em);color:var(--em);background:var(--em-xs)}
+    .btn-red{background:var(--red);color:#fff}.btn-red:hover{background:#b91c1c}
+    .btn-sm{padding:8px 14px;font-size:13px}
+
+    /* ── Members ── */
+    .member-list{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+    .member-row{display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--g50);border-radius:var(--r-sm)}
+    .member-badge{width:28px;height:28px;border-radius:50%;background:var(--em);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
+    .member-badge.ketua{background:var(--gold-b)}
+    .member-name{font-size:14px;font-weight:600;color:var(--g700)}.member-nik{font-size:12px;color:var(--g400)}
+
+    /* ══════════════════════════════════════════════════════════ */
+    /* ── MAQRA SECTION ──────────────────────────────────────── */
+    /* ══════════════════════════════════════════════════════════ */
+    .maqra-section{animation:slideUp .4s ease}
+
+    /* Profile box */
+    .profile-box{background:linear-gradient(135deg,var(--em-xs),var(--em-pale));border:1.5px solid var(--em-light);border-radius:var(--r-lg);padding:18px 20px;margin-bottom:20px;display:flex;align-items:center;gap:14px}
+    .profile-avatar{width:50px;height:50px;border-radius:50%;background:var(--em);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:#fff;flex-shrink:0}
+    .profile-info .p-name{font-size:15px;font-weight:700;color:var(--g800)}.profile-info .p-det{font-size:12px;color:var(--g500);margin-top:2px}
+    .profile-badge{margin-left:auto;padding:5px 14px;border-radius:999px;font-size:12px;font-weight:700;flex-shrink:0;background:var(--em);color:#fff}
+
+    /* Already-have maqra */
+    .maqra-result-card{background:linear-gradient(135deg,#064e3b,#047857);border-radius:var(--r-xl);padding:28px;text-align:center;color:#fff;position:relative;overflow:hidden;margin-bottom:20px}
+    .maqra-result-card::before{content:'';position:absolute;top:-40px;right:-40px;width:140px;height:140px;border-radius:50%;background:rgba(255,255,255,.06)}
+    .maqra-result-card::after{content:'';position:absolute;bottom:-30px;left:-30px;width:100px;height:100px;border-radius:50%;background:rgba(255,255,255,.05)}
+    .mrc-label{font-size:11px;text-transform:uppercase;letter-spacing:.8px;opacity:.75;margin-bottom:8px;position:relative}
+    .mrc-ayat{font-size:clamp(18px,3.5vw,26px);font-weight:700;font-family:var(--display);line-height:1.35;position:relative;margin-bottom:4px}
+    .mrc-surah{font-size:13px;opacity:.85;position:relative}
+    .mrc-nomor{position:relative;margin-top:14px;display:inline-block;background:rgba(255,255,255,.15);border-radius:999px;padding:5px 16px;font-size:12px;font-weight:600}
+
+    /* Spin Card */
+    .spin-card{background:var(--white);border-radius:var(--r-xl);box-shadow:var(--shadow);overflow:hidden;margin-bottom:20px}
+    .spin-card-header{padding:16px 20px;border-bottom:1px solid var(--g100);display:flex;align-items:center;gap:10px}
+    .spin-card-icon{width:40px;height:40px;border-radius:50%;background:var(--em-xs);display:flex;align-items:center;justify-content:center;font-size:20px}
+    .spin-card-title{font-size:15px;font-weight:700;color:var(--g800)}.spin-card-sub{font-size:12px;color:var(--g500)}
+    .spin-body{padding:20px}
+
+    /* Lantern */
+    .spin-stage{display:flex;flex-direction:column;align-items:center;padding:24px 16px 8px;position:relative}
+    .glow-ring{position:absolute;width:240px;height:240px;border-radius:50%;border:2px solid rgba(251,191,36,.2);box-shadow:0 0 40px rgba(251,191,36,.12);animation:ringPulse 2s ease-in-out infinite;pointer-events:none;top:50%;left:50%;transform:translate(-50%,-50%)}
+    @keyframes ringPulse{0%,100%{transform:translate(-50%,-50%) scale(1);opacity:.5}50%{transform:translate(-50%,-50%) scale(1.08);opacity:1}}
+
+    .lantern-container{position:relative;width:100%;max-width:380px;height:200px;overflow:hidden;border-radius:var(--r-lg);background:linear-gradient(135deg,#064e3b,#065f46);box-shadow:0 8px 32px rgba(5,150,105,.3);margin-bottom:20px}
+    .lantern-strip{position:absolute;left:0;right:0;top:0;display:flex;flex-direction:column;will-change:transform}
+    .lantern-item{height:50px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;border-bottom:1px solid rgba(255,255,255,.08);padding:0 16px;text-align:center;flex-shrink:0;opacity:.85}
+    .lantern-item.highlight{opacity:1;color:#fbbf24;font-size:15px}
+    .lantern-window{position:absolute;top:50%;left:0;right:0;height:52px;transform:translateY(-50%);pointer-events:none;z-index:10}
+    .lantern-window::before{content:'';position:absolute;top:0;left:0;right:0;height:35%;background:linear-gradient(to bottom,#065f46,transparent)}
+    .lantern-window::after{content:'';position:absolute;bottom:0;left:0;right:0;height:35%;background:linear-gradient(to top,#065f46,transparent)}
+    .lantern-window-border{position:absolute;top:0;left:4px;right:4px;height:100%;border:2px solid rgba(251,191,36,.55);border-radius:6px;box-shadow:0 0 12px rgba(251,191,36,.25),inset 0 0 10px rgba(251,191,36,.05)}
+    .star-field{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+    .star{position:absolute;background:#fff;border-radius:50%;opacity:0;animation:starTwinkle var(--s-dur,2s) var(--s-delay,0s) ease-in-out infinite}
+    @keyframes starTwinkle{0%,100%{opacity:0;transform:scale(.5)}50%{opacity:.8;transform:scale(1)}}
+
+    .spin-status{font-size:14px;font-weight:600;color:var(--g500);text-align:center;min-height:22px;margin-bottom:8px}
+
+    /* Result reveal */
+    .result-reveal{display:none;width:100%;max-width:380px;animation:resultReveal .6s ease both}
+    .result-reveal.show{display:block}
+    @keyframes resultReveal{0%{opacity:0;transform:scale(.9) translateY(8px)}60%{transform:scale(1.02)}100%{opacity:1;transform:scale(1) translateY(0)}}
+
+    /* Particles */
+    .particles{position:absolute;inset:0;pointer-events:none;overflow:hidden;border-radius:var(--r-xl)}
+    .particle{position:absolute;border-radius:50%;opacity:0;animation:particleFly var(--p-dur,1s) ease-out var(--p-delay,0s) forwards}
+    @keyframes particleFly{0%{opacity:1;transform:translate(var(--px,0),var(--py,0)) scale(1)}100%{opacity:0;transform:translate(calc(var(--px,0)*4),calc(var(--py,0)*5)) scale(0)}}
+
+    /* Spin trigger */
+    .spin-trigger{padding:16px 20px;border-top:1px solid var(--g100)}
+
+    /* ── Edit Form (perbaikan data) ── */
+    .edit-card{background:var(--white);border-radius:var(--r-xl);box-shadow:var(--shadow);overflow:hidden;margin-bottom:24px;animation:slideUp .4s ease}
+    .edit-header{background:linear-gradient(135deg,#2563eb,#1d4ed8);padding:18px 24px;color:#fff}
+    .edit-header h3{font-size:17px;font-weight:700;margin-bottom:3px}.edit-header p{font-size:13px;opacity:.85}
+    .edit-body{padding:20px 24px}
+    .edit-section{background:var(--g50);border-radius:var(--r-md);padding:16px;margin-bottom:16px}
+    .edit-section-title{font-size:13px;font-weight:700;color:var(--g700);margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--g200);display:flex;align-items:center;gap:6px}
+    .field-group{margin-bottom:13px}
+    .field-label{display:block;font-size:12px;font-weight:600;color:var(--g500);margin-bottom:5px}
+    .req{color:var(--red)}
+    .field-input{width:100%;padding:10px 13px;border:1.5px solid var(--g200);border-radius:var(--r-sm);font-size:14px;color:var(--g800);background:var(--white);outline:none;transition:all .2s}
+    .field-input:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+    .field-input:disabled{background:var(--g100);color:var(--g400);cursor:not-allowed}
+    .two-col{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    @media(max-width:540px){.two-col{grid-template-columns:1fr}}
+
+    /* ── FIX (v2): "Tap untuk ganti" — dokumen existing jadi thumbnail asli, ──
+       tap langsung buka file picker (gaya WhatsApp/Instagram ganti foto
+       profil), bukan lagi kotak upload kosong atau kartu info + 2 tombol
+       terpisah (Lihat/Ganti) seperti sebelumnya. */
+    .uz-wrap{margin-bottom:4px}
+    .uz-photo{position:relative;width:100%;height:118px;border-radius:var(--r-md);overflow:hidden;cursor:pointer;background:var(--g100);border:1.5px solid var(--g200);transition:border-color .2s}
+    .uz-photo:hover{border-color:var(--em)}
+    .uz-photo img{width:100%;height:100%;object-fit:cover;display:block}
+    .uz-photo-overlay{position:absolute;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;gap:6px;padding:7px 6px;background:linear-gradient(0deg,rgba(0,0,0,.62),rgba(0,0,0,0));color:#fff;font-size:11.5px;font-weight:700;pointer-events:none}
+    .uz-photo.empty{background:var(--em-xs);border-style:dashed;border-color:var(--em-light)}
+    .uz-photo.empty .uz-photo-overlay{position:static;background:none;color:var(--em);flex-direction:column;height:100%;padding:12px}
+    .uz-photo.empty .uz-photo-overlay span:first-child{font-size:22px}
+    .uz-photo.thumb-fail{background:var(--g100)}
+    .uz-photo.has-new{border-color:var(--em);border-width:2px}
+    .uz-photo.has-new .uz-photo-overlay{background:linear-gradient(0deg,rgba(5,150,105,.8),rgba(5,150,105,0))}
+    .uz-zoom-btn{position:absolute;top:6px;right:6px;width:27px;height:27px;border-radius:50%;border:none;background:rgba(0,0,0,.55);color:#fff;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .2s;z-index:2}
+    .uz-zoom-btn:hover{background:rgba(0,0,0,.75)}
+    .uz-caption{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:6px;font-size:11.5px}
+    .uz-caption-label{font-weight:700;color:var(--g700)}
+    .uz-caption-status{color:var(--g500);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:58%;text-align:right}
+    .uz-undo-btn{display:none;margin-top:3px;background:none;border:none;color:var(--em);font-size:11px;font-weight:700;cursor:pointer;padding:0;text-decoration:underline}
+
+    /* ── FIX #1: hint syarat usia cabang di form perbaikan ── */
+    .age-rule-hint{display:flex;align-items:center;gap:6px;background:var(--gold-p);border:1px solid #fde68a;border-radius:var(--r-sm);padding:6px 10px;font-size:11.5px;font-weight:600;color:var(--gold);margin-top:6px}
+
+    /* Confetti */
+    .confetti-container{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:400;overflow:hidden}
+    .conf-piece{position:absolute;opacity:0;animation:confettiFall var(--c-dur,3s) var(--c-delay,0s) ease-in forwards}
+    @keyframes confettiFall{0%{opacity:1;transform:translateX(0) translateY(-20px) rotate(0deg)}100%{opacity:0;transform:translateX(var(--c-dx,50px)) translateY(100vh) rotate(720deg)}}
+
+    /* Loading */
+    .spinner{width:40px;height:40px;border:3px solid var(--g200);border-top-color:var(--em);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .loading-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:500;opacity:0;pointer-events:none;transition:opacity .3s}
+    .loading-overlay.show{opacity:1;pointer-events:all}
+    .loading-box{background:var(--white);border-radius:var(--r-lg);padding:28px;text-align:center;width:280px;box-shadow:0 20px 60px rgba(0,0,0,.2)}
+
+    /* Toast */
+    .toast-container{position:fixed;bottom:24px;right:24px;z-index:600;display:flex;flex-direction:column;gap:8px}
+    .toast{display:flex;align-items:flex-start;gap:10px;background:var(--white);border-radius:var(--r-md);padding:13px 15px;box-shadow:0 8px 32px rgba(0,0,0,.15);max-width:320px;animation:toastIn .3s ease;border-left:4px solid var(--g300)}
+    .toast.success{border-left-color:var(--em)}.toast.error{border-left-color:var(--red)}.toast.warning{border-left-color:var(--gold-b)}
+    .toast-icon{font-size:17px;flex-shrink:0}.toast-title{font-size:14px;font-weight:700;color:var(--g800)}.toast-msg{font-size:13px;color:var(--g500);margin-top:2px}
+    .toast-close{background:none;border:none;cursor:pointer;color:var(--g400);font-size:15px;margin-left:auto;flex-shrink:0}
+    .toast.removing{animation:toastOut .25s ease forwards}
+    @keyframes toastIn{from{opacity:0;transform:translateX(14px)}to{opacity:1;transform:translateX(0)}}
+    @keyframes toastOut{to{opacity:0;transform:translateX(14px)}}
+
+    /* Misc */
+    @media(max-width:560px){.search-row{flex-direction:column}.btn-search{width:100%;justify-content:center}}
+    @media(max-width:560px){.action-row{flex-direction:column}.action-row .btn{justify-content:center}}
+  </style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar">
+  <div class="nav-logo">
+    <div class="logo-icon">📖</div>
+    <div><div class="logo-text">MTQ 2026</div><div class="logo-sub">Kab. Indramayu</div></div>
+  </div>
+  <ul class="nav-links">
+    <li><a href="index.html">← Beranda</a></li>
+    <li><a href="daftar.html" id="navDaftarLink" class="nav-link-disabled" aria-disabled="true">🔒 Daftar</a></li>
+  </ul>
+  <button class="dark-toggle" id="darkToggle">🌙</button>
+</nav>
+
+<!-- HERO -->
+<div class="page-hero">
+  <div class="hero-bg"></div>
+  <h1>🔍 Cek Status & Ambil Maqra</h1>
+  <div class="hero-ornament"><span></span><span></span><span></span><span></span><span></span></div>
+  <p>MTQ Kabupaten Indramayu 2026 — Masukkan NIK untuk melihat status dan mengambil maqra</p>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- NIK Search -->
+  <div class="search-card" id="searchCard">
+    <div class="search-title">🪪 Cari Data Peserta</div>
+    <div class="search-sub">Masukkan NIK (16 digit) — berlaku untuk ketua maupun anggota tim</div>
+    <div class="search-row">
+      <div class="search-input-wrap">
+        <span class="search-icon">🔢</span>
+        <input type="text" class="search-input" id="nikInput"
+               placeholder="Masukkan NIK 16 digit"
+               maxlength="16" inputmode="numeric">
+      </div>
+    </div>
+
+    <!-- Captcha -->
+    <div style="margin-top:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px">
+        <span style="font-size:12px;font-weight:700;color:var(--g500)">🔒 Verifikasi Keamanan</span>
+        <span style="font-size:11px;color:var(--g400)">Klik gambar untuk ganti</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <div style="position:relative;display:inline-block;flex-shrink:0">
+          <canvas id="captchaCanvas" width="200" height="58"
+            onclick="refreshCaptcha()" title="Klik untuk ganti captcha"
+            style="display:block;border-radius:10px;cursor:pointer;
+                   box-shadow:0 2px 8px rgba(0,0,0,.12);user-select:none;
+                   border:2px solid var(--em-light,#a7f3d0)"></canvas>
+          <div style="position:absolute;bottom:2px;right:6px;font-size:8px;
+                      color:rgba(255,255,255,0.4);pointer-events:none;font-weight:700;letter-spacing:.5px">MTQ2026</div>
+        </div>
+        <button onclick="refreshCaptcha()" title="Ganti captcha"
+          style="background:var(--em-xs,#ecfdf5);border:1.5px solid var(--em-light,#a7f3d0);
+                 border-radius:10px;padding:10px 13px;cursor:pointer;font-size:18px;
+                 transition:all .2s;flex-shrink:0;display:flex;align-items:center;justify-content:center"
+          onmouseover="this.style.background='var(--em-pale,#d1fae5)'"
+          onmouseout="this.style.background='var(--em-xs,#ecfdf5)'">🔄</button>
+        <div style="flex:1;min-width:160px">
+          <input type="text" id="captchaInput" maxlength="6"
+            placeholder="Ketik 6 karakter dari gambar"
+            style="width:100%;padding:11px 14px;border:2px solid var(--g200);border-radius:10px;
+                   font-size:18px;font-family:'Courier New',monospace;letter-spacing:6px;
+                   font-weight:700;text-transform:uppercase;text-align:center;
+                   color:var(--g800);background:var(--white);outline:none;transition:all .2s"
+            oninput="this.value=this.value.toUpperCase()"
+            onfocus="this.style.borderColor='var(--em)';this.style.boxShadow='0 0 0 3px rgba(5,150,105,.12)'"
+            onblur="this.style.borderColor='var(--g200)';this.style.boxShadow='none'">
+          <div id="captchaErr" style="font-size:11px;color:var(--red);margin-top:3px;display:none">⚠️ Kode tidak sesuai</div>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn-search" id="searchBtn" onclick="cekStatus()"
+      style="width:100%;margin-top:14px;justify-content:center">🔍 Cek Status</button>
+  </div>
+
+  <!-- Status result area -->
+  <div id="statusArea"></div>
+
+  <!-- Maqra section (shown after verified) -->
+  <div id="maqraArea"></div>
+
+  <!-- Edit form (shown if status = Ditolak) -->
+  <div id="editArea"></div>
+
+</div>
+
+<!-- Loading -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-box">
+    <div class="spinner"></div>
+    <p style="font-size:14px;font-weight:700;color:var(--g700);margin:12px 0 4px" id="loadingMsg">Memuat...</p>
+    <small style="color:var(--g400)">Mohon tunggu</small>
+  </div>
+</div>
+
+<!-- Toast & Confetti -->
+<div class="toast-container" id="toastContainer"></div>
+<div class="confetti-container" id="confettiContainer"></div>
+
+<!-- PENTING: config.js HARUS dimuat pertama agar window.MTQ_API_URL tersedia -->
+<script src="js/config.js"></script>
+<script>
+  // Deteksi dini: warning jika API_URL tidak terkonfigurasi
+  (function() {
+    const url = window.MTQ_API_URL || (typeof MTQ_CONFIG !== 'undefined' ? MTQ_CONFIG.API_URL : '');
+    if (!url) {
+      log.error('[MTQ] KRITIS: window.MTQ_API_URL kosong setelah config.js dimuat!');
+      log.error('[MTQ] Pastikan MTQ_CONFIG.API_URL sudah diisi di js/config.js');
+    } else {
+      log.debug('[MTQ] API_URL OK, panjang:', url.length);
+    }
+  })();
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<!-- FIX #2: DocumentPreviewer — preview dokumen existing (foto/KTP/rekom).
+     Pastikan 3 file ini ada di path yang sama dengan yang dipakai admin panel. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="js/document-previewer.js"></script>
+<script src="js/document-previewer.config.js"></script>
+
+<script src="js/cek-maqra.js"></script>
+</body>
+</html>

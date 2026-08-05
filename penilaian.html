@@ -1,0 +1,2004 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistem Penilaian – MTQ 2026</title>
+  <link rel="icon" type="image/png" href="assets/mtq.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Scheherazade+New:wght@400;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    /* ═══════════════════════════════════════════════
+       DESIGN TOKENS — inherits MTQ brand, adds judge
+       palette: deep teal + amber + pearl white
+    ═══════════════════════════════════════════════ */
+    :root {
+      --em:  #065f46; --em-mid: #047857; --em-lt: #10b981;
+      --em-pale: #d1fae5; --em-xs: #ecfdf5;
+      --gold: #b45309; --gold-lt: #f59e0b; --gold-pale: #fef3c7;
+      --ruby: #dc2626; --ruby-pale: #fef2f2;
+      --sky:  #0369a1; --sky-pale: #e0f2fe;
+
+      --white: #ffffff; --cream: #fafaf9;
+      --g50:#f8faf9; --g100:#f1f4f2; --g200:#e2e8e4;
+      --g300:#cbd5d0; --g400:#9cafa6; --g500:#6b8079;
+      --g600:#4b5f57; --g700:#344038; --g800:#1e2820; --g900:#0e1510;
+
+      --font-disp: 'Scheherazade New', serif;
+      --font-body: 'Plus Jakarta Sans', sans-serif;
+      --font-mono: 'IBM Plex Mono', monospace;
+
+      --sh-sm: 0 1px 4px rgba(0,0,0,.07);
+      --sh-md: 0 4px 18px rgba(0,0,0,.09), 0 1px 4px rgba(0,0,0,.05);
+      --sh-lg: 0 16px 48px rgba(0,0,0,.12);
+      --sh-em: 0 4px 24px rgba(6,95,70,.18);
+      --sh-gold: 0 4px 20px rgba(180,83,9,.16);
+
+      --r-sm:8px; --r-md:14px; --r-lg:20px; --r-xl:28px; --r-full:9999px;
+      --tr:.22s cubic-bezier(.4,0,.2,1);
+    }
+
+    [data-theme="dark"] {
+      --cream:#0a1822; --white:#0a1822;
+      --g50:#0d2030; --g100:#112840; --g200:#1a3550; --g300:#254860;
+      --g400:#3a6280; --g500:#5a8aaa; --g600:#88b4cc; --g700:#b8d4e4;
+      --g800:#d8eaf4; --g900:#eef5fa;
+      --em-xs:#012417; --em-pale:#044030;
+      --gold-pale:#1c0e00;
+    }
+
+    *, *::before, *::after { box-sizing:border-box; margin:0; padding:0 }
+    html { scroll-behavior:smooth }
+    body {
+      font-family: var(--font-body);
+      background: var(--cream);
+      color: var(--g800);
+      line-height: 1.6;
+      overflow-x: hidden;
+      min-height: 100vh;
+    }
+    img { max-width:100%; display:block }
+    a { text-decoration:none; color:inherit }
+    button { cursor:pointer; border:none; background:none; font-family:inherit }
+    input, select, textarea { font-family:inherit }
+    ::-webkit-scrollbar { width:5px }
+    ::-webkit-scrollbar-thumb { background:var(--em-lt); border-radius:4px }
+
+    /* ═══════════════ NAVBAR ═══════════════ */
+    .navbar {
+      position:sticky; top:0; z-index:200;
+      display:flex; align-items:center; justify-content:space-between;
+      padding:0 28px; height:60px;
+      background:var(--white); border-bottom:1.5px solid var(--g200);
+      box-shadow: var(--sh-sm);
+      gap:12px;
+    }
+    .nav-logo { display:flex; align-items:center; gap:10px; flex-shrink:0 }
+    .nav-logo-icon { width:36px; height:36px; border-radius:10px; background:linear-gradient(135deg,var(--em),var(--em-mid)); display:flex; align-items:center; justify-content:center; font-size:18px }
+    .nav-logo-text { font-size:15px; font-weight:700; color:var(--em); letter-spacing:-.2px }
+    .nav-logo-sub { font-size:11px; color:var(--g400); font-weight:500 }
+    .nav-tabs { display:flex; gap:2px; background:var(--g100); border-radius:var(--r-sm); padding:3px }
+    .nav-tab {
+      padding:6px 14px; border-radius:6px; font-size:13px; font-weight:600;
+      color:var(--g500); cursor:pointer; transition:var(--tr); white-space:nowrap;
+    }
+    .nav-tab.active { background:var(--white); color:var(--em); box-shadow:var(--sh-sm) }
+    .nav-tab:hover:not(.active) { color:var(--g700) }
+    .nav-right { display:flex; align-items:center; gap:8px; flex-shrink:0 }
+    .dark-btn { width:34px; height:34px; border-radius:8px; background:var(--g100); font-size:16px; display:flex; align-items:center; justify-content:center; transition:var(--tr) }
+    .dark-btn:hover { background:var(--g200) }
+    .session-chip {
+      display:flex; align-items:center; gap:6px; padding:5px 10px;
+      background:var(--em-xs); border:1px solid var(--em-pale);
+      border-radius:var(--r-full); font-size:12px; font-weight:600; color:var(--em);
+    }
+    .session-chip .dot { width:6px; height:6px; border-radius:50%; background:var(--em-lt); animation:pulse 2s infinite }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+    .btn-logout { padding:5px 12px; border-radius:var(--r-sm); background:var(--ruby-pale); color:var(--ruby); font-size:12px; font-weight:600; transition:var(--tr) }
+    .btn-logout:hover { background:var(--ruby); color:#fff }
+
+    /* ═══════════════ PAGE VIEWS ═══════════════ */
+    .view { display:none; animation:fadeSlide .3s ease }
+    .view.active { display:block }
+    @keyframes fadeSlide {
+      from { opacity:0; transform:translateY(6px) }
+      to   { opacity:1; transform:translateY(0) }
+    }
+
+    /* ═══════════════ SHARED LAYOUT ═══════════════ */
+    .page-wrap { max-width:1100px; margin:0 auto; padding:32px 24px 80px }
+    .page-wrap-sm { max-width:700px; margin:0 auto; padding:32px 20px 80px }
+    .page-head { margin-bottom:28px }
+    .page-head h1 { font-size:26px; font-weight:800; color:var(--g800); letter-spacing:-.5px }
+    .page-head p { font-size:14px; color:var(--g500); margin-top:4px }
+
+    /* ═══════════════ CARD ═══════════════ */
+    .card {
+      background:var(--white); border:1.5px solid var(--g200);
+      border-radius:var(--r-lg); box-shadow:var(--sh-md); overflow:hidden;
+    }
+    .card-head {
+      display:flex; align-items:center; gap:12px; padding:18px 24px;
+      border-bottom:1.5px solid var(--g200); background:var(--g50);
+    }
+    .card-icon { width:38px; height:38px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0 }
+    .card-icon.em { background:var(--em-pale); }
+    .card-icon.gold { background:var(--gold-pale); }
+    .card-icon.sky { background:var(--sky-pale); }
+    .card-title { font-size:15px; font-weight:700; color:var(--g800) }
+    .card-sub { font-size:12px; color:var(--g500); margin-top:1px }
+    .card-body { padding:24px }
+
+    /* ═══════════════ FORM ELEMENTS ═══════════════ */
+    .form-row { display:grid; gap:16px; margin-bottom:16px }
+    .form-row.cols-2 { grid-template-columns:1fr 1fr }
+    .form-row.cols-3 { grid-template-columns:1fr 1fr 1fr }
+    @media(max-width:620px) {
+      .form-row.cols-2, .form-row.cols-3 { grid-template-columns:1fr }
+    }
+    .field-group { display:flex; flex-direction:column; gap:5px }
+    .field-label { font-size:12px; font-weight:700; color:var(--g600); letter-spacing:.3px; text-transform:uppercase }
+    .req { color:var(--ruby) }
+    .field-input, .field-select, .field-textarea {
+      padding:10px 14px; border:1.5px solid var(--g200); border-radius:var(--r-sm);
+      font-size:14px; color:var(--g800); background:var(--white);
+      transition:border-color var(--tr), box-shadow var(--tr); outline:none; width:100%;
+    }
+    .field-input:focus, .field-select:focus, .field-textarea:focus {
+      border-color:var(--em-lt); box-shadow:0 0 0 3px rgba(16,185,129,.12);
+    }
+    .field-input.err, .field-select.err { border-color:var(--ruby) }
+    .field-err { font-size:11px; color:var(--ruby); font-weight:600; display:none }
+    .field-err.show { display:block }
+    .field-hint { font-size:11px; color:var(--g400); margin-top:2px }
+    .field-textarea { resize:vertical; min-height:80px }
+
+    /* ═══════════════ BUTTONS ═══════════════ */
+    .btn {
+      display:inline-flex; align-items:center; gap:7px;
+      padding:10px 20px; border-radius:var(--r-sm); font-size:14px; font-weight:700;
+      transition:var(--tr); cursor:pointer; border:none;
+    }
+    .btn-em { background:var(--em); color:#fff }
+    .btn-em:hover { background:var(--em-mid); transform:translateY(-1px); box-shadow:var(--sh-em) }
+    .btn-gold { background:var(--gold); color:#fff }
+    .btn-gold:hover { background:var(--gold-lt); transform:translateY(-1px); box-shadow:var(--sh-gold) }
+    .btn-outline { background:transparent; color:var(--g600); border:1.5px solid var(--g200) }
+    .btn-outline:hover { border-color:var(--em); color:var(--em); background:var(--em-xs) }
+    .btn-sm { padding:7px 14px; font-size:12px }
+    .btn-danger { background:var(--ruby-pale); color:var(--ruby) }
+    .btn-danger:hover { background:var(--ruby); color:#fff }
+    .btn:disabled { opacity:.45; cursor:not-allowed; transform:none !important }
+    .btn-lg { padding:13px 28px; font-size:15px; border-radius:var(--r-md) }
+
+    /* ═══════════════ BADGES ═══════════════ */
+    .badge {
+      display:inline-flex; align-items:center; gap:4px;
+      padding:3px 9px; border-radius:var(--r-full); font-size:11px; font-weight:700;
+    }
+    .badge-em { background:var(--em-pale); color:var(--em) }
+    .badge-gold { background:var(--gold-pale); color:var(--gold) }
+    .badge-ruby { background:var(--ruby-pale); color:var(--ruby) }
+    .badge-sky { background:var(--sky-pale); color:var(--sky) }
+    .badge-gray { background:var(--g100); color:var(--g500) }
+
+    /* ═══════════════ TABLE ═══════════════ */
+    .table-wrap { overflow-x:auto; border-radius:var(--r-md); border:1.5px solid var(--g200) }
+    table { width:100%; border-collapse:collapse }
+    thead { background:var(--g50) }
+    th { padding:11px 16px; text-align:left; font-size:11px; font-weight:700; color:var(--g500); text-transform:uppercase; letter-spacing:.5px; border-bottom:1.5px solid var(--g200); white-space:nowrap }
+    td { padding:12px 16px; font-size:13px; color:var(--g700); border-bottom:1px solid var(--g100); vertical-align:middle }
+    tr:last-child td { border-bottom:none }
+    tbody tr:hover { background:var(--g50) }
+    .rank-cell { font-family:var(--font-mono); font-weight:700; font-size:15px }
+    .rank-1 .rank-cell { color:#d97706 }
+    .rank-2 .rank-cell { color:var(--g500) }
+    .rank-3 .rank-cell { color:#b45309 }
+
+    /* ═══════════════ SCORE DISPLAY ═══════════════ */
+    .score-display {
+      font-family:var(--font-mono); font-size:22px; font-weight:600;
+      color:var(--em); background:var(--em-xs); padding:6px 16px;
+      border-radius:var(--r-sm); display:inline-block; letter-spacing:.5px;
+    }
+    .score-range-info {
+      background: linear-gradient(135deg, var(--sky-pale), #f0f9ff);
+      border:1px solid #bae6fd; border-radius:var(--r-md); padding:14px 18px;
+      margin-bottom:20px;
+    }
+    .score-range-info h4 { font-size:13px; font-weight:700; color:var(--sky); margin-bottom:8px }
+    .score-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:8px }
+    .score-range-item { background:rgba(255,255,255,.7); border-radius:8px; padding:8px 12px }
+    .score-range-label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.4px; color:var(--g500) }
+    .score-range-val { font-size:13px; font-weight:700; color:var(--g800); font-family:var(--font-mono) }
+
+    /* ═══════════════ PROGRESS RING ═══════════════ */
+    .score-ring-wrap { position:relative; width:80px; height:80px }
+    .score-ring-wrap svg { position:absolute; top:0; left:0 }
+    .score-ring-center {
+      position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+      text-align:center; font-family:var(--font-mono); font-weight:700; font-size:14px; color:var(--em);
+    }
+    .score-ring-center small { display:block; font-size:9px; font-weight:600; color:var(--g400); font-family:var(--font-body) }
+
+    /* ═══════════════ PARAMETER CHIP ═══════════════ */
+    .param-chip {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:10px 14px; background:var(--g50); border:1px solid var(--g200);
+      border-radius:var(--r-sm); gap:10px; transition:var(--tr);
+    }
+    .param-chip:hover { background:var(--em-xs); border-color:var(--em-pale) }
+    .param-chip-name { font-size:13px; font-weight:600; color:var(--g700); flex:1 }
+    .param-chip-bobot {
+      font-family:var(--font-mono); font-size:12px; font-weight:700;
+      color:var(--em); background:var(--em-pale); padding:2px 8px; border-radius:var(--r-full);
+    }
+    .param-chip-del { color:var(--g400); font-size:16px; line-height:1; transition:var(--tr) }
+    .param-chip-del:hover { color:var(--ruby) }
+
+    /* ═══════════════ JUDGE CARD ═══════════════ */
+    .judge-card {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:14px 18px; background:var(--white); border:1.5px solid var(--g200);
+      border-radius:var(--r-md); transition:var(--tr); gap:12px;
+    }
+    .judge-card:hover { border-color:var(--em-pale); box-shadow:var(--sh-sm) }
+    .judge-avatar {
+      width:40px; height:40px; border-radius:12px; flex-shrink:0;
+      background:linear-gradient(135deg,var(--em),var(--em-mid));
+      display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; font-size:16px;
+    }
+    .judge-info { flex:1; min-width:0 }
+    .judge-name { font-size:14px; font-weight:700; color:var(--g800); white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+    .judge-cabang { font-size:12px; color:var(--g500); margin-top:1px }
+    .judge-pin { font-family:var(--font-mono); font-size:13px; font-weight:600; color:var(--gold); background:var(--gold-pale); padding:3px 8px; border-radius:var(--r-full) }
+
+    /* ═══════════════ ALERT ═══════════════ */
+    .alert { padding:12px 16px; border-radius:var(--r-sm); font-size:13px; margin-bottom:16px; display:flex; align-items:flex-start; gap:10px }
+    .alert-info { background:var(--sky-pale); border:1px solid #bae6fd; color:var(--sky) }
+    .alert-warn { background:var(--gold-pale); border:1px solid #fcd34d; color:var(--gold) }
+    .alert-success { background:var(--em-pale); border:1px solid var(--em-lt); color:var(--em) }
+    .alert-danger { background:var(--ruby-pale); border:1px solid #fca5a5; color:var(--ruby) }
+
+    /* ═══════════════ SECTION DIVIDER ═══════════════ */
+    .sec-div { display:flex; align-items:center; gap:12px; margin:24px 0 }
+    .sec-div-line { flex:1; height:1px; background:var(--g200) }
+    .sec-div-label { font-size:11px; font-weight:700; color:var(--g400); text-transform:uppercase; letter-spacing:.6px; white-space:nowrap }
+
+    /* ═══════════════ TABS ═══════════════ */
+    .tab-bar { display:flex; gap:0; border-bottom:2px solid var(--g200); margin-bottom:24px }
+    .tab-btn { padding:10px 20px; font-size:13px; font-weight:600; color:var(--g500); border-bottom:2px solid transparent; margin-bottom:-2px; transition:var(--tr); cursor:pointer }
+    .tab-btn.active { color:var(--em); border-color:var(--em) }
+    .tab-btn:hover:not(.active) { color:var(--g700) }
+    .tab-pane { display:none }
+    .tab-pane.active { display:block; animation:fadeSlide .25s ease }
+
+    /* ═══════════════ LOGIN VIEW ═══════════════ */
+    #view-login { background: linear-gradient(160deg, var(--em-xs) 0%, var(--cream) 60%); min-height:calc(100vh - 60px) }
+    .login-wrap { max-width:420px; margin:0 auto; padding:60px 20px }
+    .login-icon-wrap { text-align:center; margin-bottom:28px }
+    .login-big-icon {
+      width:80px; height:80px; margin:0 auto 16px;
+      background:linear-gradient(135deg,var(--em),var(--em-mid));
+      border-radius:24px; display:flex; align-items:center; justify-content:center; font-size:36px;
+      box-shadow:var(--sh-em);
+    }
+    .login-title { font-family:var(--font-disp); font-size:28px; font-weight:700; color:var(--em) }
+    .login-sub { font-size:13px; color:var(--g500); margin-top:4px }
+    .pin-inputs { display:flex; gap:10px; justify-content:center; margin:20px 0 }
+    .pin-box {
+      width:52px; height:60px; border:2.5px solid var(--g200); border-radius:var(--r-md);
+      text-align:center; font-size:24px; font-weight:800; font-family:var(--font-mono);
+      color:var(--em); background:var(--white); transition:var(--tr); outline:none;
+    }
+    .pin-box:focus { border-color:var(--em-lt); box-shadow:0 0 0 3px rgba(16,185,129,.15) }
+    .pin-box.filled { border-color:var(--em); background:var(--em-xs) }
+
+    /* ═══════════════ SCORING FORM ═══════════════ */
+    .peserta-selector {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:16px 20px; background:var(--g50); border:1.5px solid var(--g200);
+      border-radius:var(--r-md); margin-bottom:20px; gap:12px;
+    }
+    .peserta-info h3 { font-size:16px; font-weight:700; color:var(--g800) }
+    .peserta-info p { font-size:12px; color:var(--g500) }
+    .peserta-nav { display:flex; align-items:center; gap:8px }
+    .peserta-nav-btn {
+      width:34px; height:34px; border-radius:8px; background:var(--white);
+      border:1.5px solid var(--g200); display:flex; align-items:center; justify-content:center;
+      font-size:18px; color:var(--g600); transition:var(--tr);
+    }
+    .peserta-nav-btn:hover { border-color:var(--em); color:var(--em); background:var(--em-xs) }
+    .peserta-nav-btn:disabled { opacity:.35; cursor:not-allowed }
+    .peserta-counter { font-size:12px; font-weight:700; color:var(--g500); font-family:var(--font-mono); white-space:nowrap }
+
+    .param-score-row {
+      display:flex; align-items:center; gap:12px; padding:14px;
+      border:1.5px solid var(--g200); border-radius:var(--r-sm); margin-bottom:10px;
+      background:var(--white); transition:var(--tr);
+    }
+    .param-score-row:focus-within { border-color:var(--em-lt); background:var(--em-xs) }
+    .param-score-name { flex:1; font-size:13px; font-weight:600; color:var(--g700) }
+    .param-score-bobot { font-size:11px; color:var(--g400); font-weight:600 }
+    .param-score-input {
+      width:80px; padding:7px 10px; border:1.5px solid var(--g200); border-radius:7px;
+      text-align:center; font-size:15px; font-weight:700; font-family:var(--font-mono);
+      color:var(--em); background:var(--white); transition:var(--tr); outline:none;
+    }
+    .param-score-input:focus { border-color:var(--em-lt); box-shadow:0 0 0 3px rgba(16,185,129,.12) }
+    .param-score-slider { flex:1; accent-color:var(--em); cursor:pointer }
+
+    .score-total-bar {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:16px 20px; background:linear-gradient(135deg,var(--em),var(--em-mid));
+      border-radius:var(--r-md); color:#fff; margin-bottom:20px;
+    }
+    .score-total-label { font-size:13px; font-weight:600; opacity:.85 }
+    .score-total-num { font-size:28px; font-weight:800; font-family:var(--font-mono) }
+
+    /* ═══════════════ UPLOAD BUKTI ═══════════════ */
+    .bukti-zone {
+      border:2px dashed var(--g200); border-radius:var(--r-md); padding:20px;
+      text-align:center; cursor:pointer; transition:var(--tr); position:relative;
+    }
+    .bukti-zone:hover { border-color:var(--em-lt); background:var(--em-xs) }
+    .bukti-zone input[type="file"] { position:absolute; inset:0; opacity:0; cursor:pointer }
+    .bukti-zone-icon { font-size:28px; margin-bottom:8px }
+    .bukti-zone h4 { font-size:13px; font-weight:700; color:var(--g700) }
+    .bukti-zone p { font-size:11px; color:var(--g400) }
+    .bukti-preview { display:none; align-items:center; gap:10px; padding:10px 14px; background:var(--em-xs); border:1px solid var(--em-pale); border-radius:var(--r-sm); margin-top:10px }
+    .bukti-preview.show { display:flex }
+    .bukti-thumb { width:44px; height:44px; object-fit:cover; border-radius:6px; border:1px solid var(--em-pale) }
+
+    /* ═══════════════ PUBLIC RESULTS ═══════════════ */
+    .results-header {
+      background:linear-gradient(135deg,var(--em) 0%,var(--em-mid) 100%);
+      padding:48px 24px 40px; text-align:center; position:relative; overflow:hidden;
+    }
+    .results-header::before {
+      content:''; position:absolute; inset:0;
+      background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23fff' fill-opacity='0.04'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    }
+    .results-header h1 { font-family:var(--font-disp); font-size:32px; font-weight:700; color:#fff; position:relative }
+    .results-header p { font-size:14px; color:rgba(255,255,255,.7); margin-top:6px; position:relative }
+    .results-header .live-badge {
+      display:inline-flex; align-items:center; gap:6px;
+      background:rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.25);
+      border-radius:var(--r-full); padding:4px 12px; font-size:12px; font-weight:700; color:#fff;
+      margin-bottom:16px; backdrop-filter:blur(6px); position:relative;
+    }
+    .live-badge .dot { width:7px; height:7px; border-radius:50%; background:#10b981; animation:pulse 1.5s infinite }
+
+    .cabang-filter { display:flex; gap:8px; flex-wrap:wrap; padding:20px 0 4px }
+    .cabang-pill {
+      padding:6px 14px; border-radius:var(--r-full); font-size:12px; font-weight:700;
+      background:var(--g100); color:var(--g600); cursor:pointer; border:1.5px solid var(--g200); transition:var(--tr);
+    }
+    .cabang-pill.active { background:var(--em); color:#fff; border-color:var(--em) }
+    .cabang-pill:hover:not(.active) { border-color:var(--em); color:var(--em); background:var(--em-xs) }
+
+    .podium-row { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:24px }
+    @media(max-width:500px) { .podium-row { grid-template-columns:1fr } }
+    .podium-card {
+      border-radius:var(--r-md); padding:20px 16px; text-align:center;
+      border:2px solid; transition:var(--tr); position:relative; overflow:hidden;
+    }
+    .podium-card::before { content:''; position:absolute; top:-30px; right:-30px; width:80px; height:80px; border-radius:50%; opacity:.08; background:currentColor }
+    .podium-1 { background:linear-gradient(135deg,#fffbeb,#fef3c7); border-color:#f59e0b; color:#d97706 }
+    .podium-2 { background:linear-gradient(135deg,#f8fafc,#f1f5f9); border-color:#94a3b8; color:#64748b }
+    .podium-3 { background:linear-gradient(135deg,#fff8f0,#fef3e2); border-color:#f97316; color:#b45309 }
+    .podium-medal { font-size:32px; margin-bottom:6px }
+    .podium-rank { font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.8px; opacity:.7 }
+    .podium-name { font-size:15px; font-weight:800; color:var(--g800); margin:4px 0 }
+    .podium-kec { font-size:11px; color:var(--g400); margin-bottom:8px }
+    .podium-score { font-family:var(--font-mono); font-size:24px; font-weight:800 }
+
+    .result-status-submitted { color:var(--em) }
+    .result-status-pending { color:var(--g400) }
+
+    /* ═══════════════ LOADING / OVERLAY ═══════════════ */
+    .overlay { position:fixed; inset:0; background:rgba(10,24,34,.55); backdrop-filter:blur(4px); z-index:900; display:flex; align-items:center; justify-content:center; display:none }
+    .overlay.show { display:flex }
+    .overlay-box { background:var(--white); border-radius:var(--r-xl); padding:32px; text-align:center; max-width:340px; width:90%; box-shadow:var(--sh-lg) }
+    .spinner { width:40px; height:40px; border:3px solid var(--g200); border-top-color:var(--em); border-radius:50%; animation:spin .7s linear infinite; margin:0 auto 14px }
+    @keyframes spin { to { transform:rotate(360deg) } }
+
+    /* ═══════════════ TOAST ═══════════════ */
+    .toast-container { position:fixed; bottom:24px; right:24px; z-index:1000; display:flex; flex-direction:column; gap:8px; max-width:320px }
+    .toast {
+      display:flex; align-items:flex-start; gap:10px; padding:12px 16px;
+      background:var(--white); border-radius:var(--r-md); box-shadow:var(--sh-lg);
+      border-left:3px solid var(--em); animation:slideInToast .3s ease;
+    }
+    .toast.error { border-color:var(--ruby) }
+    .toast.warning { border-color:var(--gold-lt) }
+    .toast.success { border-color:var(--em) }
+    .toast-icon { font-size:18px; flex-shrink:0; margin-top:1px }
+    .toast-content { flex:1 }
+    .toast-title { font-size:13px; font-weight:700; color:var(--g800) }
+    .toast-msg { font-size:12px; color:var(--g500); margin-top:1px }
+    .toast-close { color:var(--g400); font-size:16px; line-height:1; flex-shrink:0 }
+    .toast.removing { animation:slideOutToast .25s ease forwards }
+    @keyframes slideInToast { from{opacity:0;transform:translateX(16px)} to{opacity:1;transform:translateX(0)} }
+    @keyframes slideOutToast { to{opacity:0;transform:translateX(16px)} }
+
+    /* ═══════════════ EMPTY STATE ═══════════════ */
+    .empty-state { text-align:center; padding:60px 20px; color:var(--g400) }
+    .empty-state .empty-icon { font-size:48px; margin-bottom:12px }
+    .empty-state p { font-size:14px }
+
+    /* ═══════════════ MISC ═══════════════ */
+    .hidden { display:none !important }
+    .flex-center { display:flex; align-items:center; justify-content:center }
+    .flex-between { display:flex; align-items:center; justify-content:space-between }
+    .gap-8 { gap:8px }
+    .gap-12 { gap:12px }
+    .mb-16 { margin-bottom:16px }
+    .mb-24 { margin-bottom:24px }
+    .text-sm { font-size:12px }
+    .text-muted { color:var(--g400) }
+    .fw-bold { font-weight:700 }
+    .mono { font-family:var(--font-mono) }
+
+    @media(max-width:720px) {
+      .page-wrap, .page-wrap-sm { padding:20px 16px 60px }
+      .page-head h1 { font-size:20px }
+      .nav-tabs { display:none }
+      .mobile-menu-tabs { display:flex !important }
+    }
+    .mobile-menu-tabs { display:none; flex-direction:column; gap:2px; padding:10px 16px; background:var(--white); border-bottom:1.5px solid var(--g200) }
+    .mobile-tab-btn { padding:9px 14px; border-radius:8px; font-size:13px; font-weight:600; color:var(--g600); cursor:pointer; background:none; text-align:left }
+    .mobile-tab-btn.active { background:var(--em-xs); color:var(--em) }
+    .hamburger-btn { display:none; width:36px; height:36px; border-radius:8px; background:var(--g100); align-items:center; justify-content:center; font-size:18px }
+    @media(max-width:720px) { .hamburger-btn { display:flex } }
+    .mobile-open .mobile-menu-tabs { display:flex !important }
+    .progress-bobot {
+      height:6px; border-radius:3px; background:var(--g200); margin-top:4px; overflow:hidden;
+    }
+    .progress-bobot-fill { height:100%; border-radius:3px; background:linear-gradient(90deg,var(--em),var(--em-lt)); transition:width .4s ease }
+
+    /* ── buktiZone states ─── */
+    #buktiZone.dp-disabled { opacity:.45; pointer-events:none; cursor:not-allowed; }
+    #buktiBadge {
+      display:none; margin-top:10px; padding:10px 14px;
+      background:var(--g50); border:1.5px solid var(--g200); border-radius:10px;
+      font-size:13px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+    }
+    #buktiBadge.locked { background:rgba(5,150,105,.07); border-color:var(--em-lt); }
+    #buktiBadge .bukti-info { flex:1; min-width:0; overflow:hidden; }
+    #buktiBadge .bukti-fn { font-weight:700; color:var(--g800); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    #buktiBadge .bukti-sub { font-size:11px; color:var(--g400); margin-top:2px; }
+    #buktiBadge .bukti-view-btn {
+      background:var(--em); color:#fff; border:none; border-radius:8px;
+      padding:7px 14px; font-size:12px; font-weight:700; cursor:pointer;
+      display:flex; align-items:center; gap:5px; white-space:nowrap; flex-shrink:0;
+    }
+    #buktiBadge .bukti-view-btn:hover { opacity:.88; }
+    #buktiBadge .bukti-lock { font-size:18px; flex-shrink:0; }
+  </style>
+  <!-- DocumentPreviewer — CSS di-inline agar tidak gagal 404 saat buka via file:// -->
+  <style>
+    /* document-previewer.css v1.1 — inlined */
+    :root{--dp-bg:#111318;--dp-surface:#1c1f26;--dp-border:rgba(255,255,255,0.08);--dp-text:#f1f5f9;--dp-text-muted:rgba(255,255,255,0.45);--dp-accent:#3b82f6;--dp-accent-2:#22c55e;--dp-radius:10px;--dp-header-h:58px;--dp-footer-h:58px;--dp-width:58%}
+    @keyframes dp-slide-in{from{transform:translateX(100%);opacity:.6}to{transform:translateX(0);opacity:1}}
+    @keyframes dp-spin{to{transform:rotate(360deg)}}
+    @keyframes dp-fade-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+    .dp-modal{display:none;position:fixed;z-index:9000;top:0;right:0;width:var(--dp-width);height:100%;background:var(--dp-bg);font-family:-apple-system,'Segoe UI','Inter',sans-serif;box-sizing:border-box;box-shadow:-8px 0 40px rgba(0,0,0,0.5)}
+    .dp-modal.show{display:block;animation:dp-slide-in .25s cubic-bezier(0.25,0.46,0.45,0.94)}
+    @media(max-width:768px){.dp-modal{width:100%}}
+    .dp-header{position:fixed;top:0;right:0;width:var(--dp-width);height:var(--dp-header-h);display:flex;align-items:center;justify-content:space-between;padding:0 16px 0 18px;background:var(--dp-surface);border-bottom:1px solid var(--dp-border);z-index:9001;box-sizing:border-box;gap:12px}
+    @media(max-width:768px){.dp-header{width:100%}}
+    .dp-header-left{display:flex;align-items:center;gap:11px;min-width:0;flex:1}
+    .dp-file-icon{width:34px;height:34px;border-radius:8px;background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.25);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+    .dp-title{font-size:.88em;font-weight:600;color:var(--dp-text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3}
+    .dp-subtitle{font-size:.73em;color:var(--dp-text-muted);margin-top:1px;white-space:nowrap}
+    .dp-header-right{display:flex;align-items:center;gap:10px;flex-shrink:0}
+    .dp-page-indicator{display:flex;align-items:center;gap:4px;background:rgba(255,255,255,.08);border:1px solid var(--dp-border);border-radius:6px;padding:3px 10px;font-size:.78em;font-weight:600;color:var(--dp-text);font-variant-numeric:tabular-nums}
+    .dp-page-sep{color:var(--dp-text-muted);font-weight:400}
+    .dp-close{width:32px;height:32px;flex-shrink:0;background:rgba(255,255,255,.07);border:1px solid var(--dp-border);border-radius:8px;color:var(--dp-text-muted);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s,color .15s,transform .2s}
+    .dp-close:hover{background:rgba(239,68,68,.2);border-color:rgba(239,68,68,.4);color:#fca5a5;transform:rotate(90deg)}
+    .dp-container{position:fixed;top:var(--dp-header-h);right:0;width:var(--dp-width);height:calc(100vh - var(--dp-header-h) - var(--dp-footer-h));overflow:hidden;background:var(--dp-bg);cursor:grab;z-index:9000;box-sizing:border-box}
+    @media(max-width:768px){.dp-container{width:100%}}
+    .dp-container:active{cursor:grabbing}
+    .dp-container *{-webkit-user-drag:none;user-select:none}
+    .dp-modal #dp-viewer{display:flex;flex-direction:column;align-items:center;transform-origin:center top;padding:24px 20px;min-height:100%;width:100%;background:transparent;gap:16px}
+    .dp-modal #dp-viewer canvas{display:block;margin:0 auto;max-width:90%;background:#fff!important;box-shadow:0 2px 20px rgba(0,0,0,.5),0 0 0 1px rgba(255,255,255,.06);border-radius:4px}
+    .dp-modal #dp-viewer img{pointer-events:none;-webkit-user-drag:none;border-radius:6px;box-shadow:0 4px 32px rgba(0,0,0,.6)}
+    .dp-loading{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:10px;color:var(--dp-text);z-index:10;text-align:center;padding:24px 32px;pointer-events:none;animation:dp-fade-in .25s ease}
+    .dp-spinner-wrap{width:48px;height:48px;background:rgba(255,255,255,.06);border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:4px}
+    .dp-spinner{width:28px;height:28px;border:3px solid rgba(255,255,255,.12);border-top-color:var(--dp-accent);border-radius:50%;animation:dp-spin .7s linear infinite}
+    .dp-loading-title{font-size:.88em;font-weight:600;color:var(--dp-text);margin:0}
+    .dp-loading-sub{font-size:.78em;color:var(--dp-text-muted);margin:0}
+    .dp-error-icon{font-size:2em;margin-bottom:4px}
+    .dp-error-title{font-size:.9em;font-weight:600;color:#fca5a5;margin:0}
+    .dp-error-msg{font-size:.78em;color:var(--dp-text-muted);margin:0;max-width:240px;line-height:1.5}
+    .dp-error-btn{pointer-events:all;margin-top:6px;padding:8px 20px;background:var(--dp-accent);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:.83em;font-weight:600;font-family:inherit;transition:opacity .2s,transform .15s;display:flex;align-items:center;gap:6px}
+    .dp-error-btn:hover{opacity:.88;transform:translateY(-1px)}
+    .dp-controls{position:fixed;bottom:0;right:0;width:var(--dp-width);height:var(--dp-footer-h);padding:0 14px;display:flex;align-items:center;justify-content:center;gap:4px;background:var(--dp-surface);border-top:1px solid var(--dp-border);z-index:9001;box-sizing:border-box}
+    @media(max-width:768px){.dp-controls{width:100%;gap:3px;padding:0 10px}}
+    .dp-controls-group{display:flex;align-items:center;gap:2px}
+    .dp-divider{width:1px;height:22px;background:var(--dp-border);margin:0 6px;flex-shrink:0}
+    .dp-btn{display:inline-flex;align-items:center;justify-content:center;gap:5px;height:34px;padding:0 10px;border-radius:8px;border:1px solid transparent;background:transparent;color:var(--dp-text-muted);cursor:pointer;font-family:inherit;font-size:.78em;font-weight:600;white-space:nowrap;transition:background .15s,color .15s,border-color .15s,transform .12s}
+    .dp-btn:hover{background:rgba(255,255,255,.08);border-color:var(--dp-border);color:var(--dp-text)}
+    .dp-btn:active{transform:scale(.95)}
+    .dp-btn-icon{width:34px;padding:0}
+    .dp-zoom-label{font-size:.78em;font-weight:700;color:var(--dp-text);min-width:38px;text-align:center;font-variant-numeric:tabular-nums;letter-spacing:-.2px}
+    .dp-btn-accent{background:rgba(34,197,94,.12);border-color:rgba(34,197,94,.25);color:#4ade80;padding:0 14px;gap:6px}
+    .dp-btn-accent:hover{background:rgba(34,197,94,.22);border-color:rgba(34,197,94,.45);color:#86efac}
+    .dp-scrollbar{position:absolute;z-index:20;border-radius:4px;opacity:0;transition:opacity .2s ease;pointer-events:all}
+    .dp-container:hover .dp-scrollbar,.dp-scrollbar.active{opacity:1}
+    .dp-scrollbar-v{top:0;right:3px;width:8px;height:100%;display:flex;flex-direction:column}
+    .dp-scrollbar-h{bottom:3px;left:0;height:8px;width:100%;display:flex;flex-direction:row}
+    .dp-scrollbar-thumb{position:absolute;background:rgba(255,255,255,.22);border-radius:4px;cursor:pointer;transition:background .15s ease;min-height:32px;min-width:32px}
+    .dp-scrollbar-thumb:hover,.dp-scrollbar-thumb.dragging{background:rgba(255,255,255,.45)}
+    .dp-scrollbar-v .dp-scrollbar-thumb{left:0;right:0;width:100%}
+    .dp-scrollbar-h .dp-scrollbar-thumb{top:0;bottom:0;height:100%}
+  </style>
+  <script src="js/config.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="js/document-previewer.config.js"></script>
+  <script src="js/document-previewer.js"></script>
+</head>
+<body>
+
+<!-- ════════════════════ NAVBAR ════════════════════ -->
+<nav class="navbar" id="mainNavbar">
+  <div class="nav-logo">
+    <div class="nav-logo-icon">📖</div>
+    <div>
+      <div class="nav-logo-text">MTQ 2026</div>
+      <div class="nav-logo-sub">Sistem Penilaian</div>
+    </div>
+  </div>
+
+  <div class="nav-tabs" id="navTabs">
+    <div class="nav-tab active" data-view="login" onclick="switchView('login')">🔑 Login Hakim</div>
+  </div>
+
+  <div class="nav-right">
+    <div id="sessionChip" class="session-chip hidden">
+      <span class="dot"></span>
+      <span id="sessionName">Hakim</span>
+    </div>
+    <button class="btn-logout hidden" id="logoutBtn" onclick="logoutHakim()">Keluar</button>
+    <button class="dark-btn" id="darkBtn" title="Toggle dark mode">🌙</button>
+    <button class="hamburger-btn" id="hamburgerBtn" onclick="toggleMobileMenu()">☰</button>
+  </div>
+</nav>
+
+<!-- Mobile menu -->
+<div class="mobile-menu-tabs" id="mobileMenuTabs">
+  <button class="mobile-tab-btn active" data-view="login" onclick="switchView('login');closeMobileMenu()">🔑 Login Hakim</button>
+</div>
+
+<!-- ════════════════════ VIEW: LOGIN / HAKIM SCORING ════════════════════ -->
+<div class="view active" id="view-login">
+
+  <!-- Login screen -->
+  <div id="hakimLoginScreen">
+    <div class="login-wrap">
+      <div class="login-icon-wrap">
+        <div class="login-big-icon">⚖️</div>
+        <div class="login-title">Login Dewan Hakim</div>
+        <div class="login-sub">Masukkan PIN 6 digit yang diberikan panitia</div>
+      </div>
+
+      <div class="card">
+        <div class="card-body">
+          <p style="text-align:center;font-size:13px;color:var(--g500);margin-bottom:16px">Masukkan PIN Anda:</p>
+          <div class="pin-inputs" id="pinInputs">
+            <input type="tel" class="pin-box" maxlength="1" inputmode="numeric">
+            <input type="tel" class="pin-box" maxlength="1" inputmode="numeric">
+            <input type="tel" class="pin-box" maxlength="1" inputmode="numeric">
+            <input type="tel" class="pin-box" maxlength="1" inputmode="numeric">
+            <input type="tel" class="pin-box" maxlength="1" inputmode="numeric">
+            <input type="tel" class="pin-box" maxlength="1" inputmode="numeric">
+          </div>
+
+          <!-- Captcha — anti bot/brute-force pada login hakim -->
+          <div class="field-group" style="text-align:left;margin-top:14px">
+            <label class="field-label" style="font-size:12px;color:var(--g500);font-weight:600">Verifikasi — ketik 6 karakter berikut:</label>
+            <div style="display:flex;align-items:center;gap:8px;margin:6px 0 8px">
+              <canvas id="hakimCaptchaCanvas" width="220" height="58"
+                style="border:1.5px solid var(--g200);border-radius:8px;cursor:pointer;display:block;background:#f8fafc"
+                onclick="initHakimCaptcha()" title="Klik untuk ganti captcha"></canvas>
+              <button type="button" onclick="initHakimCaptcha()"
+                style="background:none;border:1.5px solid var(--g200);border-radius:8px;padding:8px 10px;cursor:pointer;font-size:16px;color:var(--g500)"
+                title="Refresh captcha">🔄</button>
+            </div>
+            <input type="text" class="field-input" id="hakimCaptchaAns"
+              placeholder="Ketik 6 karakter" maxlength="6" autocomplete="off" spellcheck="false"
+              style="text-transform:uppercase;letter-spacing:4px;font-size:18px;font-weight:700;text-align:center;font-family:var(--font-mono)"
+              oninput="this.value=this.value.toUpperCase()"
+              onkeydown="if(event.key==='Enter')hakimLogin()">
+          </div>
+
+          <button class="btn btn-em btn-lg" style="width:100%;margin-top:8px" id="loginSubmitBtn" onclick="hakimLogin()">🔓 Masuk</button>
+          <p style="text-align:center;font-size:12px;color:var(--g400);margin-top:12px">PIN bersifat rahasia. Jangan bagikan ke siapapun.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scoring screen (after login) -->
+  <div id="hakimScoringScreen" class="hidden">
+    <div class="page-wrap-sm">
+
+      <!-- Hakim info bar -->
+      <div style="display:flex;align-items:center;gap:12px;padding:14px 18px;background:var(--em);border-radius:var(--r-md);margin-bottom:24px;color:#fff">
+        <div style="font-size:24px">⚖️</div>
+        <div style="flex:1">
+          <div style="font-size:15px;font-weight:700" id="scoringHakimName">-</div>
+          <div style="font-size:12px;opacity:.75">Dewan Hakim</div>
+        </div>
+        <select id="scoringCabangPicker" class="field-select" style="width:auto;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;font-size:13px;padding:6px 10px" onchange="onCabangPickerChange()">
+        </select>
+      </div>
+
+      <!-- Score Range Info -->
+      <div class="score-range-info mb-24">
+        <h4>📏 Panduan Skala Penilaian (0–100)</h4>
+        <div class="score-grid">
+          <div class="score-range-item"><div class="score-range-label">Istimewa</div><div class="score-range-val">90–100</div></div>
+          <div class="score-range-item"><div class="score-range-label">Sangat Baik</div><div class="score-range-val">80–89</div></div>
+          <div class="score-range-item"><div class="score-range-label">Baik</div><div class="score-range-val">70–79</div></div>
+          <div class="score-range-item"><div class="score-range-label">Cukup</div><div class="score-range-val">60–69</div></div>
+          <div class="score-range-item"><div class="score-range-label">Kurang</div><div class="score-range-val">0–59</div></div>
+        </div>
+      </div>
+
+      <!-- Peserta selector -->
+      <div class="peserta-selector" id="pesertaSelector">
+        <div class="peserta-info">
+          <h3 id="currentPesertaName">Pilih Peserta</h3>
+          <p id="currentPesertaKec" class="text-sm text-muted">-</p>
+        </div>
+        <div class="peserta-nav">
+          <button class="peserta-nav-btn" id="prevPesertaBtn" onclick="navPeserta(-1)" disabled>‹</button>
+          <span class="peserta-counter" id="pesertaCounter">-</span>
+          <button class="peserta-nav-btn" id="nextPesertaBtn" onclick="navPeserta(1)">›</button>
+        </div>
+      </div>
+
+      <!-- Already submitted notice -->
+      <div class="alert alert-warn hidden" id="alreadySubmittedAlert">
+        🔒 Nilai untuk peserta ini sudah disubmit dan tidak dapat diubah.
+      </div>
+
+      <!-- Param scoring -->
+      <div class="card mb-24" id="scoringCard">
+        <div class="card-head">
+          <div class="card-icon em">📋</div>
+          <div><div class="card-title">Form Penilaian</div><div class="card-sub" id="scoringCabangLabel">-</div></div>
+        </div>
+        <div class="card-body">
+          <div id="paramScoreContainer">
+            <div class="empty-state"><div class="empty-icon">📋</div><p>Parameter belum dikonfigurasi untuk cabang ini</p></div>
+          </div>
+
+          <div class="score-total-bar" id="scoreTotalBar">
+            <div>
+              <div class="score-total-label">Total Nilai (tertimbang)</div>
+              <div style="font-size:11px;opacity:.65">Rata-rata berbobot dari semua parameter</div>
+            </div>
+            <div class="score-total-num" id="scoreTotalNum">0.00</div>
+          </div>
+
+          <!-- ── scoringFooter — hidden when params not configured ── -->
+          <div id="scoringFooter">
+
+          <!-- Catatan -->
+          <div class="field-group mb-24">
+            <label class="field-label">Catatan Hakim (opsional)</label>
+            <textarea class="field-textarea" id="catatanHakim" placeholder="Catatan atau komentar hakim terhadap penampilan peserta..." rows="3"></textarea>
+          </div>
+
+          <!-- Upload bukti -->
+          <div class="field-group mb-24">
+            <label class="field-label">Bukti Dukung / Kertas Penilaian (opsional)</label>
+            <div class="bukti-zone" id="buktiZone">
+              <input type="file" accept="image/jpeg,image/png,application/pdf" id="buktiInput" onchange="previewBukti(this)">
+              <div class="bukti-zone-icon">📷</div>
+              <h4>Foto atau PDF</h4>
+              <p>Gunakan kamera HP atau pilih dari galeri — maks. 5 MB</p>
+            </div>
+            <div class="bukti-preview" id="buktiPreview">
+              <img class="bukti-thumb" id="buktiThumb" src="" alt="preview">
+              <div style="flex:1">
+                <div class="fw-bold text-sm" id="buktiName">-</div>
+                <div class="text-sm text-muted" id="buktiSize">-</div>
+              </div>
+              <button class="btn btn-danger btn-sm" onclick="removeBukti()">✕</button>
+            </div>
+            <!-- Ditampilkan ketika nilai sudah disubmit — upload baru diblokir -->
+            <div id="buktiBadge"></div>
+          </div>
+
+          <button class="btn btn-em btn-lg" style="width:100%" id="submitNilaiBtn" onclick="submitNilai()">
+            ✅ Submit Nilai
+          </button>
+          <p style="text-align:center;font-size:11px;color:var(--ruby);margin-top:8px">Nilai yang sudah disubmit tidak dapat diubah kembali.</p>
+
+          </div><!-- /scoringFooter -->
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<!-- ════════════════════ OVERLAY / LOADING ════════════════════ -->
+<div class="overlay" id="globalOverlay">
+  <div class="overlay-box">
+    <div class="spinner"></div>
+    <div style="font-weight:700;color:var(--g800)" id="overlayMsg">Memproses...</div>
+    <div style="font-size:12px;color:var(--g500);margin-top:4px" id="overlaySub">Mohon tunggu</div>
+  </div>
+</div>
+
+<!-- ════════════════════ TOAST ════════════════════ -->
+<div class="toast-container" id="toastContainer"></div>
+
+<style>
+  @media(max-width:800px) { .admin-grid { grid-template-columns:1fr !important } }
+</style>
+
+<script>
+// ════════════════════════════════════════════════════════════════
+//  MTQ 2026 — SISTEM PENILAIAN
+//  Versi: 2.0 — Full API mode, localStorage hanya sebagai cache
+// ════════════════════════════════════════════════════════════════
+
+// ── CONFIG ───────────────────────────────────────────────────────
+// SATU SUMBER: js/config.js (window.MTQ_API_URL) — jangan hardcode di sini.
+const API_URL = (window.MTQ_API_URL || '').trim();
+
+const ADMIN_PIN = '1234'; // ganti via panel admin setelah login pertama
+
+// ── DEV MODE ──────────────────────────────────────────────────────
+// true  = tampilkan log detail di console + panel logger di layar
+// false = hanya error yang muncul
+// SATU PINTU: nilai ini sekarang ikut MTQ_CONFIG.LOGGER_ENABLED
+// (js/config.js) — jangan hardcode ulang true/false di sini.
+const DEV = (typeof MTQ_CONFIG !== 'undefined' && typeof MTQ_CONFIG.LOGGER_ENABLED !== 'undefined')
+  ? MTQ_CONFIG.LOGGER_ENABLED
+  : true;
+
+// ════════════════════════════════════════════════════════════════
+//  LOGGER TERPUSAT
+//  Semua aktivitas API, fallback, dan error tercatat di sini.
+//  Akses dari console: MTQ_LOG.dump() atau MTQ_LOG.panel()
+// ════════════════════════════════════════════════════════════════
+const MTQ_LOG = (() => {
+  const entries = [];
+  const LEVELS = { DEBUG:0, INFO:1, WARN:2, ERROR:3 };
+  const COLORS = {
+    DEBUG: '#6b7280', INFO: '#0369a1', WARN: '#b45309',
+    ERROR: '#dc2626', API: '#065f46', LOCAL: '#7c3aed'
+  };
+
+  function add(level, tag, msg, data) {
+    const entry = {
+      ts: new Date().toISOString(),
+      level, tag, msg,
+      data: data !== undefined ? data : null
+    };
+    entries.push(entry);
+    if (entries.length > 200) entries.shift(); // ring buffer
+
+    if (!DEV && LEVELS[level] < LEVELS.WARN) return;
+
+    const style = `color:${COLORS[tag] || COLORS[level]};font-weight:700`;
+    if (data !== undefined) {
+      console.groupCollapsed(`%c[MTQ:${tag}] ${msg}`, style);
+      console.log(data);
+      console.groupEnd();
+    } else {
+      console.log(`%c[MTQ:${tag}] ${msg}`, style);
+    }
+
+    // Update panel jika ada
+    renderLogPanel();
+  }
+
+  function renderLogPanel() {
+    const panel = document.getElementById('mtqLogPanel');
+    if (!panel) return;
+    const last10 = entries.slice(-10).reverse();
+    panel.querySelector('.log-entries').innerHTML = last10.map(e => `
+      <div class="log-entry log-${e.level.toLowerCase()}">
+        <span class="log-time">${e.ts.slice(11,19)}</span>
+        <span class="log-tag">${e.tag}</span>
+        <span class="log-msg">${e.msg}</span>
+      </div>`).join('');
+  }
+
+  return {
+    debug : (msg, d) => add('DEBUG', 'DEBUG', msg, d),
+    info  : (msg, d) => add('INFO',  'INFO',  msg, d),
+    warn  : (msg, d) => add('WARN',  'WARN',  msg, d),
+    error : (msg, d) => add('ERROR', 'ERROR', msg, d),
+    api   : (msg, d) => add('INFO',  'API',   msg, d),
+    local : (msg, d) => add('DEBUG', 'LOCAL', msg, d),
+    dump  : ()       => { console.table(entries); return entries; },
+    get   : ()       => [...entries],
+    panel : ()       => { showLogPanel(); },
+  };
+})();
+
+// ════════════════════════════════════════════════════════════════
+//  DATA STORE — localStorage sebagai CACHE, bukan sumber utama
+//  Sumber utama = Google Spreadsheet via GAS
+// ════════════════════════════════════════════════════════════════
+function store(key, val) {
+  try { localStorage.setItem('mtq_' + key, JSON.stringify(val)); } catch(e) {}
+}
+function load(key, def = null) {
+  try {
+    const v = localStorage.getItem('mtq_' + key);
+    return v !== null ? JSON.parse(v) : def;
+  } catch { return def; }
+}
+function clearCache(key) {
+  localStorage.removeItem('mtq_' + key);
+}
+
+// ── Cabang list (master) ──────────────────────────────────────
+// Cabang list: SATU SUMBER di js/config.js → MTQ_CONFIG.CABANG_LIST
+// (jangan hardcode array cabang lagi di sini — edit config.js saja)
+const CABANG_LIST = MTQ_CONFIG.CABANG_LIST;
+
+// ── State ──────────────────────────────────────────────────────
+let S = {
+  hakimSession: null,
+  currentView: 'login',
+  currentPesertaIdx: 0,
+  currentScoringCabang: null,
+  pesertaList: [],          // primary peserta source for current cabang
+  tempParams: [],
+  scores: {},
+};
+
+// ── DocumentPreviewer (pratinjau bukti penilaian) ─────────────
+let dpInstance = null;   // inisialisasi di DOMContentLoaded setelah scripts loaded
+
+// ── Bukti Zone Helpers ────────────────────────────────────────
+// Map dataUrl aktif agar onclick handler bisa mengaksesnya tanpa inline attr
+const _buktiPreviewMap = {};
+
+function setBuktiZoneLocked(locked, scoreKey, buktiMeta) {
+  const zone   = document.getElementById('buktiZone');
+  const input  = document.getElementById('buktiInput');
+  const badge  = document.getElementById('buktiBadge');
+
+  if (locked) {
+    if (zone)  zone.classList.add('dp-disabled');
+    if (input) input.disabled = true;
+    removeBukti();
+
+    let cached = null;
+    try {
+      const raw = scoreKey ? localStorage.getItem('mtq_bukti_' + scoreKey) : null;
+      cached = raw ? JSON.parse(raw) : null;
+    } catch(e) { cached = null; }
+
+    if (!badge) return;
+    badge.className = 'locked';
+    badge.style.display = 'flex';
+
+    if (cached && cached.dataUrl) {
+      const mapKey = 'bukti_' + (scoreKey || Date.now());
+      _buktiPreviewMap[mapKey] = { dataUrl: cached.dataUrl, name: cached.name || 'Bukti Penilaian' };
+
+      badge.innerHTML =
+        '<span class="bukti-lock">\u{1F4F7}</span>'
+        + '<div class="bukti-info">'
+        +   '<div class="bukti-fn">' + (cached.name || 'Bukti Penilaian') + '</div>'
+        +   '<div class="bukti-sub">Bukti tersimpan — klik Lihat untuk pratinjau</div>'
+        + '</div>'
+        + '<button class="bukti-view-btn" id="buktiViewBtn">\u{1F441} Lihat</button>';
+
+      const btn = document.getElementById('buktiViewBtn');
+      if (btn) btn.onclick = function() {
+        const entry = _buktiPreviewMap[mapKey];
+        if (!entry) return;
+        // Coba DocumentPreviewer dulu
+        if (dpInstance && typeof dpInstance.openDirect === 'function') {
+          try { dpInstance.openDirect(entry.dataUrl, entry.name); return; } catch(e) {}
+        }
+        // Fallback: buka via blob URL di tab baru
+        try {
+          const arr  = entry.dataUrl.split(',');
+          const mime = (arr[0].match(/:(.*?);/) || ['','image/jpeg'])[1];
+          const bstr = atob(arr[1]);
+          const u8   = new Uint8Array(bstr.length);
+          for (let i = 0; i < bstr.length; i++) u8[i] = bstr.charCodeAt(i);
+          const url  = URL.createObjectURL(new Blob([u8], { type: mime }));
+          const win  = window.open(url, '_blank');
+          if (!win) window.location.href = url;
+          setTimeout(function(){ URL.revokeObjectURL(url); }, 60000);
+        } catch(e2) { window.open(entry.dataUrl, '_blank'); }
+      };
+    } else if (buktiMeta && buktiMeta.name) {
+      badge.innerHTML =
+        '<span class="bukti-lock">\u{1F4CE}</span>'
+        + '<div class="bukti-info">'
+        +   '<div class="bukti-fn">' + buktiMeta.name + '</div>'
+        +   '<div class="bukti-sub">Bukti telah disubmit (pratinjau tidak tersedia di sesi ini)</div>'
+        + '</div>';
+    } else {
+      badge.innerHTML =
+        '<span class="bukti-lock">\u{1F512}</span>'
+        + '<div class="bukti-info">'
+        +   '<div class="bukti-fn">Nilai sudah disubmit</div>'
+        +   '<div class="bukti-sub">Tidak ada bukti dukung</div>'
+        + '</div>';
+    }
+  } else {
+    if (zone)  zone.classList.remove('dp-disabled');
+    if (input) input.disabled = false;
+    if (badge) { badge.style.display = 'none'; badge.innerHTML = ''; }
+  }
+}
+
+// ════════════════════════════════════════════════════════════════
+//  API LAYER — JSONP, zero fetch(), zero CORS
+// ════════════════════════════════════════════════════════════════
+
+function isApiReady() {
+  const ok = !!API_URL && API_URL.startsWith('https://script.google.com');
+  if (!ok) MTQ_LOG.warn('API_URL tidak dikonfigurasi — mode lokal aktif');
+  return ok;
+}
+
+/**
+ * JSONP core — inject <script> tag, tunggu callback global, cleanup
+ */
+function jsonpRequest(url, prefix, timeoutMs = 25000) {
+  return new Promise((resolve) => {
+    const cbName = prefix + '_' + Date.now() + '_' + (Math.random() * 99999 | 0);
+    const script = document.createElement('script');
+    let settled = false;
+
+    const done = (data) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      delete window[cbName];
+      if (script.parentNode) script.remove();
+      resolve(data);
+    };
+
+    window[cbName] = (data) => {
+      MTQ_LOG.api(`JSONP callback: ${prefix}`, data);
+      done(data);
+    };
+    script.onerror = (e) => {
+      MTQ_LOG.error(`JSONP script error: ${url.slice(0, 80)}...`, e);
+      done(null);
+    };
+
+    const sep = url.includes('?') ? '&' : '?';
+    script.src = url + sep + 'callback=' + cbName;
+    MTQ_LOG.api(`JSONP request → ${script.src.slice(0, 100)}...`);
+
+    const timer = setTimeout(() => {
+      MTQ_LOG.warn(`JSONP timeout (${timeoutMs}ms): ${prefix}`);
+      done(null);
+    }, timeoutMs);
+
+    document.head.appendChild(script);
+  });
+}
+
+/**
+ * apiGet — baca data dari GAS
+ * Jika API tidak siap atau gagal → fallback localStorage + log
+ */
+async function apiGet(action, params = {}) {
+  MTQ_LOG.api(`GET ${action}`, params);
+
+  if (!isApiReady()) {
+    MTQ_LOG.local(`GET ${action} → localStorage (API tidak siap)`);
+    return localGet(action, params);
+  }
+
+  const qs = new URLSearchParams({ action, ...params }).toString();
+  const data = await jsonpRequest(`${API_URL}?${qs}`, 'gG_' + action);
+
+  if (!data) {
+    MTQ_LOG.warn(`GET ${action} → API gagal, fallback localStorage`);
+    return localGet(action, params);
+  }
+
+  MTQ_LOG.api(`GET ${action} ✓`, data);
+
+  // Update cache — PENTING: getPeserta(cabang) mengembalikan ARRAY langsung.
+  // Kita harus menyimpan sebagai { [cabang]: [...] } agar submitNilai dan localGet
+  // bisa membacanya kembali dengan benar.
+  if (action === 'getHakim')   store('hakim',  data.data);
+  if (action === 'getPeserta') {
+    const reqCabang = params && params.cabang;
+    if (reqCabang && Array.isArray(data.data)) {
+      const cur = load('peserta', {});
+      const obj = Array.isArray(cur) ? {} : cur;   // perbaiki jika tersimpan sebagai array sebelumnya
+      obj[reqCabang] = data.data;
+      store('peserta', obj);
+    } else if (data.data && !Array.isArray(data.data)) {
+      store('peserta', data.data);  // getPeserta() tanpa cabang → sudah object
+    }
+  }
+  if (action === 'getParam')   store('params',  data.data);
+  if (action === 'getNilai')   { S.scores = data.data || {}; store('nilai', S.scores); }
+
+  return data;
+}
+
+/**
+ * apiPost — tulis data ke GAS via JSONP GET
+ * Selalu simpan ke localStorage dulu (durability), lalu kirim ke GAS
+ */
+async function apiPost(action, payload = {}) {
+  MTQ_LOG.api(`POST ${action}`, payload);
+
+  // 1. Simpan lokal dulu — data aman walau API mati
+  localPost(action, payload);
+
+  if (!isApiReady()) {
+    MTQ_LOG.local(`POST ${action} → localStorage only (API tidak siap)`);
+    return { success: true, source: 'local' };
+  }
+
+  // 2. Strip base64 besar sebelum encode URL
+  const slim = JSON.parse(JSON.stringify(payload));
+  if (slim?.data?.bukti?.base64) delete slim.data.bukti.base64;
+
+  const payloadStr = JSON.stringify(slim);
+  if (payloadStr.length > 7500) {
+    MTQ_LOG.warn(`POST ${action} payload terlalu besar (${payloadStr.length} chars) → localStorage only`);
+    return { success: true, source: 'local_overflow' };
+  }
+
+  const qs = new URLSearchParams({ action, payload: payloadStr }).toString();
+  const data = await jsonpRequest(`${API_URL}?${qs}`, 'gP_' + action);
+
+  if (!data) {
+    MTQ_LOG.warn(`POST ${action} → API gagal, data tersimpan lokal saja`);
+    return { success: true, source: 'local_fallback' };
+  }
+
+  if (!data.success) {
+    MTQ_LOG.error(`POST ${action} → GAS error: ${data.error}`, data);
+  } else {
+    MTQ_LOG.api(`POST ${action} ✓ → GAS + local`, data);
+  }
+
+  return data;
+}
+
+// ── localStorage handlers (cache / fallback) ──────────────────
+function localGet(action, params) {
+  switch (action) {
+    case 'getHakim':   return { success: true, source: 'local', data: load('hakim', []) };
+    case 'getHakimPublic': {
+      // Fallback: cari hakim by ID dari cache lokal
+      const id  = params.id;
+      const all = load('hakim', []);
+      const h   = all.find(function(x){ return String(x.id) === String(id); });
+      if (h) { const { pin: _p, ...safe } = h; return { success: true, source: 'local', hakim: safe }; }
+      return { success: false, source: 'local', error: 'Hakim tidak ditemukan di cache' };
+    }
+    case 'getPeserta': return { success: true, source: 'local', data: load('peserta', {}) };
+    case 'getParam':   return { success: true, source: 'local', data: load('params', {}) };
+    case 'getNilai':   return { success: true, source: 'local', data: load('nilai', {}) };
+    case 'getPenilaianStats': {
+      const nilai   = load('nilai', {});
+      const peserta = load('peserta', {});
+      const hakim   = load('hakim', []);
+      return {
+        success: true, source: 'local',
+        totalHakim: hakim.length,
+        totalPeserta: Object.values(peserta).reduce((s,a) => s + a.length, 0),
+        totalNilaiSubmit: Object.keys(nilai).length
+      };
+    }
+    case 'getPeringkat': {
+      const pesertaAll = load('peserta', {});
+      const nilai      = load('nilai', {});
+      const cabang     = params.cabang;
+      const list       = pesertaAll[cabang] || [];
+      return buildPeringkat(list, nilai, cabang);
+    }
+    default: return { success: false, source: 'local', error: 'Unknown action: ' + action };
+  }
+}
+
+function localPost(action, payload) {
+  switch (action) {
+    case 'saveHakim': {
+      const list = load('hakim', []);
+      if (!list.find(h => h.id === payload.id)) list.push(payload);
+      store('hakim', list);
+      break;
+    }
+    case 'deleteHakim': {
+      store('hakim', (load('hakim', [])).filter(h => h.id !== payload.id));
+      break;
+    }
+    case 'saveParam': {
+      const params = load('params', {});
+      params[payload.cabang] = payload.params;
+      store('params', params);
+      break;
+    }
+    case 'savePeserta': {
+      const all = load('peserta', {});
+      if (!all[payload.cabang]) all[payload.cabang] = [];
+      if (!all[payload.cabang].find(p => p.id === payload.peserta.id))
+        all[payload.cabang].push(payload.peserta);
+      store('peserta', all);
+      break;
+    }
+    case 'deletePeserta': {
+      const all = load('peserta', {});
+      if (all[payload.cabang])
+        all[payload.cabang] = all[payload.cabang].filter(p => p.id !== payload.id);
+      store('peserta', all);
+      break;
+    }
+    case 'saveNilai': {
+      S.scores[payload.key] = payload.data;
+      store('nilai', S.scores);
+      break;
+    }
+  }
+}
+
+// ── Peringkat aggregation (shared by local + API response) ────
+function buildPeringkat(list, nilaiMap, cabang) {
+  const result = list.map(p => {
+    const hs = Object.values(nilaiMap).filter(n => n.pesertaId === p.id && n.cabang === cabang);
+    const avg = hs.length ? hs.reduce((s,n) => s + n.total, 0) / hs.length : null;
+    return { ...p, avgTotal: avg, hakimCount: hs.length, hakimScores: hs };
+  });
+  result.sort((a,b) => {
+    if (a.avgTotal===null && b.avgTotal===null) return 0;
+    if (a.avgTotal===null) return 1;
+    if (b.avgTotal===null) return -1;
+    return b.avgTotal - a.avgTotal;
+  });
+  return { success: true, data: result };
+}
+
+// ════════════════════════════════════════════════════════════════
+//  LOGGER PANEL UI
+// ════════════════════════════════════════════════════════════════
+function showLogPanel() {
+  if (document.getElementById('mtqLogPanel')) {
+    document.getElementById('mtqLogPanel').style.display = 'flex';
+    return;
+  }
+  const panel = document.createElement('div');
+  panel.id = 'mtqLogPanel';
+  panel.innerHTML = `
+    <style>
+      #mtqLogPanel {
+        position:fixed; bottom:0; left:0; right:0; z-index:9999;
+        background:#0d2030; border-top:2px solid #10b981; font-family:monospace;
+        flex-direction:column; max-height:240px; display:flex;
+      }
+      #mtqLogPanel .log-toolbar {
+        display:flex; align-items:center; gap:10px; padding:6px 12px;
+        background:#0a1822; border-bottom:1px solid #1a3550; flex-shrink:0;
+      }
+      #mtqLogPanel .log-toolbar span { color:#10b981; font-size:12px; font-weight:700 }
+      #mtqLogPanel .log-toolbar button {
+        background:#1a3550; border:none; color:#88b4cc; border-radius:4px;
+        padding:3px 8px; font-size:11px; cursor:pointer; font-family:monospace;
+      }
+      #mtqLogPanel .log-toolbar button:hover { background:#254860 }
+      #mtqLogPanel .log-entries {
+        overflow-y:auto; flex:1; padding:4px 0;
+      }
+      #mtqLogPanel .log-entry {
+        display:grid; grid-template-columns:70px 60px 1fr;
+        gap:8px; padding:3px 12px; font-size:11px; border-bottom:1px solid #112840;
+      }
+      #mtqLogPanel .log-entry:hover { background:#112840 }
+      #mtqLogPanel .log-time { color:#5a8aaa }
+      #mtqLogPanel .log-tag  { font-weight:700 }
+      #mtqLogPanel .log-msg  { color:#b8d4e4; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+      #mtqLogPanel .log-info  .log-tag { color:#38bdf8 }
+      #mtqLogPanel .log-warn  .log-tag { color:#f59e0b }
+      #mtqLogPanel .log-error .log-tag { color:#f87171 }
+      #mtqLogPanel .log-debug .log-tag { color:#6b7280 }
+      #mtqLogPanel .api-status {
+        display:flex; align-items:center; gap:6px; margin-left:auto;
+        font-size:11px; color:#5a8aaa;
+      }
+      #mtqLogPanel .api-dot { width:7px; height:7px; border-radius:50% }
+      #mtqLogPanel .api-dot.ok  { background:#10b981 }
+      #mtqLogPanel .api-dot.bad { background:#f87171 }
+    </style>
+    <div class="log-toolbar">
+      <span>🔍 MTQ Logger</span>
+      <button onclick="MTQ_LOG.dump()">Dump ke console</button>
+      <button onclick="testApiConnection()">Test API</button>
+      <button onclick="clearLocalCache()">Clear Cache</button>
+      <button onclick="document.getElementById('mtqLogPanel').style.display='none'">✕ Hide</button>
+      <div class="api-status">
+        <div class="api-dot" id="apiStatusDot"></div>
+        <span id="apiStatusText">Cek koneksi...</span>
+      </div>
+    </div>
+    <div class="log-entries"></div>
+  `;
+  document.body.appendChild(panel);
+  updateApiStatusDot();
+}
+
+function updateApiStatusDot() {
+  const dot  = document.getElementById('apiStatusDot');
+  const text = document.getElementById('apiStatusText');
+  if (!dot) return;
+  const ok = isApiReady();
+  dot.className  = 'api-dot ' + (ok ? 'ok' : 'bad');
+  text.textContent = ok ? API_URL.slice(32, 60) + '...' : 'API tidak dikonfigurasi';
+}
+
+async function testApiConnection() {
+  MTQ_LOG.info('Test koneksi ke GAS...');
+  showLogPanel();
+  if (!isApiReady()) {
+    MTQ_LOG.warn('API_URL kosong — tidak bisa test');
+    toast('API Belum Dikonfigurasi', 'Isi API_URL di js/config.js', 'warning');
+    return;
+  }
+  showOverlay('Testing koneksi API...', 'Menghubungi Google Apps Script');
+  const t0 = Date.now();
+  const data = await apiGet('getPenilaianStats');
+  const ms = Date.now() - t0;
+  hideOverlay();
+
+  if (data?.source === 'local') {
+    MTQ_LOG.warn('Test: respons dari localStorage (API gagal atau timeout)');
+    toast('Koneksi Gagal', `API tidak merespons (${ms}ms) — cek URL & deployment`, 'error');
+  } else if (data?.success) {
+    MTQ_LOG.api(`Test: ✓ API OK dalam ${ms}ms`, data);
+    toast('API Terhubung ✓', `Hakim:${data.totalHakim} Peserta:${data.totalPeserta} Nilai:${data.totalNilaiSubmit} (${ms}ms)`, 'success');
+    updateApiStatusDot();
+  } else {
+    MTQ_LOG.error('Test: respons error', data);
+    toast('Error dari GAS', data?.error || 'Unknown error', 'error');
+  }
+}
+
+function clearLocalCache() {
+  ['hakim','peserta','params','nilai'].forEach(k => clearCache(k));
+  MTQ_LOG.warn('Cache localStorage dihapus — data akan dimuat ulang dari API');
+  toast('Cache Dihapus', 'Reload halaman untuk memuat data dari GAS', 'info');
+}
+
+// ════════════════════════════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', async () => {
+  MTQ_LOG.info('Init penilaian.html', { API_URL, DEV });
+
+  initDarkMode();
+  initPinInputs();
+  initHakimCaptcha();
+  populateCabangDropdowns();
+
+  // Keyboard shortcut: Ctrl+Shift+L buka logger panel
+  document.addEventListener('keydown', e => {
+    if (e.ctrlKey && e.shiftKey && e.key === 'L') { showLogPanel(); e.preventDefault(); }
+    if (e.key === 'Escape') {
+      document.getElementById('confirmModal')?.classList.remove('show');
+      hideOverlay();
+    }
+  });
+
+  // Inject confirm modal
+  const modal = document.createElement('div');
+  modal.id = 'confirmModal';
+  modal.innerHTML = `
+    <div class="confirm-box">
+      <div id="confirmTitle">Konfirmasi</div>
+      <div id="confirmMsg"></div>
+      <div class="confirm-actions">
+        <button class="btn btn-outline" id="confirmCancel">Batal</button>
+        <button class="btn btn-em" id="confirmOk">✅ Ya, Submit</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+
+  // Inject CSS
+  const style = document.createElement('style');
+  style.textContent = `
+    .stat-pill{display:flex;flex-direction:column;align-items:center}
+    .stat-num{font-family:var(--font-mono);font-size:18px;font-weight:800;color:#fff}
+    .stat-lbl{font-size:10px;color:rgba(255,255,255,.6);font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+    .stat-sep{color:rgba(255,255,255,.25);font-size:20px;font-weight:300}
+    #confirmModal{position:fixed;inset:0;background:rgba(10,24,34,.6);backdrop-filter:blur(5px);z-index:1000;display:none;align-items:center;justify-content:center;padding:20px}
+    #confirmModal.show{display:flex;animation:fadeSlide .25s ease}
+    .confirm-box{background:var(--white);border-radius:var(--r-xl);padding:28px 24px;max-width:380px;width:100%;box-shadow:var(--sh-lg)}
+    #confirmTitle{font-size:16px;font-weight:800;color:var(--g800);margin-bottom:14px}
+    #confirmMsg{font-size:14px;color:var(--g700);margin-bottom:20px;line-height:1.6}
+    .confirm-actions{display:flex;gap:10px}
+    .confirm-actions .btn{flex:1}
+    .rank-1 td{background:linear-gradient(90deg,rgba(245,158,11,.05),transparent)}
+    .podium-card{transition:transform .2s,box-shadow .2s}
+    .podium-card:hover{transform:translateY(-4px);box-shadow:var(--sh-lg)}
+    @media(max-width:600px){.pin-box{width:44px;height:52px;font-size:20px}.param-score-slider{min-width:80px}}
+  `;
+  document.head.appendChild(style);
+
+  // Inisialisasi DocumentPreviewer
+  if (typeof DocumentPreviewer !== 'undefined') {
+    try {
+      dpInstance = new DocumentPreviewer(typeof MY_DP_CONFIG !== 'undefined' ? MY_DP_CONFIG : {});
+      dpInstance.mount('body');
+      MTQ_LOG.info('DocumentPreviewer initialized');
+    } catch(e) { MTQ_LOG.warn('DocumentPreviewer init failed', e.message); }
+  }
+
+  // Restore sesi hakim dari localStorage, lalu refresh cabang dari API
+  // agar perubahan yang dibuat admin di admin.html segera terefleksi
+  const sess = load('hakimSession');
+  if (sess) {
+    S.hakimSession = sess;
+    showHakimSession(sess);
+    // Refresh data hakim (termasuk cabang) dari server — tanpa memblokir UI
+    apiGet('getHakimPublic', { id: sess.id }).then(function(res) {
+      if (res && res.success && res.hakim) {
+        const fresh = res.hakim;
+        const cabangChanged = JSON.stringify((sess.cabang||[]).slice().sort()) !==
+                              JSON.stringify((fresh.cabang||[]).slice().sort());
+        S.hakimSession = fresh;
+        store('hakimSession', fresh);
+        showHakimSession(fresh);
+        if (cabangChanged) {
+          MTQ_LOG.info('Cabang hakim diperbarui', fresh.cabang);
+        }
+        switchView_scoring();
+      } else {
+        switchView_scoring();
+      }
+    }).catch(function() { switchView_scoring(); });
+  }
+
+  // Auto-buka logger di dev mode
+  if (DEV) {
+    MTQ_LOG.info(`API mode: ${isApiReady() ? 'GAS → ' + API_URL : 'LOKAL (API_URL kosong)'}`)
+    setTimeout(showLogPanel, 500);
+  }
+});
+
+// ════════════════════════════════════════════════════════════════
+//  DARK MODE & THEME
+// ════════════════════════════════════════════════════════════════
+function initDarkMode() {
+  const btn = document.getElementById('darkBtn');
+  applyTheme(localStorage.getItem('mtq-theme') || 'light');
+  btn?.addEventListener('click', () => {
+    const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    applyTheme(next);
+    localStorage.setItem('mtq-theme', next);
+  });
+}
+function applyTheme(t) {
+  document.documentElement.setAttribute('data-theme', t);
+  const btn = document.getElementById('darkBtn');
+  if (btn) btn.textContent = t === 'dark' ? '☀️' : '🌙';
+}
+
+// ════════════════════════════════════════════════════════════════
+//  NAVIGATION
+// ════════════════════════════════════════════════════════════════
+function populateCabangDropdowns() {
+  // Cabang dropdowns di view scoring diisi secara dinamis dari data hakim saat login
+  // (lihat switchView_scoring). Tidak ada dropdown statis di halaman ini lagi.
+}
+
+function switchView(view) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-tab,.mobile-tab-btn').forEach(t => t.classList.remove('active'));
+  document.getElementById('view-' + view)?.classList.add('active');
+  document.querySelector(`.nav-tab[data-view="${view}"]`)?.classList.add('active');
+  document.querySelector(`.mobile-tab-btn[data-view="${view}"]`)?.classList.add('active');
+  S.currentView = view;
+  MTQ_LOG.info('switchView → ' + view);
+  if (view === 'login' && S.hakimSession) switchView_scoring();
+}
+function toggleMobileMenu() { document.getElementById('mainNavbar').classList.toggle('mobile-open'); }
+function closeMobileMenu()  { document.getElementById('mainNavbar').classList.remove('mobile-open'); }
+
+// ════════════════════════════════════════════════════════════════
+//  HAKIM PIN INPUTS
+
+
+// ════════════════════════════════════════════════════════════════
+//  HAKIM LOGIN & SCORING
+// ════════════════════════════════════════════════════════════════
+function initPinInputs() {
+  const inputs = document.querySelectorAll('#pinInputs .pin-box');
+  inputs.forEach((inp, idx) => {
+    inp.addEventListener('input', () => {
+      inp.classList.toggle('filled', !!inp.value);
+      if (inp.value && idx < inputs.length - 1) inputs[idx+1].focus();
+    });
+    inp.addEventListener('keydown', e => {
+      if (e.key === 'Backspace' && !inp.value && idx > 0) inputs[idx-1].focus();
+    });
+    inp.addEventListener('paste', e => {
+      e.preventDefault();
+      const p = (e.clipboardData||window.clipboardData).getData('text').replace(/\D/g,'').slice(0,6);
+      inputs.forEach((b,i) => { b.value = p[i]||''; b.classList.toggle('filled', !!b.value); });
+      if (p.length) inputs[Math.min(p.length, inputs.length-1)].focus();
+    });
+  });
+}
+
+function getPinValue() {
+  return Array.from(document.querySelectorAll('#pinInputs .pin-box')).map(i => i.value).join('');
+}
+
+async function hakimLogin() {
+  const pin = getPinValue();
+  if (pin.length < 4) { toast('', 'Masukkan PIN lengkap', 'warning'); return; }
+
+  // ── Captcha check (anti bot / brute-force) ─────────────────
+  const captchaInput = (document.getElementById('hakimCaptchaAns')?.value || '').trim().toUpperCase();
+  if (!captchaInput) {
+    toast('', 'Masukkan kode verifikasi (captcha)', 'warning');
+    return;
+  }
+  if (captchaInput !== _hakimCaptchaCode) {
+    MTQ_LOG.warn('Hakim login gagal: captcha salah');
+    toast('Captcha Salah', 'Kode verifikasi tidak sesuai, silakan coba lagi', 'error');
+    initHakimCaptcha();
+    return;
+  }
+
+  MTQ_LOG.info('Hakim login attempt, pin=' + pin);
+  showOverlay('Memverifikasi PIN...', '');
+  const res = await apiGet('verifyHakimPin', { pin });
+  hideOverlay();
+
+  // verifyHakimPin mengembalikan { success, hakim } — hakim tanpa field pin
+  const hakim = res.hakim || (res.data && res.data.pin ? null : res.data);
+
+  // Fallback: cari dari cache lokal jika API belum punya handler verifyHakimPin
+  const finalHakim = hakim || (load('hakim', [])).find(h => String(h.pin) === pin);
+
+  if (!finalHakim) {
+    MTQ_LOG.warn('Login gagal: PIN tidak ditemukan');
+    toast('PIN Salah', 'Tidak ada hakim dengan PIN tersebut', 'error');
+    initHakimCaptcha(); // captcha baru setiap gagal — cegah brute-force PIN
+    return;
+  }
+
+  S.hakimSession = finalHakim;
+  store('hakimSession', finalHakim);
+  showHakimSession(finalHakim);
+  switchView_scoring();
+  MTQ_LOG.info('Hakim login OK', finalHakim);
+  toast('Selamat Datang', `Halo, ${finalHakim.nama}!`, 'success');
+}
+
+// ── Captcha login hakim (canvas, anti bot/brute-force) ────────
+let _hakimCaptchaCode = '';
+function initHakimCaptcha() {
+  const canvas = document.getElementById('hakimCaptchaCanvas');
+  if (!canvas) return;
+  const ctx   = canvas.getContext('2d');
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // tanpa karakter ambigu (0,O,1,I,l)
+  let code = '';
+  for (let i = 0; i < 6; i++) code += chars.charAt(Math.floor(Math.random() * chars.length));
+  _hakimCaptchaCode = code;
+
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+  ctx.fillStyle = '#f8fafc';
+  ctx.fillRect(0, 0, W, H);
+
+  // Garis acak (noise)
+  for (let i = 0; i < 5; i++) {
+    ctx.strokeStyle = `rgba(${Math.random()*120|0},${Math.random()*120|0},${Math.random()*120|0},0.25)`;
+    ctx.beginPath();
+    ctx.moveTo(Math.random() * W, Math.random() * H);
+    ctx.lineTo(Math.random() * W, Math.random() * H);
+    ctx.stroke();
+  }
+  // Titik acak (noise)
+  for (let i = 0; i < 40; i++) {
+    ctx.fillStyle = `rgba(${Math.random()*150|0},${Math.random()*150|0},${Math.random()*150|0},0.3)`;
+    ctx.beginPath();
+    ctx.arc(Math.random() * W, Math.random() * H, 1.2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // Karakter, dengan rotasi & posisi sedikit acak per huruf
+  const cw = W / code.length;
+  for (let i = 0; i < code.length; i++) {
+    ctx.save();
+    const cx = cw * i + cw / 2 + (Math.random() * 6 - 3);
+    const cy = H / 2 + (Math.random() * 10 - 5);
+    ctx.translate(cx, cy);
+    ctx.rotate((Math.random() * 30 - 15) * Math.PI / 180);
+    ctx.font = `bold ${Math.floor(H * 0.55)}px 'IBM Plex Mono',monospace`;
+    ctx.fillStyle = `rgb(${20+Math.random()*40|0},${60+Math.random()*40|0},${50+Math.random()*30|0})`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(code[i], 0, 0);
+    ctx.restore();
+  }
+
+  const ansEl = document.getElementById('hakimCaptchaAns');
+  if (ansEl) ansEl.value = '';
+}
+
+function showHakimSession(hakim) {
+  document.getElementById('sessionChip').classList.remove('hidden');
+  document.getElementById('sessionName').textContent = hakim.nama;
+  document.getElementById('logoutBtn').classList.remove('hidden');
+}
+
+function switchView_scoring() {
+  document.getElementById('hakimLoginScreen').classList.add('hidden');
+  document.getElementById('hakimScoringScreen').classList.remove('hidden');
+
+  const hakim = S.hakimSession;
+  document.getElementById('scoringHakimName').textContent = hakim.nama;
+
+  const picker = document.getElementById('scoringCabangPicker');
+  const cabangArr = Array.isArray(hakim.cabang)
+    ? hakim.cabang
+    : String(hakim.cabang).split('|').filter(Boolean);
+  picker.innerHTML = cabangArr.map(c => `<option value="${c}">${c}</option>`).join('');
+  S.currentScoringCabang = cabangArr[0];
+  document.getElementById('scoringCabangLabel').textContent = S.currentScoringCabang;
+
+  loadScoringPeserta().then(() => {
+    setTimeout(() => { injectProgressBar(); updateProgressBar(); }, 80);
+  });
+}
+
+function onCabangPickerChange() {
+  S.currentScoringCabang = document.getElementById('scoringCabangPicker').value;
+  S.currentPesertaIdx = 0;
+  document.getElementById('scoringCabangLabel').textContent = S.currentScoringCabang;
+  loadScoringPeserta();
+  updateProgressBar();
+}
+
+async function loadScoringPeserta() {
+  const res  = await apiGet('getPeserta', { cabang: S.currentScoringCabang });
+  const raw  = res.data;
+  // getPeserta bisa return array (filtered) atau object (all)
+  const list = Array.isArray(raw) ? raw : (raw?.[S.currentScoringCabang] || []);
+
+  // Simpan ke STATE (primary) dan cache lokal (fallback offline)
+  S.pesertaList = list;
+  const all = load('peserta', {});
+  const obj = Array.isArray(all) ? {} : all;
+  obj[S.currentScoringCabang] = list;
+  store('peserta', obj);
+
+  if (!list.length) {
+    document.getElementById('currentPesertaName').textContent = 'Belum ada peserta';
+    document.getElementById('pesertaCounter').textContent = '0/0';
+    document.getElementById('paramScoreContainer').innerHTML = `
+      <div style="text-align:center;padding:32px 16px;background:var(--gray-50);border-radius:12px;border:1.5px dashed var(--gray-200)">
+        <div style="font-size:36px;margin-bottom:10px">🧑</div>
+        <div style="font-size:15px;font-weight:700;color:var(--gray-700);margin-bottom:6px">Belum ada peserta untuk cabang ini</div>
+        <div style="font-size:13px;color:var(--gray-500);margin-bottom:16px;line-height:1.6">
+          Admin perlu menambah peserta terlebih dahulu melalui<br>
+          <strong>Admin → Sistem Penilaian → Tab Peserta → Import dari Pendaftaran</strong>
+        </div>
+        <button onclick="loadScoringPeserta()"
+          style="background:var(--emerald);color:#fff;border:none;border-radius:8px;padding:9px 20px;font-size:13px;font-weight:700;cursor:pointer">
+          🔄 Muat Ulang
+        </button>
+      </div>`;
+    document.getElementById('scoreTotalBar').style.display = 'none';
+    toggleScoringFooter(false);   // sembunyikan Catatan, Bukti, Submit — tidak ada peserta untuk dinilai
+    return;
+  }
+
+  if (S.currentPesertaIdx >= list.length) S.currentPesertaIdx = list.length - 1;
+  if (S.currentPesertaIdx < 0) S.currentPesertaIdx = 0;
+
+  const p = list[S.currentPesertaIdx];
+  document.getElementById('currentPesertaName').textContent = p.nama;
+  document.getElementById('currentPesertaKec').textContent  = p.kecamatan;
+  document.getElementById('pesertaCounter').textContent = `${S.currentPesertaIdx+1}/${list.length}`;
+  document.getElementById('prevPesertaBtn').disabled = S.currentPesertaIdx === 0;
+  document.getElementById('nextPesertaBtn').disabled = S.currentPesertaIdx === list.length-1;
+
+  const scoreKey = `${S.hakimSession.id}|||${p.id}|||${S.currentScoringCabang}`;
+
+  // Cek apakah sudah dinilai — tanya API dulu
+  const nilaiRes = await apiGet('getNilai', { cabang: S.currentScoringCabang, hakimId: S.hakimSession.id });
+  if (nilaiRes.data) {
+    Object.assign(S.scores, nilaiRes.data);
+    store('nilai', S.scores);
+  }
+
+  const existing = S.scores[scoreKey];
+  const alreadyEl = document.getElementById('alreadySubmittedAlert');
+  const submitBtn = document.getElementById('submitNilaiBtn');
+
+  if (existing) {
+    MTQ_LOG.info(`Peserta ${p.nama} sudah dinilai`, existing);
+    alreadyEl.classList.remove('hidden');
+    submitBtn.disabled = true;
+    submitBtn.textContent = '🔒 Nilai Sudah Disubmit';
+    document.getElementById('catatanHakim').value = existing.catatan || '';
+    document.getElementById('catatanHakim').disabled = true;
+    renderParamScores(existing.params, true);
+    document.getElementById('scoreTotalNum').textContent = Number(existing.total).toFixed(2);
+    // Kunci buktiZone — tampilkan badge dengan link preview jika ada
+    setBuktiZoneLocked(true, scoreKey, existing.bukti);
+    return;
+  }
+
+  alreadyEl.classList.add('hidden');
+  submitBtn.disabled = false;
+  submitBtn.textContent = '✅ Submit Nilai';
+  document.getElementById('catatanHakim').disabled = false;
+  document.getElementById('catatanHakim').value = '';
+  removeBukti();
+  // Buka kembali buktiZone untuk input baru
+  setBuktiZoneLocked(false, null, null);
+  renderParamScores(null, false);
+}
+
+// ── Tampilkan / sembunyikan area Catatan, Bukti, Submit ──────
+// Disembunyikan ketika parameter belum dikonfigurasi agar hakim
+// tidak bisa submit nilai kosong / null.
+function toggleScoringFooter(show) {
+  var footer = document.getElementById('scoringFooter');
+  if (footer) footer.style.display = show ? '' : 'none';
+}
+
+async function renderParamScores(existingVals, readonly) {
+  const res = await apiGet('getParam', { cabang: S.currentScoringCabang });
+  const cabangParams = Array.isArray(res.data) ? res.data : (res.data?.[S.currentScoringCabang] || []);
+  const el = document.getElementById('paramScoreContainer');
+
+  if (!cabangParams.length) {
+    el.innerHTML = '<div class="alert alert-warn">⚠️ Parameter belum dikonfigurasi. Hubungi admin untuk mengatur parameter penilaian cabang ini.</div>';
+    document.getElementById('scoreTotalBar').style.display = 'none';
+    toggleScoringFooter(false);   // sembunyikan Catatan, Bukti, Submit
+    return;
+  }
+  toggleScoringFooter(true);      // tampilkan kembali setelah parameter siap
+  document.getElementById('scoreTotalBar').style.display = 'flex';
+  el.innerHTML = cabangParams.map((p,i) => {
+    const val = existingVals ? (existingVals[i]?.nilai || 0) : 0;
+    return `
+    <div class="param-score-row">
+      <div style="min-width:0">
+        <div class="param-score-name">${p.nama}</div>
+        <div class="param-score-bobot">Bobot ${p.bobot}%</div>
+      </div>
+      <input type="range" class="param-score-slider" min="0" max="100" value="${val}" step="1"
+        ${readonly?'disabled':''} oninput="syncScore(${i},this.value,'num')">
+      <input type="number" class="param-score-input" min="0" max="100" value="${val}"
+        ${readonly?'disabled':''} oninput="syncScore(${i},this.value,'range')"
+        onblur="clampScore(this)" data-idx="${i}">
+    </div>`;
+  }).join('');
+  calcTotal();
+}
+
+function syncScore(idx, val, target) {
+  const v = Math.min(100, Math.max(0, parseFloat(val)||0));
+  const row = document.querySelectorAll('.param-score-row')[idx];
+  if (target==='num')   row.querySelector('.param-score-input').value = v;
+  else                  row.querySelector('.param-score-slider').value = v;
+  calcTotal();
+}
+function clampScore(inp) {
+  const v = parseFloat(inp.value);
+  if (isNaN(v)||v<0) inp.value=0;
+  if (v>100) inp.value=100;
+  calcTotal();
+}
+function calcTotal() {
+  const params = (() => {
+    const all = load('params',{});
+    return Array.isArray(all) ? all : (all[S.currentScoringCabang]||[]);
+  })();
+  let total = 0;
+  document.querySelectorAll('.param-score-row').forEach((row,i) => {
+    total += (parseFloat(row.querySelector('.param-score-input').value)||0) * ((params[i]?.bobot||0)/100);
+  });
+  document.getElementById('scoreTotalNum').textContent = total.toFixed(2);
+  return total;
+}
+function navPeserta(dir) {
+  const all  = load('peserta',{});
+  const list = all[S.currentScoringCabang]||[];
+  const next = S.currentPesertaIdx + dir;
+  if (next < 0 || next >= list.length) return;
+  S.currentPesertaIdx = next;
+  loadScoringPeserta();
+}
+
+function previewBukti(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 5*1024*1024) { toast('','File maks 5 MB','error'); input.value=''; return; }
+  document.getElementById('buktiName').textContent = file.name;
+  document.getElementById('buktiSize').textContent = (file.size/1024).toFixed(1)+' KB';
+  if (file.type.startsWith('image/')) {
+    const r = new FileReader();
+    r.onload = e => { document.getElementById('buktiThumb').src = e.target.result; document.getElementById('buktiThumb').style.display='block'; };
+    r.readAsDataURL(file);
+  } else { document.getElementById('buktiThumb').style.display='none'; }
+  document.getElementById('buktiPreview').classList.add('show');
+}
+function removeBukti() {
+  document.getElementById('buktiInput').value='';
+  document.getElementById('buktiPreview').classList.remove('show');
+  document.getElementById('buktiThumb').src='';
+}
+
+async function submitNilai() {
+  // Gunakan S.pesertaList (in-state) sebagai sumber utama — lebih andal dari localStorage
+  // karena tidak terpengaruh format penyimpanan (array vs object key issue).
+  const list = S.pesertaList || (() => {
+    const cached = load('peserta', {});
+    return Array.isArray(cached) ? [] : (cached[S.currentScoringCabang] || []);
+  })();
+  if (!list.length) { toast('','Tidak ada peserta — coba Muat Ulang terlebih dahulu','error'); return; }
+
+  const peserta = list[S.currentPesertaIdx];
+  const rows    = document.querySelectorAll('.param-score-row');
+  if (!rows.length) { toast('','Parameter belum dikonfigurasi','error'); return; }
+
+  // Ambil parameter dari cache (sudah dimuat saat renderParamScores)
+  const paramsRaw = load('params',{});
+  const params    = Array.isArray(paramsRaw) ? paramsRaw : (paramsRaw[S.currentScoringCabang]||[]);
+
+  const paramVals = Array.from(rows).map((row,i) => ({
+    nama : params[i]?.nama,
+    bobot: params[i]?.bobot,
+    nilai: parseFloat(row.querySelector('.param-score-input').value)||0
+  }));
+
+  const total   = calcTotal();
+  const catatan = document.getElementById('catatanHakim').value.trim();
+  const scoreKey = `${S.hakimSession.id}|||${peserta.id}|||${S.currentScoringCabang}`;
+
+  if (paramVals.every(p => p.nilai === 0)) {
+    toast('Nilai Masih 0','Isi nilai tiap parameter sebelum submit','warning'); return;
+  }
+
+  showConfirm(
+    '✅ Konfirmasi Submit Nilai',
+    `<div style="margin-bottom:10px"><strong>${peserta.nama}</strong><br>
+     <span style="color:var(--g500);font-size:12px">${S.currentScoringCabang}</span></div>
+     <div style="display:flex;flex-direction:column;gap:4px;margin-bottom:12px">
+       ${paramVals.map(p=>`<div style="display:flex;justify-content:space-between;font-size:13px"><span>${p.nama}</span><strong>${p.nilai}</strong></div>`).join('')}
+     </div>
+     <div style="background:var(--em-xs);border-radius:8px;padding:10px;text-align:center">
+       <div style="font-size:11px;color:var(--g500)">Total Nilai</div>
+       <div style="font-size:24px;font-weight:800;color:var(--em);font-family:var(--font-mono)">${total.toFixed(2)}</div>
+     </div>
+     <p style="font-size:12px;color:var(--ruby);margin-top:10px;text-align:center">⚠️ Nilai tidak dapat diubah setelah disubmit.</p>`,
+    async () => {
+      showOverlay('Menyimpan nilai...','');
+
+      let buktiData = null;
+      const buktiFile = document.getElementById('buktiInput').files[0];
+      if (buktiFile) {
+        try {
+          buktiData = await new Promise((res,rej) => {
+            const r = new FileReader();
+            r.onload = () => res({ name:buktiFile.name, size:buktiFile.size, type:buktiFile.type, base64:r.result.split(',')[1] });
+            r.onerror = rej;
+            r.readAsDataURL(buktiFile);
+          });
+        } catch(e) { buktiData = null; }
+      }
+
+      const scoreData = {
+        hakimId: S.hakimSession.id, hakimNama: S.hakimSession.nama,
+        pesertaId: peserta.id, pesertaNama: peserta.nama,
+        pesertaKecamatan: peserta.kecamatan,
+        cabang: S.currentScoringCabang,
+        params: paramVals, total, catatan,
+        bukti: buktiData ? { name:buktiData.name, size:buktiData.size } : null,
+        submittedAt: new Date().toISOString()
+      };
+
+      MTQ_LOG.info('Submit nilai', { scoreKey, scoreData });
+
+      const res = await apiPost('saveNilai', { key: scoreKey, data: scoreData });
+      hideOverlay();
+
+      if (!res.success && !res.source) {
+        // GAS menolak (misal sudah ada) — tapi lokal sudah tersimpan
+        MTQ_LOG.warn('GAS menolak saveNilai', res);
+      }
+
+      toast('✅ Nilai Tersimpan!', `${peserta.nama} — ${total.toFixed(2)}`, 'success');
+
+      // ── Simpan thumbnail bukti ke localStorage untuk pratinjau pasca-submit ──
+      // PENTING: di-AWAIT (bukan fire-and-forget) agar localStorage.setItem
+      // selesai SEBELUM loadScoringPeserta() dipanggil di bawah — loadScoringPeserta
+      // langsung memanggil setBuktiZoneLocked() yang membaca localStorage; tanpa
+      // await, baris itu akan membaca data yang belum tersimpan (race condition),
+      // sehingga tombol preview tampak "tidak tersedia" walau bukti sebenarnya ada.
+      if (buktiData && buktiData.base64 && buktiData.type.startsWith('image/')) {
+        try {
+          const dataUrl = await compressBuktiThumbnail(buktiData);
+          if (dataUrl) {
+            localStorage.setItem(
+              'mtq_bukti_' + scoreKey,
+              JSON.stringify({ name: buktiData.name, type: buktiData.type, dataUrl: dataUrl })
+            );
+          }
+        } catch(e) { MTQ_LOG.warn('Gagal menyimpan thumbnail bukti', e); }
+      } else if (buktiData && buktiData.name) {
+        // PDF / file lain: simpan metadata saja (tidak bisa preview inline)
+        try {
+          localStorage.setItem(
+            'mtq_bukti_' + scoreKey,
+            JSON.stringify({ name: buktiData.name, type: buktiData.type || 'application/pdf', dataUrl: null })
+          );
+        } catch(e) {}
+      }
+
+      loadScoringPeserta();
+      updateProgressBar();
+
+      // Auto-advance ke peserta berikutnya yang belum dinilai
+      const nextIdx = list.findIndex((p,i) => {
+        if (i <= S.currentPesertaIdx) return false;
+        return !S.scores[`${S.hakimSession.id}|||${p.id}|||${S.currentScoringCabang}`];
+      });
+      if (nextIdx !== -1) setTimeout(() => { S.currentPesertaIdx = nextIdx; loadScoringPeserta(); }, 1400);
+    }
+  );
+}
+
+// ── Kompres gambar bukti menjadi thumbnail kecil (<150KB) ────
+// Dipakai untuk menyimpan pratinjau di localStorage setelah submit.
+function compressBuktiThumbnail(buktiData) {
+  return new Promise(function(resolve) {
+    if (!buktiData || !buktiData.base64 || !buktiData.type.startsWith('image/')) {
+      resolve(null); return;
+    }
+    try {
+      var img = new Image();
+      img.onload = function() {
+        var canvas = document.createElement('canvas');
+        var maxW = 900, maxH = 900;
+        var w = img.width, h = img.height;
+        if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
+        if (h > maxH) { w = Math.round(w * maxH / h); h = maxH; }
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        var q = 0.82, dataUrl;
+        // Kurangi kualitas sampai <150 KB
+        do {
+          dataUrl = canvas.toDataURL('image/jpeg', q);
+          q = Math.max(0.2, q - 0.12);
+        } while (dataUrl.length > 150 * 1024 * 1.37 && q > 0.2);
+        resolve(dataUrl);
+      };
+      img.onerror = function() { resolve(null); };
+      img.src = 'data:' + buktiData.type + ';base64,' + buktiData.base64;
+    } catch(e) { resolve(null); }
+  });
+}
+
+function logoutHakim() {
+  if (!confirm('Keluar dari sesi hakim?')) return;
+  MTQ_LOG.info('Hakim logout');
+  S.hakimSession = null;
+  localStorage.removeItem('mtq_hakimSession');
+  document.getElementById('sessionChip').classList.add('hidden');
+  document.getElementById('logoutBtn').classList.add('hidden');
+  document.getElementById('hakimLoginScreen').classList.remove('hidden');
+  document.getElementById('hakimScoringScreen').classList.add('hidden');
+  document.querySelectorAll('#pinInputs .pin-box').forEach(b => { b.value=''; b.classList.remove('filled'); });
+  initHakimCaptcha();
+  switchView('login');
+  toast('Keluar','Sesi hakim diakhiri','info');
+}
+
+// ── Progress bar ───────────────────────────────────────────────
+function injectProgressBar() {
+  if (document.getElementById('hakimProgressWrap')) return;
+  const sel = document.getElementById('pesertaSelector');
+  if (!sel) return;
+  const wrap = document.createElement('div');
+  wrap.id = 'hakimProgressWrap';
+  wrap.style.cssText = 'margin-bottom:16px';
+  wrap.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+      <span style="font-size:11px;font-weight:700;color:var(--g500);text-transform:uppercase;letter-spacing:.4px">Progress Penilaian</span>
+      <span id="hakimProgressLabel" style="font-size:12px;font-weight:700;color:var(--em)">0/0</span>
+    </div>
+    <div style="height:8px;background:var(--g200);border-radius:999px;overflow:hidden">
+      <div id="hakimProgressBar" style="height:100%;width:0%;background:linear-gradient(90deg,var(--em),var(--em-lt));border-radius:999px;transition:width .5s ease"></div>
+    </div>`;
+  sel.insertAdjacentElement('beforebegin', wrap);
+}
+function updateProgressBar() {
+  if (!S.hakimSession || !S.currentScoringCabang) return;
+  const list = (load('peserta',{})[S.currentScoringCabang]||[]);
+  const done = list.filter(p => !!S.scores[`${S.hakimSession.id}|||${p.id}|||${S.currentScoringCabang}`]).length;
+  const pct  = list.length ? Math.round(done/list.length*100) : 0;
+  const bar  = document.getElementById('hakimProgressBar');
+  const lbl  = document.getElementById('hakimProgressLabel');
+  if (bar) bar.style.width = pct + '%';
+  if (lbl) lbl.textContent = `${done}/${list.length} peserta dinilai (${pct}%)`;
+}
+
+// ════════════════════════════════════════════════════════════════
+//  PUBLIC RESULTS
+// ════════════════════════════════════════════════════════════════
+
+// ════════════════════════════════════════════════════════════════
+//  CONFIRM MODAL
+// ════════════════════════════════════════════════════════════════
+function showConfirm(title, msg, onOk, onCancel) {
+  const modal = document.getElementById('confirmModal');
+  document.getElementById('confirmTitle').textContent = title;
+  document.getElementById('confirmMsg').innerHTML = msg;
+  modal.classList.add('show');
+
+  const cleanup = () => {
+    modal.classList.remove('show');
+    // Re-clone buttons to remove old listeners
+    const ok  = document.getElementById('confirmOk');
+    const ccl = document.getElementById('confirmCancel');
+    ok.replaceWith(ok.cloneNode(true));
+    ccl.replaceWith(ccl.cloneNode(true));
+  };
+
+  document.getElementById('confirmOk').addEventListener('click', () => { cleanup(); onOk?.(); }, {once:true});
+  document.getElementById('confirmCancel').addEventListener('click', () => { cleanup(); onCancel?.(); }, {once:true});
+}
+
+// ════════════════════════════════════════════════════════════════
+//  UI HELPERS
+// ════════════════════════════════════════════════════════════════
+function showOverlay(msg='Memproses...', sub='Mohon tunggu') {
+  document.getElementById('overlayMsg').textContent = msg;
+  document.getElementById('overlaySub').textContent = sub;
+  document.getElementById('globalOverlay').classList.add('show');
+}
+function hideOverlay() { document.getElementById('globalOverlay').classList.remove('show'); }
+
+function toast(title, msg, type='info', dur=4500) {
+  const icons = {success:'✅',error:'❌',warning:'⚠️',info:'ℹ️'};
+  const c = document.getElementById('toastContainer');
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.innerHTML = `<span class="toast-icon">${icons[type]||'ℹ️'}</span>
+    <div class="toast-content">
+      <div class="toast-title">${title}</div>
+      <div class="toast-msg">${msg}</div>
+    </div>
+    <button class="toast-close" onclick="this.closest('.toast').remove()">✕</button>`;
+  c.appendChild(t);
+  setTimeout(() => { t.classList.add('removing'); setTimeout(()=>t.remove(),250); }, dur);
+}
+
+function showHakimSession(hakim) {
+  document.getElementById('sessionChip').classList.remove('hidden');
+  document.getElementById('sessionName').textContent = hakim.nama;
+  document.getElementById('logoutBtn').classList.remove('hidden');
+}
+
+</script>
+</body>
+</html>

@@ -1,0 +1,494 @@
+/*
+ * ================================================================
+ *  document-previewer.css  v1.1
+ *  Style untuk DocumentPreviewer
+ * ================================================================
+ */
+
+
+/* ── Variables ─────────────────────────────────────────────── */
+:root {
+    --dp-bg        : #111318;
+    --dp-surface   : #1c1f26;
+    --dp-border    : rgba(255,255,255,0.08);
+    --dp-text      : #f1f5f9;
+    --dp-text-muted: rgba(255,255,255,0.45);
+    --dp-accent    : #3b82f6;
+    --dp-accent-2  : #22c55e;
+    --dp-radius    : 10px;
+    --dp-header-h  : 58px;
+    --dp-footer-h  : 58px;
+    --dp-width     : 58%;
+}
+
+/* ── Keyframes ─────────────────────────────────────────────── */
+@keyframes dp-slide-in {
+    from { transform: translateX(100%); opacity: 0.6; }
+    to   { transform: translateX(0);    opacity: 1; }
+}
+
+@keyframes dp-spin {
+    to { transform: rotate(360deg); }
+}
+
+@keyframes dp-fade-in {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+
+/* ── Modal Overlay ─────────────────────────────────────────── */
+.dp-modal {
+    display: none;
+    position: fixed;
+    z-index: 9000;
+    top: 0;
+    right: 0;
+    width: var(--dp-width);
+    height: 100%;
+    background: var(--dp-bg);
+    font-family: -apple-system, 'Segoe UI', 'Inter', sans-serif;
+    box-sizing: border-box;
+    box-shadow: -8px 0 40px rgba(0,0,0,0.5);
+}
+
+.dp-modal.show {
+    display: block;
+    animation: dp-slide-in 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+@media (max-width: 768px) {
+    .dp-modal { width: 100%; }
+}
+
+
+/* ── Header ────────────────────────────────────────────────── */
+.dp-header {
+    position: fixed;
+    top: 0; right: 0;
+    width: var(--dp-width);
+    height: var(--dp-header-h);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px 0 18px;
+    background: var(--dp-surface);
+    border-bottom: 1px solid var(--dp-border);
+    z-index: 9001;
+    box-sizing: border-box;
+    gap: 12px;
+}
+
+@media (max-width: 768px) { .dp-header { width: 100%; } }
+
+.dp-header-left {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    min-width: 0;
+    flex: 1;
+}
+
+.dp-file-icon {
+    width: 34px; height: 34px;
+    border-radius: 8px;
+    background: rgba(59,130,246,0.15);
+    border: 1px solid rgba(59,130,246,0.25);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+}
+
+.dp-title-wrap {
+    min-width: 0;
+}
+
+.dp-title {
+    font-size: 0.88em;
+    font-weight: 600;
+    color: var(--dp-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.3;
+}
+
+.dp-subtitle {
+    font-size: 0.73em;
+    color: var(--dp-text-muted);
+    margin-top: 1px;
+    white-space: nowrap;
+}
+
+.dp-header-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+/* Page indicator (e.g. "3 / 12") */
+.dp-page-indicator {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid var(--dp-border);
+    border-radius: 6px;
+    padding: 3px 10px;
+    font-size: 0.78em;
+    font-weight: 600;
+    color: var(--dp-text);
+    font-variant-numeric: tabular-nums;
+}
+
+.dp-page-sep {
+    color: var(--dp-text-muted);
+    font-weight: 400;
+}
+
+.dp-close {
+    width: 32px; height: 32px;
+    flex-shrink: 0;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid var(--dp-border);
+    border-radius: 8px;
+    color: var(--dp-text-muted);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s, color 0.15s, transform 0.2s;
+}
+
+.dp-close:hover {
+    background: rgba(239,68,68,0.2);
+    border-color: rgba(239,68,68,0.4);
+    color: #fca5a5;
+    transform: rotate(90deg);
+}
+
+
+/* ── Scrollable Container ──────────────────────────────────── */
+.dp-container {
+    position: fixed;
+    top: var(--dp-header-h);
+    right: 0;
+    width: var(--dp-width);
+    height: calc(100vh - var(--dp-header-h) - var(--dp-footer-h));
+    overflow: hidden;
+    background: var(--dp-bg);
+    cursor: grab;
+    z-index: 9000;
+    box-sizing: border-box;
+}
+
+@media (max-width: 768px) { .dp-container { width: 100%; } }
+
+.dp-container:active { cursor: grabbing; }
+
+.dp-container * {
+    -webkit-user-drag: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+
+/* ── Viewer ────────────────────────────────────────────────── */
+.dp-modal #dp-viewer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transform-origin: center top;
+    padding: 24px 20px;
+    min-height: 100%;
+    width: 100%;
+    background: transparent;
+    gap: 16px;
+}
+
+.dp-modal #dp-viewer canvas {
+    display: block;
+    margin: 0 auto;
+    max-width: 90%;
+    background: #fff !important;
+    box-shadow: 0 2px 20px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.06);
+    border-radius: 4px;
+}
+
+.dp-modal #dp-viewer img {
+    pointer-events: none;
+    -webkit-user-drag: none;
+    border-radius: 6px;
+    box-shadow: 0 4px 32px rgba(0,0,0,0.6);
+}
+
+
+/* ── Loading State ─────────────────────────────────────────── */
+.dp-loading {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    color: var(--dp-text);
+    z-index: 10;
+    text-align: center;
+    padding: 24px 32px;
+    pointer-events: none;
+    animation: dp-fade-in 0.25s ease;
+}
+
+.dp-spinner-wrap {
+    width: 48px; height: 48px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 4px;
+}
+
+.dp-spinner {
+    width: 28px; height: 28px;
+    border: 3px solid rgba(255,255,255,0.12);
+    border-top-color: var(--dp-accent);
+    border-radius: 50%;
+    animation: dp-spin 0.7s linear infinite;
+}
+
+.dp-loading-title {
+    font-size: 0.88em;
+    font-weight: 600;
+    color: var(--dp-text);
+    margin: 0;
+}
+
+.dp-loading-sub {
+    font-size: 0.78em;
+    color: var(--dp-text-muted);
+    margin: 0;
+}
+
+/* Error state */
+.dp-error-icon {
+    font-size: 2em;
+    margin-bottom: 4px;
+}
+
+.dp-error-title {
+    font-size: 0.9em;
+    font-weight: 600;
+    color: #fca5a5;
+    margin: 0;
+}
+
+.dp-error-msg {
+    font-size: 0.78em;
+    color: var(--dp-text-muted);
+    margin: 0;
+    max-width: 240px;
+    line-height: 1.5;
+}
+
+.dp-error-btn {
+    pointer-events: all;
+    margin-top: 6px;
+    padding: 8px 20px;
+    background: var(--dp-accent);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.83em;
+    font-weight: 600;
+    font-family: inherit;
+    transition: opacity 0.2s, transform 0.15s;
+    display: flex; align-items: center; gap: 6px;
+}
+
+.dp-error-btn:hover { opacity: 0.88; transform: translateY(-1px); }
+
+
+/* ── Controls Toolbar ──────────────────────────────────────── */
+.dp-controls {
+    position: fixed;
+    bottom: 0; right: 0;
+    width: var(--dp-width);
+    height: var(--dp-footer-h);
+    padding: 0 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    background: var(--dp-surface);
+    border-top: 1px solid var(--dp-border);
+    z-index: 9001;
+    box-sizing: border-box;
+}
+
+@media (max-width: 768px) {
+    .dp-controls {
+        width: 100%;
+        gap: 3px;
+        padding: 0 10px;
+    }
+}
+
+.dp-controls-group {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.dp-divider {
+    width: 1px;
+    height: 22px;
+    background: var(--dp-border);
+    margin: 0 6px;
+    flex-shrink: 0;
+}
+
+/* Base button */
+.dp-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    height: 34px;
+    padding: 0 10px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--dp-text-muted);
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 0.78em;
+    font-weight: 600;
+    white-space: nowrap;
+    transition: background 0.15s, color 0.15s, border-color 0.15s, transform 0.12s;
+}
+
+.dp-btn:hover {
+    background: rgba(255,255,255,0.08);
+    border-color: var(--dp-border);
+    color: var(--dp-text);
+}
+
+.dp-btn:active { transform: scale(0.95); }
+
+/* Icon-only button */
+.dp-btn-icon {
+    width: 34px;
+    padding: 0;
+}
+
+/* Zoom label in toolbar */
+.dp-zoom-label {
+    font-size: 0.78em;
+    font-weight: 700;
+    color: var(--dp-text);
+    min-width: 38px;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.2px;
+}
+
+/* Accent button (Buka) */
+.dp-btn-accent {
+    background: rgba(34,197,94,0.12);
+    border-color: rgba(34,197,94,0.25);
+    color: #4ade80;
+    padding: 0 14px;
+    gap: 6px;
+}
+
+.dp-btn-accent:hover {
+    background: rgba(34,197,94,0.22);
+    border-color: rgba(34,197,94,0.45);
+    color: #86efac;
+}
+
+.dp-btn-accent span {
+    font-size: 0.8em;
+}
+
+
+/* ================================================================
+   OPSIONAL: Split View
+================================================================ */
+/*
+.dp-split-left {
+    width: 42% !important;
+    left: 0 !important;
+    right: auto !important;
+}
+*/
+
+
+/* ── Custom Scrollbars ──────────────────────────────────────── */
+/* Synced with transform panX/panY — works with overflow:hidden  */
+
+.dp-scrollbar {
+    position: absolute;
+    z-index: 20;
+    border-radius: 4px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    pointer-events: all;
+}
+
+/* Show scrollbar on container hover or when actively scrolling */
+.dp-container:hover .dp-scrollbar,
+.dp-scrollbar.active {
+    opacity: 1;
+}
+
+/* Vertical scrollbar — right edge */
+.dp-scrollbar-v {
+    top: 0;
+    right: 3px;
+    width: 8px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Horizontal scrollbar — bottom edge */
+.dp-scrollbar-h {
+    bottom: 3px;
+    left: 0;
+    height: 8px;
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+}
+
+.dp-scrollbar-thumb {
+    position: absolute;
+    background: rgba(255, 255, 255, 0.22);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+    min-height: 32px;
+    min-width: 32px;
+}
+
+.dp-scrollbar-thumb:hover,
+.dp-scrollbar-thumb.dragging {
+    background: rgba(255, 255, 255, 0.45);
+}
+
+/* Vertical thumb fills width of track */
+.dp-scrollbar-v .dp-scrollbar-thumb {
+    left: 0;
+    right: 0;
+    width: 100%;
+}
+
+/* Horizontal thumb fills height of track */
+.dp-scrollbar-h .dp-scrollbar-thumb {
+    top: 0;
+    bottom: 0;
+    height: 100%;
+}

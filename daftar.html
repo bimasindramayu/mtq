@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Form Pendaftaran – MTQ 2026</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" type="image/png" href="assets/mtq.png">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    /* ── Team / Member Styles ─────────────────── */
+    .tipe-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 14px;border-radius:999px;font-size:13px;font-weight:700;letter-spacing:.3px}
+    .tipe-badge.individu{background:#d1fae5;color:#065f46}
+    .tipe-badge.team{background:#fef3c7;color:#b45309}
+
+    .member-card{background:var(--gray-50);border:1.5px solid var(--gray-200);border-radius:var(--radius-lg);padding:0;overflow:hidden;margin-bottom:16px;transition:all .25s}
+    .member-card.error-card{border-color:#ef4444}
+    .member-card-header{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:var(--white);border-bottom:1px solid var(--gray-200);gap:10px}
+    .member-num{display:flex;align-items:center;gap:10px}
+    .member-num-badge{width:32px;height:32px;border-radius:50%;background:var(--emerald);color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0}
+    .member-num-badge.ketua{background:var(--gold)}
+    .member-name-preview{font-size:13px;font-weight:600;color:var(--gray-600)}
+    .member-age-tag{font-size:11px;padding:3px 8px;border-radius:999px;font-weight:600}
+    .member-age-tag.ok{background:var(--emerald-xs);color:var(--emerald)}
+    .member-age-tag.err{background:#fef2f2;color:#dc2626}
+    .member-card-body{padding:20px}
+
+    .btn-remove-member{background:#fef2f2;color:#dc2626;border:none;border-radius:var(--radius-sm);padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;flex-shrink:0}
+    .btn-remove-member:hover{background:#dc2626;color:#fff}
+    .btn-add-member{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:14px;border:2px dashed var(--emerald-light);border-radius:var(--radius-md);background:var(--emerald-xs);color:var(--emerald);font-size:14px;font-weight:600;cursor:pointer;transition:all .2s;margin-bottom:8px}
+    .btn-add-member:hover{background:var(--emerald-pale);border-color:var(--emerald)}
+    .btn-add-member:disabled{opacity:.4;cursor:not-allowed}
+
+    .team-summary-bar{background:var(--emerald-xs);border:1px solid var(--emerald-light);border-radius:var(--radius-sm);padding:10px 14px;font-size:13px;color:var(--emerald);display:flex;align-items:center;gap:8px;margin-bottom:16px}
+
+    .upload-member-section{background:var(--gray-50);border:1px solid var(--gray-200);border-radius:var(--radius-lg);padding:20px;margin-bottom:16px}
+    .upload-member-title{display:flex;align-items:center;gap:10px;font-size:15px;font-weight:700;color:var(--gray-800);margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid var(--gray-200)}
+
+    .form-step{display:none}
+    .form-step.active{display:block}
+    .hidden{display:none!important}
+    #ageChip{display:inline-flex!important}
+  </style>
+</head>
+<body class="form-page">
+
+<!-- NAVBAR -->
+<nav class="navbar" id="navbar">
+  <div class="nav-logo">
+    <div class="logo-icon">📖</div>
+    <div>
+      <div class="logo-text">MTQ 2026</div>
+      <div class="logo-sub">Kab. Indramayu</div>
+    </div>
+  </div>
+  <ul class="nav-links">
+    <li><a href="index.html">← Beranda</a></li>
+    <li><a href="cekstatus.html">Cek Status Pendaftaran</a></li>
+  </ul>
+  <div class="nav-actions">
+    <button class="dark-toggle" id="darkToggle">🌙</button>
+    <button class="hamburger" id="hamburger"><span></span><span></span><span></span></button>
+  </div>
+</nav>
+<nav class="mobile-nav" id="mobileNav">
+  <a href="index.html">← Kembali ke Beranda</a>
+  <a href="cekstatus.html">🔍 Cek Status Pendaftaran</a>
+</nav>
+
+<!-- HEADER -->
+<div class="form-header">
+  <h1>📝 Form Pendaftaran MTQ 2026</h1>
+  <p>MTQ Kabupaten Indramayu — Isi data dengan benar dan lengkap</p>
+</div>
+
+<!-- ══ LOADING AWAL — tampil sejak render pertama halaman, sebelum -->
+<!-- status pendaftaran dipastikan dari server. Mencegah "kilasan" -->
+<!-- step 1 (pilih cabang & kecamatan) sempat terlihat saat ternyata -->
+<!-- pendaftaran sedang tutup. -->
+<div id="initLoadingContainer" style="padding:100px 24px;text-align:center">
+  <div class="spinner" style="margin:0 auto 20px"></div>
+  <p style="font-size:15px;font-weight:600;color:var(--gray-700)">Memuat form pendaftaran...</p>
+  <small style="font-size:13px;color:var(--gray-400)">Mohon tunggu, sedang memeriksa status pendaftaran</small>
+</div>
+
+<!-- STEPS BAR -->
+<div class="steps-bar hidden">
+  <div class="steps-list">
+    <div class="step active" id="si1"><div class="step-circle">1</div><div class="step-label">Pilih Lomba</div></div>
+    <div class="step"        id="si2"><div class="step-circle">2</div><div class="step-label">Data Peserta</div></div>
+    <div class="step"        id="si3"><div class="step-circle">3</div><div class="step-label">Upload Berkas</div></div>
+  </div>
+</div>
+
+<!-- ══ FORM CONTAINER ══════════════════════════════ -->
+<div id="formContainer" class="hidden">
+<div class="form-wrapper">
+<form id="regForm" onsubmit="return false">
+
+<!-- ═══ STEP 1 : PILIH LOMBA & KECAMATAN ═══════════ -->
+<div class="form-step active" id="step1">
+  <div class="form-card">
+    <div class="form-section-header">
+      <div class="form-section-icon">🏆</div>
+      <div><h3>Pilih Cabang Lomba</h3><p>Tentukan cabang dan kecamatan sebelum mengisi data peserta</p></div>
+    </div>
+    <div class="form-body">
+      <div class="form-grid">
+
+        <!-- Kecamatan -->
+        <div class="field-group full">
+          <label class="field-label" for="kecamatan">Kecamatan / Kafilah <span class="req">*</span></label>
+          <select id="kecamatan" class="field-select" required>
+            <option value="">-- Pilih Kecamatan --</option>
+            <option>Anjatan</option><option>Arahan</option><option>Balongan</option>
+            <option>Bangodua</option><option>Bongas</option><option>Cantigi</option>
+            <option>Cikedung</option><option>Gabuswetan</option><option>Gantar</option>
+            <option>Haurgeulis</option><option>Indramayu</option><option>Jatibarang</option>
+            <option>Juntinyuat</option><option>Kandanghaur</option><option>Karangampel</option>
+            <option>Kedokan Bunder</option><option>Kertasemaya</option><option>Krangkeng</option>
+            <option>Kroya</option><option>Lelea</option><option>Lohbener</option>
+            <option>Losarang</option><option>Patrol</option><option>Pasekan</option>
+            <option>Sindang</option><option>Sliyeg</option><option>Sukagumiwang</option>
+            <option>Sukra</option><option>Terisi</option><option>Tukdana</option>
+            <option>Widasari</option>
+          </select>
+          <div class="field-error"></div>
+        </div>
+
+        <!-- Cabang Lomba -->
+        <div class="field-group full">
+          <label class="field-label" for="cabang_lomba">
+            Cabang Lomba <span class="req">*</span>
+            <span id="quotaBadge" class="quota-badge"></span>
+          </label>
+          <select id="cabang_lomba" class="field-select" required>
+            <option value="">Memuat data...</option>
+          </select>
+          <div class="field-error"></div>
+          <!-- Tipe badge (auto-detect, shown after selection) -->
+          <div id="tipeInfoBox" style="display:none;margin-top:10px">
+            <span id="tipeBadge" class="tipe-badge individu">👤 Individu</span>
+            <span id="tipeDesc" style="font-size:13px;color:var(--gray-500);margin-left:8px"></span>
+          </div>
+          <!-- Syarat usia (auto-detect) -->
+          <div id="ageRuleBox" style="display:none;margin-top:10px">
+            <div style="background:var(--gold-pale);border:1px solid var(--gold-bright);border-radius:var(--radius-sm);padding:10px 14px;font-size:13px;color:var(--gold);display:flex;align-items:center;gap:8px">
+              <span>⚠️</span><span id="ageRuleText"></span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    <div class="form-nav">
+      <a href="index.html" class="btn btn-outline">← Beranda</a>
+      <button type="button" class="btn btn-emerald" onclick="goToStep2()">Selanjutnya →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ STEP 2 : DATA PESERTA / ANGGOTA TIM ════════ -->
+<div class="form-step" id="step2">
+  <div class="form-card">
+    <div class="form-section-header">
+      <div class="form-section-icon">👤</div>
+      <div>
+        <h3 id="step2Title">Data Peserta</h3>
+        <p id="step2Subtitle">Isi data diri dengan lengkap dan benar sesuai identitas resmi</p>
+      </div>
+    </div>
+    <div class="form-body">
+      <!-- Summary bar (team) -->
+      <div class="team-summary-bar hidden" id="teamSummaryBar">
+        <span>👥</span>
+        <span id="teamSummaryText">Tim: 2–3 anggota</span>
+      </div>
+
+      <!-- Member forms container -->
+      <div id="memberFormsContainer"></div>
+
+      <!-- Add member button (team only) -->
+      <button type="button" class="btn-add-member hidden" id="addMemberBtn" onclick="addMember()">
+        ➕ Tambah Anggota (maks. 3 orang)
+      </button>
+    </div>
+    <div class="form-nav">
+      <button type="button" class="btn btn-outline" onclick="renderStep(1)">← Kembali</button>
+      <button type="button" class="btn btn-emerald" onclick="goToStep3()">Selanjutnya →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ STEP 3 : UPLOAD BERKAS ══════════════════════ -->
+<div class="form-step" id="step3">
+  <div class="form-card">
+    <div class="form-section-header">
+      <div class="form-section-icon">📄</div>
+      <div>
+        <h3>Upload Berkas</h3>
+        <p>Format JPG/PNG/PDF — Maksimal 2 MB per file</p>
+      </div>
+    </div>
+    <div class="form-body">
+
+      <!-- Per-member uploads container -->
+      <div id="memberUploadsContainer"></div>
+
+      <!-- Surat Rekomendasi — FIX #11: MANDATORY -->
+      <div class="upload-member-section">
+        <div class="upload-member-title">
+          <span style="font-size:20px">📋</span>
+          <div>
+            <div>Surat Rekomendasi <span class="req">*</span></div>
+            <div style="font-size:12px;font-weight:400;color:var(--emerald)">Wajib — Dari sekolah/pesantren/instansi</div>
+          </div>
+        </div>
+        <div class="upload-zone" id="rekomZone">
+          <input type="file" accept="image/*,application/pdf" id="rekomInput">
+          <div class="upload-icon" id="rekomIcon">📋</div>
+          <h4>Upload Surat Rekomendasi</h4>
+          <p>JPG/PNG/PDF — Maks. 2 MB <span class="req">*</span></p>
+          <img id="rekomThumb" class="upload-thumb" style="display:none">
+        </div>
+        <button type="button" class="upload-camera-btn">📷 Ambil Foto dari Kamera</button>
+        <input type="file" accept="image/*" capture="environment" class="upload-capture-input" style="display:none">
+        <div class="upload-preview" id="rekomPreview">
+          <span class="file-icon">📄</span>
+          <span class="file-name"></span>
+          <span class="file-size"></span>
+          <button type="button" class="remove-file" onclick="removeFile('rekom')">✕</button>
+        </div>
+      </div>
+
+      <!-- Persetujuan -->
+      <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;padding:14px;border:1.5px solid var(--gray-200);border-radius:var(--radius-sm);transition:all .2s">
+        <input type="checkbox" id="agreement" style="margin-top:2px;width:16px;height:16px;accent-color:var(--emerald);flex-shrink:0">
+        <span style="font-size:13px;color:var(--gray-600)">
+          Saya menyatakan bahwa seluruh data yang diisikan adalah benar dan saya bertanggung jawab atas kebenaran informasi tersebut. Saya bersedia mengikuti seluruh ketentuan MTQ 2026.
+        </span>
+      </label>
+
+    </div>
+    <div class="form-nav">
+      <button type="button" class="btn btn-outline" onclick="renderStep(2)">← Kembali</button>
+      <button type="button" class="btn btn-primary btn-lg" id="submitBtn" onclick="submitForm()">
+        ✨ Kirim Pendaftaran
+      </button>
+    </div>
+  </div>
+</div>
+
+</form>
+</div>
+</div>
+
+<!-- ══ PENDAFTARAN TIDAK BUKA (belum dibuka / sudah ditutup) ══ -->
+<!-- FIX: sebelumnya status tutup/belum_buka dari server cuma memicu -->
+<!-- toast 10 detik di daftar.js, form tetap bisa diisi & baru ditolak -->
+<!-- saat submit. Sekarang seluruh form diganti kartu ini di awal. -->
+<div id="closedContainer" class="hidden" style="padding:40px 24px 80px">
+  <div class="success-card">
+    <div class="success-icon" id="closedIcon">🔒</div>
+    <h2 style="font-family:var(--font-display);font-size:26px;font-weight:700;color:var(--gray-800);margin-bottom:8px" id="closedTitle">Pendaftaran Ditutup</h2>
+    <p style="color:var(--gray-500);margin-bottom:6px" id="closedMsg">Pendaftaran online MTQ 2026 sudah tidak menerima peserta baru.</p>
+
+    <div class="ornament-divider"><div class="diamond"></div></div>
+
+    <div class="participant-detail" id="closedDetail">
+      <!-- diisi oleh JS: tanggal buka & tutup pendaftaran -->
+    </div>
+
+    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:20px">
+      <a href="index.html" class="btn btn-emerald">🏠 Kembali ke Beranda</a>
+      <a href="cekstatus.html" class="btn btn-outline">🔍 Cek Status Pendaftaran</a>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SUCCESS PAGE ══════════════════════════════════ -->
+<div id="successContainer" class="hidden" style="padding:40px 24px 80px">
+  <div class="success-card">
+    <div class="success-icon">🎉</div>
+    <h2 style="font-family:var(--font-display);font-size:28px;font-weight:700;color:var(--emerald);margin-bottom:6px">Pendaftaran Berhasil!</h2>
+    <p style="color:var(--gray-500);margin-bottom:10px">Nomor Pendaftaran:</p>
+    <div class="reg-number" id="successRegNum">MTQ2026-0001</div>
+
+    <div class="ornament-divider"><div class="diamond"></div></div>
+
+    <div class="participant-detail" id="successDetail">
+      <!-- filled by JS -->
+    </div>
+
+    <p style="font-size:13px;color:var(--gray-500);margin:16px 0 8px">QR Code Peserta:</p>
+    <div id="qrcode"></div>
+
+    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:20px">
+      <button class="btn btn-emerald" onclick="downloadPDF()">⬇️ Download Bukti PDF</button>
+      <button class="btn btn-outline" onclick="daftarPesertaLain()">➕ Daftar Peserta Lain</button>
+      <a href="index.html" class="btn btn-outline">🏠 Beranda</a>
+    </div>
+
+    <div style="margin-top:20px;padding:12px 16px;background:var(--gold-pale);border-radius:var(--radius-sm);font-size:13px;color:var(--gold)">
+      ⚠️ Simpan nomor pendaftaran Anda. Panitia akan menghubungi via WhatsApp untuk konfirmasi.
+    </div>
+  </div>
+</div>
+
+<!-- LOADING -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-box" style="width:340px;max-width:90vw">
+    <div class="spinner"></div>
+    <p class="loading-msg" style="margin:12px 0 4px;font-weight:700;font-size:15px">Memproses pendaftaran...</p>
+    <small class="loading-sub" style="color:var(--gray-400);font-size:13px">Mohon tunggu, jangan tutup halaman ini</small>
+    <!-- Progress bar -->
+    <div style="margin-top:16px;width:100%">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <span style="font-size:11px;color:var(--gray-400);font-weight:600;text-transform:uppercase;letter-spacing:.5px">Progress</span>
+        <span class="progress-pct" style="font-size:13px;font-weight:700;color:var(--emerald);font-variant-numeric:tabular-nums"></span>
+      </div>
+      <div style="background:var(--gray-200);border-radius:999px;height:8px;overflow:hidden">
+        <div class="progress-bar-inner" style="height:100%;width:0%;background:linear-gradient(90deg,var(--emerald),#10b981);border-radius:999px;transition:width .4s ease"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast-container" id="toastContainer"></div>
+<script src="js/config.js"></script>
+<script src="js/daftar.js"></script>
+</body>
+</html>
