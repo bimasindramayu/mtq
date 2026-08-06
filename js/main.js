@@ -267,8 +267,27 @@ function jsonp(url, cbPrefix, fn, timeout = 8000) {
   const cbName = cbPrefix + '_' + Date.now();
   const script = document.createElement('script');
   let timer;
+  let settled = false;   // FIX: cegah fn() terpanggil dua kali (race antara sukses & timeout)
+
+  function fail() {
+    if (settled) return;
+    settled = true;
+    delete window[cbName];
+    script.remove();
+    // Gagal silently — tampilkan 0
+    document.querySelectorAll('[data-stat]').forEach(el => { el.textContent = '0'; });
+    // FIX: SEBELUMNYA saat gagal/timeout, fn() tidak pernah dipanggil sama
+    // sekali — caller (loadRegStatus, loadStats) tidak pernah tahu request-nya
+    // gagal, jadi UI macet selamanya di teks loading awal (mis. "⏳ Memuat
+    // status pendaftaran..."), meski kedua caller itu SUDAH punya logic
+    // fallback sendiri untuk kasus data kosong/gagal. Panggil fn(null) di
+    // sini supaya fallback masing-masing caller benar-benar aktif.
+    try { fn(null); } catch(e) {}
+  }
 
   window[cbName] = (data) => {
+    if (settled) return;
+    settled = true;
     clearTimeout(timer);
     try { fn(data); } catch(e) {}
     delete window[cbName];
@@ -276,19 +295,8 @@ function jsonp(url, cbPrefix, fn, timeout = 8000) {
   };
 
   script.src = `${url}&callback=${cbName}`;
-  script.onerror = () => {
-    clearTimeout(timer);
-    delete window[cbName];
-    script.remove();
-    // Gagal silently — tampilkan 0
-    document.querySelectorAll('[data-stat]').forEach(el => { el.textContent = '0'; });
-  };
-
-  timer = setTimeout(() => {
-    delete window[cbName];
-    script.remove();
-    document.querySelectorAll('[data-stat]').forEach(el => { el.textContent = '0'; });
-  }, timeout);
+  script.onerror = fail;
+  timer = setTimeout(fail, timeout);
 
   document.head.appendChild(script);
 }
