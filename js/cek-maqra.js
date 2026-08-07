@@ -1730,18 +1730,21 @@ async function postJSON(payload, timeout = 30000) {
     });
   } catch (err) {
     clearTimeout(timer);
+    // FIX: detail troubleshooting (Deploy GAS, akses "Anyone", dst) SEBELUMNYA
+    // langsung jadi err.message yang di-throw — dan di banyak tempat pemanggil
+    // fungsi ini, err.message ditempel langsung ke showToast(...) yang tampil
+    // ke user biasa. User biasa (atau admin yang cuma salah ketik password di
+    // halaman lain yang pola errornya sama) tidak bisa & tidak perlu tahu soal
+    // "Deploy GAS" — itu instruksi buat developer, bukan buat mereka. Sekarang:
+    // detail lengkap hanya masuk console (buat developer buka devtools), yang
+    // di-throw ke pemanggil cuma pesan pendek yang wajar dibaca siapa saja.
     if (err.name === 'AbortError') {
-      throw new Error('Request timeout (' + Math.round(timeout / 1000) + 's) — server lambat merespons');
+      log.error('[MTQ] postJSON timeout ke', apiUrl, '— server lambat merespons');
+      throw new Error('Server tidak merespons — coba lagi sesaat lagi.');
     }
-    throw new Error(
-      'Gagal menghubungi server. Pastikan:\n' +
-      '1. Deploy GAS sudah diperbarui (Re-deploy → New version)\n' +
-      '2. Akses: "Anyone" (bukan hanya yang punya akun Google)\n' +
-      '3. Halaman ini dibuka lewat http/https (mis. server lokal atau GitHub Pages) —\n' +
-      '   BUKAN dibuka langsung dari file (file://), karena browser membatasi\n' +
-      '   permintaan lintas-origin dari file:// secara berbeda.\n' +
-      'Detail teknis: ' + err.message
-    );
+    log.error('[MTQ] postJSON gagal ke', apiUrl, '—', err.message,
+      '| Cek: (1) deploy GAS versi terbaru, (2) akses deployment "Anyone", (3) halaman dibuka via http/https bukan file://.');
+    throw new Error('Tidak bisa terhubung ke server. Periksa koneksi internet Anda, lalu coba lagi.');
   }
   clearTimeout(timer);
 
@@ -1773,18 +1776,19 @@ function _jsonp(baseUrl, timeout) {
       clearTimeout(timer);
       try { delete window[cbName]; } catch(_) { window[cbName] = undefined; }
       script.remove();
-      reject(new Error(
-        'Gagal menghubungi server. Pastikan:\n' +
-        '1. Deploy GAS sudah diperbarui (Re-deploy)\n' +
-        '2. Akses: "Anyone" (bukan hanya yang punya akun Google)\n' +
-        '3. URL di config.js sudah benar'
-      ));
+      // FIX: sama seperti postJSON() di atas — detail troubleshooting hanya
+      // ke console, pesan yang di-reject() (sering langsung tampil ke user
+      // via showToast(...+err.message)) sekarang pendek & tidak teknis.
+      log.error('[MTQ] JSONP gagal untuk', baseUrl,
+        '| Cek: (1) deploy GAS versi terbaru, (2) akses deployment "Anyone", (3) URL di config.js benar.');
+      reject(new Error('Tidak bisa terhubung ke server. Periksa koneksi internet Anda, lalu coba lagi.'));
     };
 
     timer = setTimeout(function() {
       try { delete window[cbName]; } catch(_) { window[cbName] = undefined; }
       script.remove();
-      reject(new Error('Request timeout (' + Math.round(timeout/1000) + 's) — server lambat merespons'));
+      log.error('[MTQ] JSONP timeout untuk', baseUrl);
+      reject(new Error('Server tidak merespons — coba lagi sesaat lagi.'));
     }, timeout);
 
     document.head.appendChild(script);

@@ -4,6 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Form Pendaftaran – MTQ 2026</title>
+  <!-- FIX: cegah browser (terutama di HP) menyimpan cache halaman lama —
+       lihat catatan sama di index.html -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <link rel="stylesheet" href="css/style.css">
   <link rel="icon" type="image/png" href="assets/mtq.png">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -328,7 +333,9 @@
 
 <!-- TOAST -->
 <div class="toast-container" id="toastContainer"></div>
-<script src="js/config.js"></script>
-<script src="js/daftar.js"></script>
+<!-- FIX: ?v= cache-busting — NAIKKAN setiap kali js/config.js atau
+     js/daftar.js diupdate (lihat catatan sama di index.html) -->
+<script src="js/config.js?v=20260807"></script>
+<script src="js/daftar.js?v=20260807"></script>
 </body>
 </html>

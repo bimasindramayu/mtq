@@ -4,6 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sistem Penilaian – MTQ 2026</title>
+  <!-- FIX: cegah browser (terutama di HP) menyimpan cache halaman lama —
+       lihat catatan sama di index.html -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <link rel="icon" type="image/png" href="assets/mtq.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Scheherazade+New:wght@400;700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -534,10 +539,14 @@
     .dp-scrollbar-v .dp-scrollbar-thumb{left:0;right:0;width:100%}
     .dp-scrollbar-h .dp-scrollbar-thumb{top:0;bottom:0;height:100%}
   </style>
-  <script src="js/config.js"></script>
+  <!-- FIX: ?v= cache-busting — NAIKKAN setiap kali js/config.js atau
+       js/document-previewer* diupdate (lihat catatan sama di index.html).
+       Catatan: logic utama halaman ini inline (bukan file .js terpisah),
+       jadi perlindungan utamanya justru meta Cache-Control di atas. -->
+  <script src="js/config.js?v=20260807"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="js/document-previewer.config.js"></script>
-  <script src="js/document-previewer.js"></script>
+  <script src="js/document-previewer.config.js?v=20260807"></script>
+  <script src="js/document-previewer.js?v=20260807"></script>
 </head>
 <body>
 

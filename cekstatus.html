@@ -4,6 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Cek Status & Ambil Maqra – MTQ 2026</title>
+  <!-- FIX: cegah browser (terutama di HP) menyimpan cache halaman lama —
+       lihat catatan sama di index.html -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <link rel="stylesheet" href="css/style.css">
   <!-- FIX #2: DocumentPreviewer — preview dokumen existing (foto/KTP/rekom) -->
   <link rel="stylesheet" href="js/document-previewer.css">
@@ -339,7 +344,9 @@
 <div class="confetti-container" id="confettiContainer"></div>
 
 <!-- PENTING: config.js HARUS dimuat pertama agar window.MTQ_API_URL tersedia -->
-<script src="js/config.js"></script>
+<!-- FIX: ?v= cache-busting — NAIKKAN setiap kali js/config.js atau
+     js/cek-maqra.js diupdate (lihat catatan sama di index.html) -->
+<script src="js/config.js?v=20260807"></script>
 <script>
   // Deteksi dini: warning jika API_URL tidak terkonfigurasi
   (function() {
@@ -357,9 +364,9 @@
 <!-- FIX #2: DocumentPreviewer — preview dokumen existing (foto/KTP/rekom).
      Pastikan 3 file ini ada di path yang sama dengan yang dipakai admin panel. -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="js/document-previewer.js"></script>
-<script src="js/document-previewer.config.js"></script>
+<script src="js/document-previewer.js?v=20260807"></script>
+<script src="js/document-previewer.config.js?v=20260807"></script>
 
-<script src="js/cek-maqra.js"></script>
+<script src="js/cek-maqra.js?v=20260807"></script>
 </body>
 </html>
