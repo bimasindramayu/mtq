@@ -207,20 +207,29 @@ function loadRegStatus() {
     }
   }
 
-  // Coba ambil dari API via JSONP
+  // FIX UTAMA: tampilkan status dari MTQ_CONFIG (lokal) DULU, sinkron,
+  // SEBELUM request network apa pun dikirim. MTQ_CONFIG.PENDAFTARAN_BUKA/
+  // TUTUP adalah sumber yang sama dengan PENDAFTARAN_CONFIG di config.gs
+  // (lihat catatan SATU-SATUNYA SUMBER di config.js) — jadi ini sudah benar
+  // untuk hampir semua kasus, dan sama sekali tidak bergantung ke jaringan.
+  // Banner TIDAK MUNGKIN lagi macet di teks loading walau request ke API
+  // gagal, lambat, atau diblokir di device tertentu. Pola ini menyamakan
+  // dengan fix yang sudah ada di loadConfig() → daftar.js.
+  if (localBuka && localTutup) {
+    const localStat = getRegStatus();   // dari config.js: 'belum_buka'|'buka'|'tutup'
+    applyStatus(localStat === 'buka', localStat, localBuka, localTutup);
+  }
+
+  // Baru setelah itu, coba upgrade ke data LIVE dari server. Satu-satunya
+  // hal yang bisa beda dari perhitungan lokal di atas adalah OVERRIDE manual
+  // admin (PENDAFTARAN_CONFIG.OVERRIDE di config.gs), yang memang tidak ada
+  // representasinya di MTQ_CONFIG. Kalau gagal/timeout: diamkan saja — banner
+  // sudah benar sejak baris di atas, tidak perlu fallback apa pun lagi di sini.
   jsonp(`${CONFIG.API_URL}?action=getStats`, 'mtqRegStatus', (data) => {
     if (data && data.success) {
       applyStatus(data.isOpen, data.status, data.buka, data.tutup);
-    } else if (localBuka && localTutup) {
-      // Fallback ke perhitungan lokal dari config.js
-      const now    = new Date();
-      const buka   = new Date(localBuka);
-      const tutup  = new Date(localTutup);
-      const isOpen = now >= buka && now < tutup;
-      const status = now < buka ? 'belum_buka' : isOpen ? 'buka' : 'tutup';
-      applyStatus(isOpen, status, localBuka, localTutup);
-    } else if (banner) {
-      banner.textContent = 'ℹ️ Status pendaftaran tidak tersedia';
+    } else if (!localBuka || !localTutup) {
+      if (banner) banner.textContent = 'ℹ️ Status pendaftaran tidak tersedia';
     }
   });
 }
@@ -257,46 +266,74 @@ function runRegCountdown(target, prefix) {
 }
 
 /**
- * JSONP helper — bypass CORS tanpa console error
- * @param {string} url       - URL endpoint
- * @param {string} cbPrefix  - prefix nama callback global
- * @param {Function} fn      - callback(data)
+ * API helper — fetch dulu, JSONP klasik sebagai fallback.
+ * FIX: disamakan dengan pola yang sudah terbukti jalan di daftar.js.
+ * Ini LEBIH TANGGUH daripada JSONP murni: fetch() bisa membaca body
+ * response walau server balas HTML (mis. halaman "Sign in" Google saat
+ * setting akses deployment tidak "Anyone", atau halaman error lain) —
+ * kasus yang bikin JSONP murni gagal TOTAL DIAM-DIAM (bukan cuma di
+ * fn() tidak terpanggil, tapi juga console error yang tidak pernah
+ * masuk ke onerror karena script-nya "berhasil" dimuat, isinya saja
+ * yang bukan JS valid). Kalau fetch gagal (mis. network benar2 putus),
+ * baru turun ke JSONP klasik sebagai jalur kedua.
+ * @param {string} url       - URL endpoint (sudah termasuk ?action=...)
+ * @param {string} cbPrefix  - prefix nama callback global (dipakai jalur fallback)
+ * @param {Function} fn      - callback(data) — dipanggil dgn null kalau gagal/timeout
  * @param {number} timeout   - ms sebelum dianggap gagal (default 8000)
  */
 function jsonp(url, cbPrefix, fn, timeout = 8000) {
+  fetch(url + '&callback=_noop', {
+    method: 'GET',
+    redirect: 'follow',
+    signal: AbortSignal.timeout ? AbortSignal.timeout(timeout) : undefined,
+  })
+    .then(res => {
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.text();
+    })
+    .then(text => {
+      // GAS JSONP membungkus JSON dalam callback(...) — coba ekstrak dulu
+      let json = null;
+      const match = text.match(/^[^(]+\((.+)\)\s*;?\s*$/s);
+      if (match) { try { json = JSON.parse(match[1]); } catch(e) { /* bukan JSON */ } }
+      if (!json) { try { json = JSON.parse(text); } catch(e) { /* bukan JSON juga */ } }
+
+      if (json) {
+        try { fn(json); } catch(e) { log.error('jsonp callback error', e); }
+      } else {
+        // Server balas HTML/format tak dikenal (mis. redirect login) — fallback
+        log.warn('Response bukan JSON, memakai fallback. Preview:', text.slice(0, 80));
+        fn(null);
+      }
+    })
+    .catch(err => {
+      // fetch gagal (network error, timeout, CORS block, dll) — coba JSONP klasik
+      log.warn('fetch gagal, mencoba JSONP klasik:', err.message);
+      _jsonpClassic(url, cbPrefix, fn, timeout);
+    });
+}
+
+// JSONP klasik — jalur kedua kalau fetch() sama sekali tidak bisa dipakai
+function _jsonpClassic(url, cbPrefix, fn, timeout) {
   const cbName = cbPrefix + '_' + Date.now();
   const script = document.createElement('script');
+  let done = false;
   let timer;
-  let settled = false;   // FIX: cegah fn() terpanggil dua kali (race antara sukses & timeout)
 
-  function fail() {
-    if (settled) return;
-    settled = true;
+  function cleanup(result) {
+    if (done) return;
+    done = true;
+    clearTimeout(timer);
     delete window[cbName];
     script.remove();
-    // Gagal silently — tampilkan 0
-    document.querySelectorAll('[data-stat]').forEach(el => { el.textContent = '0'; });
-    // FIX: SEBELUMNYA saat gagal/timeout, fn() tidak pernah dipanggil sama
-    // sekali — caller (loadRegStatus, loadStats) tidak pernah tahu request-nya
-    // gagal, jadi UI macet selamanya di teks loading awal (mis. "⏳ Memuat
-    // status pendaftaran..."), meski kedua caller itu SUDAH punya logic
-    // fallback sendiri untuk kasus data kosong/gagal. Panggil fn(null) di
-    // sini supaya fallback masing-masing caller benar-benar aktif.
-    try { fn(null); } catch(e) {}
+    try { fn(result); } catch(e) { log.error('JSONP callback error', e); }
   }
 
-  window[cbName] = (data) => {
-    if (settled) return;
-    settled = true;
-    clearTimeout(timer);
-    try { fn(data); } catch(e) {}
-    delete window[cbName];
-    script.remove();
-  };
+  window[cbName] = (data) => cleanup(data);
 
   script.src = `${url}&callback=${cbName}`;
-  script.onerror = fail;
-  timer = setTimeout(fail, timeout);
+  script.onerror = () => { log.warn('JSONP script error for', url); cleanup(null); };
+  timer = setTimeout(() => { log.warn('JSONP timeout for', url); cleanup(null); }, timeout);
 
   document.head.appendChild(script);
 }

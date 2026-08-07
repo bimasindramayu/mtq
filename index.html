@@ -5,6 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>MTQ 2026 – Kabupaten Indramayu</title>
   <meta name="description" content="Pendaftaran resmi MTQ ke-56 Tingkat Kabupaten Indramayu 2026.">
+  <!-- FIX: cegah browser (terutama di HP) menyimpan cache index.html yang
+       lama — supaya update konten/script selalu kepakai tanpa user perlu
+       hard-refresh atau clear cache manual. -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="icon" type="image/png" href="assets/mtq.png">
@@ -537,8 +543,13 @@
 
 <div class="toast-container" id="toastContainer"></div>
 
-<script src="js/config.js"></script>
-<script src="js/main.js"></script>
+<!-- FIX: query ?v=YYYYMMDD di bawah ini utk cache-busting. NAIKKAN angka
+     ini (mis. ganti ke tanggal hari itu) SETIAP KALI js/config.js atau
+     js/main.js diedit & diupload ulang — supaya browser (termasuk HP
+     yang sudah pernah buka halaman ini sebelumnya) langsung ambil versi
+     baru, bukan salinan lama dari cache. -->
+<script src="js/config.js?v=20260807"></script>
+<script src="js/main.js?v=20260807"></script>
 <script>
 // ── Hasil Penilaian Publik — index.html ──────────────────────
 // Variabel CABANG_LIST untuk filter pills (mirror dari penilaian.html)
