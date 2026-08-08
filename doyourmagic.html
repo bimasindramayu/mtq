@@ -397,21 +397,28 @@
         <!-- FIX #11: dua kemungkinan penyebab dipisah jelas — sebelumnya
            panduan ini cuma mengasumsikan "perlu re-deploy", padahal ada
            penyebab lain yang device-specific (aman di laptop, gagal di HP)
-           yaitu status login akun Google di browser HP tsb. Ini bug/perilaku
-           Google Apps Script yang sudah lama didokumentasikan komunitas:
-           exec URL bisa 404 tergantung akun Google mana yang sedang aktif
-           di browser (script.google.com kadang redirect ke .../u/1/... lalu
-           404). Redeploy TIDAK akan memperbaiki penyebab ini. -->
-        <div style="font-weight:700;color:#dc2626;margin-bottom:8px">📱 Kalau HANYA gagal di HP (aman di laptop)</div>
-        <p style="margin:0 0 6px;color:#374151;line-height:1.6">Kemungkinan besar ini bukan soal deployment, tapi status login akun Google di browser HP tsb — perilaku lama Google Apps Script yang bikin URL <code>/exec</code> bisa 404 tergantung akun mana yang sedang aktif.</p>
+           yaitu status login akun Google di browser HP tsb. INI SUDAH
+           DIKONFIRMASI (bukan cuma dugaan) lewat pengujian langsung: link
+           /exec yang sama GAGAL di tab normal (browser HP sedang login
+           akun Google) tapi BERHASIL di tab Samaran/Incognito (tanpa sesi
+           Google) — persis pola bug lama Google Apps Script yang banyak
+           dilaporkan komunitas: exec URL bisa 404 / "Sorry, unable to open
+           the file at this time" tergantung akun Google mana yang sedang
+           aktif di browser (script.google.com kadang redirect ke .../u/1/,
+           /u/2/, dst lalu gagal). Redeploy TERBUKTI TIDAK memperbaiki ini
+           (banyak laporan sudah coba, tetap gagal) — jadi jangan buang
+           waktu redeploy dulu kalau gejalanya persis "gagal di HP normal,
+           aman di Incognito". -->
+        <div style="font-weight:700;color:#dc2626;margin-bottom:8px">📱 Kalau HANYA gagal di HP (aman di laptop / Incognito)</div>
+        <p style="margin:0 0 6px;color:#374151;line-height:1.6">Ini status login akun Google di browser HP tsb — bug lama Google Apps Script, BUKAN masalah deployment. <strong>Re-deploy tidak akan memperbaikinya</strong> — pilih salah satu cara akses berikut:</p>
         <ol style="margin:0;padding-left:18px;color:#374151;line-height:1.8">
-          <li>Buka link uji koneksi di bawah <strong>langsung di browser HP</strong> (bukan lewat halaman ini) — lihat apa yang muncul</li>
-          <li>Kalau muncul halaman error/404 dari Google: coba <strong>logout akun Google lain</strong> yang sedang login di browser itu, atau buka di <strong>mode Samaran/Incognito</strong></li>
-          <li>Kalau perlu akses rutin dari HP, pertimbangkan pakai 1 profil browser terpisah khusus utk panel admin ini</li>
+          <li><strong>Paling praktis:</strong> buat 1 profil Chrome/browser terpisah khusus panel admin ini, tanpa akun Google login sama sekali — pakai itu tiap kali akses dari HP</li>
+          <li><strong>Alternatif cepat:</strong> logout akun Google tambahan di browser HP, sisakan maksimal 1 akun saja</li>
+          <li><strong>Untuk sekali pakai / darurat:</strong> buka selalu lewat tab Samaran/Incognito</li>
         </ol>
 
-        <div style="font-weight:700;color:#dc2626;margin:14px 0 8px">⚠️ Kalau gagal di SEMUA device</div>
-        <p style="margin:0 0 6px;color:#374151;line-height:1.6">Ini baru soal deployment — perlu re-deploy Google Apps Script:</p>
+        <div style="font-weight:700;color:#dc2626;margin:14px 0 8px">⚠️ Kalau gagal di SEMUA device (termasuk Incognito)</div>
+        <p style="margin:0 0 6px;color:#374151;line-height:1.6">Baru ini soal deployment — perlu re-deploy Google Apps Script:</p>
         <ol style="margin:0;padding-left:18px;color:#374151;line-height:1.8">
           <li>Buka <strong>script.google.com</strong></li>
           <li>Pilih project MTQ 2026</li>
