@@ -589,9 +589,9 @@ function createMemberCard(idx) {
         <div class="field-group full">
           <label class="field-label">Nama Lengkap <span class="req">*</span></label>
           <input type="text" class="field-input" id="m${idx}_nama"
-            placeholder="Nama sesuai KTP/KK/Akta"
+            placeholder="Nama sesuai KTP/KK/Akta" autocapitalize="characters"
             value="${state.members[idx]?.nama || ''}"
-            oninput="updatePreviewName(${idx},this.value)">
+            oninput="forceUpper(this);updatePreviewName(${idx},this.value)">
           <div class="field-error"></div>
         </div>
 
@@ -608,8 +608,9 @@ function createMemberCard(idx) {
         <div class="field-group">
           <label class="field-label">Tempat Lahir <span class="req">*</span></label>
           <input type="text" class="field-input" id="m${idx}_tempat_lahir"
-            placeholder="Kota/Kabupaten kelahiran"
-            value="${state.members[idx]?.tempat_lahir || ''}">
+            placeholder="Kota/Kabupaten kelahiran" autocapitalize="characters"
+            value="${state.members[idx]?.tempat_lahir || ''}"
+            oninput="forceUpper(this)">
           <div class="field-error"></div>
         </div>
 
@@ -655,7 +656,8 @@ function createMemberCard(idx) {
         <div class="field-group full">
           <label class="field-label">Alamat Lengkap <span class="req">*</span></label>
           <textarea class="field-textarea" id="m${idx}_alamat" rows="2"
-            placeholder="Jalan, RT/RW, Desa/Kel, Kecamatan">${state.members[idx]?.alamat || ''}</textarea>
+            placeholder="Jalan, RT/RW, Desa/Kel, Kecamatan" autocapitalize="characters"
+            oninput="forceUpper(this)">${state.members[idx]?.alamat || ''}</textarea>
           <div class="field-error"></div>
         </div>
 
@@ -668,7 +670,7 @@ function createMemberCard(idx) {
         <div class="form-grid">
           <div class="field-group">
             <label class="field-label">Nama Bank</label>
-            <input type="text" class="field-input" id="nama_bank" placeholder="BRI / BCA / Mandiri / dll" value="${state.members[idx]?.nama_bank || ''}">
+            <input type="text" class="field-input" id="nama_bank" placeholder="BRI / BCA / Mandiri / dll" autocapitalize="characters" value="${state.members[idx]?.nama_bank || ''}" oninput="forceUpper(this)">
           </div>
           <div class="field-group">
             <label class="field-label">Nomor Rekening</label>
@@ -676,7 +678,7 @@ function createMemberCard(idx) {
           </div>
           <div class="field-group full">
             <label class="field-label">Nama Pemilik Rekening</label>
-            <input type="text" class="field-input" id="nama_rekening" placeholder="Nama sesuai buku tabungan" value="${state.members[idx]?.nama_rekening || ''}">
+            <input type="text" class="field-input" id="nama_rekening" placeholder="Nama sesuai buku tabungan" autocapitalize="characters" value="${state.members[idx]?.nama_rekening || ''}" oninput="forceUpper(this)">
           </div>
         </div>
       </div>` : ''}
@@ -827,6 +829,24 @@ function checkNIKDuplicate(idx, nik) {
 function updatePreviewName(idx, val) {
   const el = document.getElementById(`preview-name-${idx}`);
   if (el) el.textContent = val.trim() || (!state.isTeam ? 'Peserta' : idx === 0 ? 'Ketua Tim' : `Anggota ${idx + 1}`);
+}
+
+// ── UX: paksa huruf besar saat mengetik (nama, tempat lahir, alamat, dst) ──
+// Nilai FINAL yang benar-benar disimpan ke sheet tetap dijamin oleh
+// backend (lihat normalizeUpperText_ di helper.gs, dipanggil dari
+// apiRegister_/apiPerbaikan_) — ini hanya supaya tampilan saat mengetik
+// sudah cocok dengan hasil akhir (termasuk di halaman sukses & PDF, yang
+// memakai data dari form ini apa adanya). Posisi kursor dijaga lewat
+// selectionStart/End supaya tidak "loncat" ke akhir teks tiap kali
+// mengetik satu huruf. Baris baru pada textarea Alamat SENGAJA tidak
+// dirapikan di sini — dibiarkan agar peserta tetap nyaman mengetik
+// alamat per baris; perataan jadi satu baris dilakukan di backend saat
+// disimpan (bukan di sini), supaya tidak mengganggu saat mengetik.
+function forceUpper(el) {
+  const start = el.selectionStart;
+  const end   = el.selectionEnd;
+  el.value = el.value.toUpperCase();
+  if (start !== null && end !== null) el.setSelectionRange(start, end);
 }
 
 function addMember() {
