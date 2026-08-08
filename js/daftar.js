@@ -589,7 +589,7 @@ function createMemberCard(idx) {
         <div class="field-group full">
           <label class="field-label">Nama Lengkap <span class="req">*</span></label>
           <input type="text" class="field-input" id="m${idx}_nama"
-            placeholder="Nama sesuai KTP/KK/Akta" autocapitalize="characters"
+            placeholder="Nama sesuai KTP/KK/KIA/Akta" autocapitalize="characters"
             value="${state.members[idx]?.nama || ''}"
             oninput="forceUpper(this);updatePreviewName(${idx},this.value)">
           <div class="field-error"></div>
@@ -970,7 +970,7 @@ function renderUploadSections() {
           <div class="upload-zone" id="ktpZone_${i}">
             <input type="file" accept="image/*,application/pdf" id="ktpInput_${i}">
             <div class="upload-icon" id="ktpIcon_${i}">🪪</div>
-            <h4>KTP / Kartu Keluarga</h4>
+            <h4>KTP / KK / KIA</h4>
             <p>JPG/PNG/PDF — Maks. 2 MB <span class="req">*</span></p>
             <img id="ktpThumb_${i}" class="upload-thumb" style="display:none">
           </div>
@@ -1254,7 +1254,7 @@ function validateStep3() {
       showToast('Upload Diperlukan', `Pas foto peserta ke-${i+1} belum diupload.`, 'error'); valid = false;
     }
     if (!state.files[`ktp_${i}`]) {
-      showToast('Upload Diperlukan', `KTP/KK peserta ke-${i+1} belum diupload.`, 'error'); valid = false;
+      showToast('Upload Diperlukan', `KTP/KK/KIA peserta ke-${i+1} belum diupload.`, 'error'); valid = false;
     }
   }
   // FIX #11: Surat Rekomendasi wajib
@@ -1292,7 +1292,7 @@ async function submitForm() {
     const membersData = await Promise.all(state.members.map(async (_, i) => {
       const pct = 10 + Math.round(((i+1)/totalMembers) * 40);
       showProgress(pct, `Konversi dokumen peserta ${i+1}/${totalMembers}...`,
-        `Foto, KTP, Sertifikat — ${String(document.getElementById('m'+i+'_nama')?.value||'Anggota '+(i+1)).replace(/[<>&"]/g,'')}`);
+        `Foto, KTP/KK/KIA, Sertifikat — ${String(document.getElementById('m'+i+'_nama')?.value||'Anggota '+(i+1)).replace(/[<>&"]/g,'')}`);
       log.info(`  → anggota ${i+1}: konversi foto, ktp, sertifikat`);
       const photoB64 = state.files[`photo_${i}`] ? await toBase64(state.files[`photo_${i}`]) : null;
       const ktpB64   = state.files[`ktp_${i}`]   ? await toBase64(state.files[`ktp_${i}`])   : null;

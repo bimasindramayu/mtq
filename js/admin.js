@@ -524,7 +524,7 @@ function memberUploadHTML(member, index) {
       <span style="font-size:20px">${index === 0 && state.selected?.tipe === 'team' ? '👑' : '👤'}</span>
       <div>
         <div>${label}</div>
-        <div style="font-size:12px;font-weight:400;color:var(--gray-400)">Upload pas foto dan KTP/KK</div>
+        <div style="font-size:12px;font-weight:400;color:var(--gray-400)">Upload pas foto dan KTP/KK/KIA</div>
       </div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
@@ -546,13 +546,13 @@ function memberUploadHTML(member, index) {
         </div>
       </div>
 
-      <!-- KTP/KK -->
+      <!-- KTP/KK/KIA -->
       <div class="field-group">
-        <label class="field-label">KTP / KK <span class="req">*</span></label>
+        <label class="field-label">KTP / KK / KIA <span class="req">*</span></label>
         <div class="upload-zone" id="ktpZone${member.id}">
           <input type="file" accept="image/jpeg,image/png,application/pdf" id="ktpInput${member.id}">
           <div class="upload-icon">🪪</div>
-          <h4 style="font-size:13px">Upload KTP/KK</h4>
+          <h4 style="font-size:13px">Upload KTP/KK/KIA</h4>
           <p>JPG/PNG/PDF — Maks. 2 MB</p>
         </div>
         <div class="upload-preview" id="ktpPreview${member.id}">
@@ -673,7 +673,7 @@ async function submitForm() {
   for (const m of state.members) {
     const name = m.data.nama_lengkap || `Anggota ${m.id}`;
     if (!m.files.photo) { showToast('Upload Diperlukan',`Pas foto ${name} belum diupload.`,'error'); return; }
-    if (!m.files.ktp)   { showToast('Upload Diperlukan',`KTP/KK ${name} belum diupload.`,'error'); return; }
+    if (!m.files.ktp)   { showToast('Upload Diperlukan',`KTP/KK/KIA ${name} belum diupload.`,'error'); return; }
   }
 
   state.submitting = true;

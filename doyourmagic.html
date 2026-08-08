@@ -1576,7 +1576,7 @@ function openDetail(nomor) {
             style="background:rgba(99,102,241,.1);border-color:rgba(99,102,241,.25);color:#818cf8">📁 Folder Drive</a>` : ''}
       </div>
       ${!linkRekom && !anggota.length && linkFolder ? `<p style="font-size:12px;color:var(--gray-400);margin-top:8px">
-        💡 File foto/KTP tersedia di Folder Drive di atas. Data lama mungkin belum menyimpan link individual.</p>` : ''}
+        💡 File foto/KTP/KK/KIA tersedia di Folder Drive di atas. Data lama mungkin belum menyimpan link individual.</p>` : ''}
     </div>`;
 
   document.getElementById('modalActions').innerHTML = `
@@ -1986,7 +1986,7 @@ function buildPesertaSection(r, nomor, anggota, isTeam, cabangConfig) {
           <div class="lbl">Dokumen</div>
           <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">
             ${fotoUrl?`<button class="doc-link" onclick="openDocPreview('${fotoUrlJs}','Foto - ${nameJsAttr}')">📸 Foto</button>`:'<span class="no-doc">Belum ada foto</span>'}
-            ${ktpUrl ?`<button class="doc-link" onclick="openDocPreview('${ktpUrlJs}', 'KTP - ${nameJsAttr}')">🪪 KTP/KK</button>`:'<span class="no-doc">Belum ada KTP</span>'}
+            ${ktpUrl ?`<button class="doc-link" onclick="openDocPreview('${ktpUrlJs}', 'KTP/KK/KIA - ${nameJsAttr}')">🪪 KTP/KK/KIA</button>`:'<span class="no-doc">Belum ada KTP/KIA</span>'}
             ${sertUrl?`<button class="doc-link" onclick="openDocPreview('${sertUrlJs}','Sertifikat - ${nameJsAttr}')">🏅 Sertifikat</button>`:''}
           </div>
         </div>
@@ -2029,7 +2029,7 @@ function buildPesertaSection(r, nomor, anggota, isTeam, cabangConfig) {
           <div class="lbl">Dokumen</div>
           <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">
             ${fotoUrl?`<button class="doc-link" onclick="openDocPreview('${fotoUrlJs}','Foto - ${nameJsAttr}')">📸 Foto</button>`:'<span class="no-doc">Belum ada foto</span>'}
-            ${ktpUrl ?`<button class="doc-link" onclick="openDocPreview('${ktpUrlJs}', 'KTP - ${nameJsAttr}')">🪪 KTP/KK</button>`:'<span class="no-doc">Belum ada KTP</span>'}
+            ${ktpUrl ?`<button class="doc-link" onclick="openDocPreview('${ktpUrlJs}', 'KTP/KK/KIA - ${nameJsAttr}')">🪪 KTP/KK/KIA</button>`:'<span class="no-doc">Belum ada KTP/KIA</span>'}
             ${sertUrl?`<button class="doc-link" onclick="openDocPreview('${sertUrlJs}','Sertifikat - ${nameJsAttr}')">🏅 Sertifikat</button>`:''}
           </div>
         </div>
