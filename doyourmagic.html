@@ -394,7 +394,24 @@
 
       <!-- Panduan deployment — hanya muncul saat JSONP gagal -->
       <div id="deployGuide" style="display:none;margin-top:16px;background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:14px;font-size:12px;text-align:left">
-        <div style="font-weight:700;color:#dc2626;margin-bottom:8px">⚠️ Perlu Re-Deploy Google Apps Script</div>
+        <!-- FIX #11: dua kemungkinan penyebab dipisah jelas — sebelumnya
+           panduan ini cuma mengasumsikan "perlu re-deploy", padahal ada
+           penyebab lain yang device-specific (aman di laptop, gagal di HP)
+           yaitu status login akun Google di browser HP tsb. Ini bug/perilaku
+           Google Apps Script yang sudah lama didokumentasikan komunitas:
+           exec URL bisa 404 tergantung akun Google mana yang sedang aktif
+           di browser (script.google.com kadang redirect ke .../u/1/... lalu
+           404). Redeploy TIDAK akan memperbaiki penyebab ini. -->
+        <div style="font-weight:700;color:#dc2626;margin-bottom:8px">📱 Kalau HANYA gagal di HP (aman di laptop)</div>
+        <p style="margin:0 0 6px;color:#374151;line-height:1.6">Kemungkinan besar ini bukan soal deployment, tapi status login akun Google di browser HP tsb — perilaku lama Google Apps Script yang bikin URL <code>/exec</code> bisa 404 tergantung akun mana yang sedang aktif.</p>
+        <ol style="margin:0;padding-left:18px;color:#374151;line-height:1.8">
+          <li>Buka link uji koneksi di bawah <strong>langsung di browser HP</strong> (bukan lewat halaman ini) — lihat apa yang muncul</li>
+          <li>Kalau muncul halaman error/404 dari Google: coba <strong>logout akun Google lain</strong> yang sedang login di browser itu, atau buka di <strong>mode Samaran/Incognito</strong></li>
+          <li>Kalau perlu akses rutin dari HP, pertimbangkan pakai 1 profil browser terpisah khusus utk panel admin ini</li>
+        </ol>
+
+        <div style="font-weight:700;color:#dc2626;margin:14px 0 8px">⚠️ Kalau gagal di SEMUA device</div>
+        <p style="margin:0 0 6px;color:#374151;line-height:1.6">Ini baru soal deployment — perlu re-deploy Google Apps Script:</p>
         <ol style="margin:0;padding-left:18px;color:#374151;line-height:1.8">
           <li>Buka <strong>script.google.com</strong></li>
           <li>Pilih project MTQ 2026</li>
@@ -403,7 +420,7 @@
           <li>Klik <strong>Deploy</strong></li>
           <li>Jika URL berubah, cukup update di <code>js/config.js</code> — berlaku untuk semua halaman</li>
         </ol>
-        <div style="margin-top:8px;color:#6b7280">Atau: buka URL ini di browser untuk test JSONP:<br>
+        <div style="margin-top:8px;color:#6b7280">Uji manual: buka URL ini di browser untuk test JSONP:<br>
           <code id="testUrl" style="font-size:11px;word-break:break-all;color:#0369a1"></code>
         </div>
       </div>
@@ -1388,10 +1405,17 @@
     
       jsonp(`${API_URL}?action=ping`, 'ping', (data) => {
         if (data?.__jsonpError) {
+          // FIX #11: bedakan TIMEOUT vs LOAD_FAILED (dulu keduanya dapat pesan
+          // generik yang sama — jadi tidak ketahuan apakah server cuma lambat
+          // atau memang tidak terjangkau sama sekali). Lihat FIX #11 di jsonp()
+          // dan di doLogin() untuk pola yang sama.
+          const isTimeout = data.message === 'JSONP_TIMEOUT';
           errEl.style.display = 'block';
-          errMsg.textContent  = '🔌 Koneksi gagal — GAS tidak merespons dengan JSONP. Lihat panduan di bawah.';
+          errMsg.textContent  = isTimeout
+            ? '⏱️ Server tidak merespons dalam 20 detik (timeout). Kemungkinan jaringan lambat atau GAS baru "bangun" dari idle (cold start) — coba tekan "Uji Koneksi Server" sekali lagi.'
+            : '🔌 Koneksi gagal — GAS tidak merespons dengan JSONP. Jika ini khusus terjadi di HP (aman di laptop), kemungkinan besar terkait akun Google yang sedang login di browser HP tsb — lihat panduan di bawah.';
           if (guide) guide.style.display = 'block';
-          adminLog.error('Ping FAILED — JSONP error. Deployment harus diperbarui.');
+          adminLog.error(isTimeout ? 'Ping TIMEOUT — server/jaringan lambat.' : 'Ping FAILED — JSONP load error. Deployment/akun Google perlu dicek.');
         } else if (data?.pong) {
           errEl.style.display = 'block';
           errEl.style.borderLeftColor = 'var(--emerald)';
@@ -1904,7 +1928,14 @@
     // ── JSONP helper ──────────────────────────────────────────────
     // On script.onerror: GAS returned non-JS Content-Type (e.g. application/json)
     // OR returned an HTTP error. Both mean the deployment is outdated/broken.
-    function jsonp(url, cbPrefix, fn, timeout=12000) {
+    // FIX #11: timeout dinaikkan 12s → 20s. Di HP/data seluler, latensi
+    // jaringan + GAS "cold start" bisa membuat 12s terlalu mepet dan
+    // men-trigger JSONP_TIMEOUT padahal server sebenarnya cuma lambat,
+    // bukan mati. (action=ping sendiri sekarang instan di sisi server —
+    // lihat FIX #11 di api.gs — tapi action lain seperti adminLogin/
+    // getAllPendaftar tetap butuh buka Spreadsheet, jadi timeout global
+    // di sini tetap dilonggarkan untuk semuanya.)
+    function jsonp(url, cbPrefix, fn, timeout=20000) {
       const cbName = cbPrefix+'_'+Date.now();
       const script = document.createElement('script');
       let timer;
@@ -1922,7 +1953,7 @@
         fn({ __jsonpError: true, message: 'JSONP_LOAD_FAILED' });
       };
       timer = setTimeout(() => {
-        adminLog.warn('JSONP timeout after 12s for:', cbPrefix);
+        adminLog.warn(`JSONP timeout after ${timeout/1000}s for:`, cbPrefix);
         delete window[cbName]; script.remove();
         fn({ __jsonpError: true, message: 'JSONP_TIMEOUT' });
       }, timeout);
