@@ -4,12 +4,16 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin — MTQ 2026</title>
+  <!-- FIX: cegah browser (terutama di HP) menyimpan cache halaman lama —
+       lihat catatan sama di index.html -->
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="js/document-previewer.css">
   <!-- Config terpusat — SATU sumber API_URL -->
+  <!-- FIX: ?v= cache-busting — NAIKKAN setiap kali js/config.js diupdate
+       (lihat catatan sama di index.html) -->
   <script src="js/config.js?v=20260807"></script>
   <!-- PDF.js (required by DocumentPreviewer) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -311,6 +315,17 @@
         display: none;  /* hide detail modal on mobile when previewer open */
       }
     }
+
+    /* FIX: #confirmModal (dialog "Ya, Lanjutkan" untuk Verifikasi/Tolak/dst)
+       sebelumnya sama-sama z-index:9000 dengan .dp-modal (document-previewer.css)
+       DAN .dp-header/.dp-controls di 9001. Karena dp-modal disuntik ke DOM
+       belakangan (lewat DocumentPreviewer.mount()), pada z-index yang sama
+       dia menang tampil di depan — confirmModal jadi ketutup previewer saat
+       preview dokumen sedang terbuka. Selector ID di sini otomatis menang
+       atas aturan .modal-overlay{z-index:9000} tanpa perlu !important
+       (spesifisitas ID lebih tinggi dari class), jadi confirmModal selalu
+       tampil paling depan — termasuk di atas dp-header/dp-controls (9001). */
+    #confirmModal { z-index: 9200; }
 
     /* responsive */
     @media (max-width:768px) {
@@ -1264,19 +1279,25 @@ function doLogin() {
       loadCabangConfig();  // load cabang config for age display in modal
       loadAll();
     } else {
-      const rawMsg = data?.message || '';
-      // Detect stale GAS deployment (function not found error)
-      const isStale = rawMsg.includes('is not defined') || rawMsg.includes('not found') || rawMsg.includes('Script');
-      const displayMsg = isStale
-        ? '🔧 Server perlu di-deploy ulang. Buka Apps Script → Deploy → Manage Deployments → Edit → New version → Deploy.'
-        : (rawMsg || 'Password salah. Coba lagi.');
-      showErr(displayMsg);
-      if (!isStale) {
-        document.getElementById('loginPass').value = '';
-        initCaptcha();
-      } else {
-        document.getElementById('deployGuide').style.display = 'block';
-      }
+      // FIX: sebelumnya di sini ada heuristik "isStale" yang menebak
+      // "server perlu deploy ulang" dengan mengecek apakah data.message
+      // MENGANDUNG substring seperti 'Script' — tapi pesan server yang SAH
+      // untuk "password salah" (dulu berbunyi "Password salah. Periksa
+      // Apps Script Logger untuk debug detail.") kebetulan juga mengandung
+      // kata "Script", jadi heuristik ini SALAH MENDETEKSI login yang gagal
+      // karena password salah sebagai "server perlu deploy ulang" — persis
+      // bug yang dilaporkan ("Server perlu deploy ulang" muncul padahal
+      // cuma salah ketik password).
+      // Cabang __jsonpError di atas SUDAH menangani kasus request benar2
+      // gagal terkoneksi (server tidak terjangkau sama sekali). Begitu kode
+      // sampai ke sini, artinya request BERHASIL dan server MEMANG menjawab
+      // "gagal" (mis. password salah) — jadi data.message dari server sudah
+      // otoritatif, tidak perlu ditebak-tebak lagi isinya dengan mencocokkan
+      // potongan kata (yang gampang salah tiap kali teks pesan berubah).
+      showErr(data?.message || 'Password salah. Coba lagi.');
+      document.getElementById('deployGuide').style.display = 'none';
+      document.getElementById('loginPass').value = '';
+      initCaptcha();
     }
     adminLog.end();
   });
@@ -1385,9 +1406,20 @@ function loadAll() {
 function refreshData() { loadAll(); toast('Refresh', 'Data diperbarui', 'info', 2000); }
 
 // ── Filters ───────────────────────────────────────────────────
+// FIX: nama dasar cabang tanpa akhiran gender (Putra/Putri). Dipakai supaya
+// dropdown #filterCabang tidak menampilkan "Hafalan 10 Juz Putra" dan
+// "Hafalan 10 Juz Putri" sebagai dua pilihan terpisah — cukup satu pilihan
+// "Hafalan 10 Juz" yang saat dipilih tetap mencakup kedua gender.
+function cabangBaseName(full) {
+  return String(full || '').replace(/\s+(Putra|Putri)\s*$/i, '').trim();
+}
+
 function populateFilterDropdowns() {
   const kecs = [...new Set(adm.allData.map(r=>r.kecamatan).filter(Boolean))].sort();
-  const cabs = [...new Set(adm.allData.map(r=>r.cabang_lomba).filter(Boolean))].sort();
+  // FIX: value dropdown sekarang nama dasar (lihat cabangBaseName di atas),
+  // bukan cabang_lomba penuh — jadi Putra & Putri untuk cabang yang sama
+  // otomatis menyatu jadi satu <option>.
+  const cabs = [...new Set(adm.allData.map(r=>cabangBaseName(r.cabang_lomba)).filter(Boolean))].sort();
   const kecSel = document.getElementById('filterKec');
   const cabSel = document.getElementById('filterCabang');
   const sk = kecSel.value, sc = cabSel.value;
@@ -1408,7 +1440,11 @@ function applyFilters() {
     const mQ = !q || [...baseFields, ...anggotaFields].some(f => String(f||'').toLowerCase().includes(q));
     const mS = !status || String(r.status_verifikasi||'').toLowerCase()===status;
     const mK = !kec    || r.kecamatan===kec;
-    const mC = !cabang || r.cabang_lomba===cabang;
+    // FIX: bandingkan nama dasar (tanpa Putra/Putri) — cabang di sini adalah
+    // value dari dropdown yang sekarang sudah berupa nama dasar juga, jadi
+    // baris dgn cabang_lomba "...Putra" ATAU "...Putri" tetap cocok selama
+    // nama dasarnya sama dgn yang dipilih.
+    const mC = !cabang || cabangBaseName(r.cabang_lomba)===cabang;
     return mQ && mS && mK && mC;
   });
   adm.page = 1;
@@ -1505,8 +1541,10 @@ function openDetail(nomor) {
   // ── SECTION: Surat Rekomendasi ────────────────────────────────
   let rekomHTML = '';
   if (linkRekom) {
+    // FIX BUG #3: escJsAttr() juga di sini utk konsistensi — URL Drive
+    // biasanya aman, tapi ini menyamakan pola dgn dokumen foto/KTP/sertifikat.
     rekomHTML = `<button class="doc-link" style="background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.3);color:#fbbf24"
-      onclick="openDocPreview('${esc(linkRekom)}','Surat Rekomendasi')">📋 Surat Rekomendasi</button>`;
+      onclick="openDocPreview('${escJsAttr(linkRekom)}','Surat Rekomendasi')">📋 Surat Rekomendasi</button>`;
   } else {
     // No rekom — folder drive shown separately below, don't duplicate
     rekomHTML = '<span class="no-doc" style="color:#f87171">⚠️ Surat Rekomendasi belum ada</span>';
@@ -1852,6 +1890,26 @@ function toast(title, msg, type='info', dur=4000) {
 function esc(str) {
   return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+// FIX BUG #3: esc() di atas cuma aman utk KONTEN HTML biasa (&,<,>,") — dia
+// TIDAK meng-escape tanda kutip tunggal ('). Tapi banyak tombol di panel ini
+// pakai onclick="fn('...','${nama}')" dengan argumen ber-tanda-kutip-tunggal.
+// Kalau nama peserta mengandung apostrof (mis. "ANA MA'RUFAH FITRI"), kutip
+// tunggal itu memutus string JS di tengah jalan — browser gagal parse
+// onclick-nya ("SyntaxError: missing ) after argument list"), dan tombol
+// dokumen jadi tidak bisa diklik sama sekali. escJsAttr() ini escape utk
+// KEDUA lapis sekaligus: dulu utk konteks JS (backslash, lalu kutip
+// tunggal), BARU utk konteks atribut HTML (&,<,>,") — urutan ini penting,
+// kalau dibalik karakter escape yang baru ditambahkan ikut ter-encode ulang.
+// PENTING: pakai ini KHUSUS utk nilai yang masuk ke argumen onclick — utk
+// teks biasa yang tampil di layar (mis. <strong>${nama}</strong>), tetap
+// pakai esc() biasa, supaya nama tidak tampil dengan backslash nyasar.
+function escJsAttr(str) {
+  const jsSafe = String(str || '')
+    .replace(/\\/g, '\\\\')   // backslash duluan, atau backslash yg ditambah baris berikut ikut ke-escape lagi
+    .replace(/'/g, "\\'")     // ' → \'  — inti dari fix bug ini
+    .replace(/\r?\n/g, ' ');  // jaga-jaga kalau ada baris baru nyasar di data
+  return esc(jsSafe);         // baru escape utk atribut HTML (&, <, >, ")
+}
 // ── Format tanggal Indonesia ("1990-12-31" → "31 Desember 1990") ─────────
 // Sengaja parsing string manual (regex), BUKAN `new Date(str)` + getDate()/
 // getMonth() — itu persis pola yang menyebabkan bug timezone tanggal_lahir
@@ -1899,6 +1957,13 @@ function buildPesertaSection(r, nomor, anggota, isTeam, cabangConfig) {
     const ktpUrl  = esc(a.link_ktp        || '');
     const sertUrl = esc(a.link_sertifikat || '');
     const nameEsc = esc(r.nama_lengkap    || '-');
+    // FIX BUG #3: versi khusus utk argumen onclick (lihat escJsAttr di atas).
+    // fotoUrl/ktpUrl/sertUrl/nameEsc di atas TETAP dipakai apa adanya utk
+    // teks biasa & pengecekan truthy — JANGAN diganti.
+    const fotoUrlJs  = escJsAttr(a.link_foto       || '');
+    const ktpUrlJs   = escJsAttr(a.link_ktp        || '');
+    const sertUrlJs  = escJsAttr(a.link_sertifikat || '');
+    const nameJsAttr = escJsAttr(r.nama_lengkap    || '-');
     return `<div class="modal-section">
       <div class="modal-section-title">👤 Data Peserta</div>
       <div class="detail-grid">
@@ -1921,9 +1986,9 @@ function buildPesertaSection(r, nomor, anggota, isTeam, cabangConfig) {
         <div class="detail-field full">
           <div class="lbl">Dokumen</div>
           <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">
-            ${fotoUrl?`<button class="doc-link" onclick="openDocPreview('${fotoUrl}','Foto - ${nameEsc}')">📸 Foto</button>`:'<span class="no-doc">Belum ada foto</span>'}
-            ${ktpUrl ?`<button class="doc-link" onclick="openDocPreview('${ktpUrl}', 'KTP - ${nameEsc}')">🪪 KTP/KK</button>`:'<span class="no-doc">Belum ada KTP</span>'}
-            ${sertUrl?`<button class="doc-link" onclick="openDocPreview('${sertUrl}','Sertifikat - ${nameEsc}')">🏅 Sertifikat</button>`:''}
+            ${fotoUrl?`<button class="doc-link" onclick="openDocPreview('${fotoUrlJs}','Foto - ${nameJsAttr}')">📸 Foto</button>`:'<span class="no-doc">Belum ada foto</span>'}
+            ${ktpUrl ?`<button class="doc-link" onclick="openDocPreview('${ktpUrlJs}', 'KTP - ${nameJsAttr}')">🪪 KTP/KK</button>`:'<span class="no-doc">Belum ada KTP</span>'}
+            ${sertUrl?`<button class="doc-link" onclick="openDocPreview('${sertUrlJs}','Sertifikat - ${nameJsAttr}')">🏅 Sertifikat</button>`:''}
           </div>
         </div>
       </div>
@@ -1938,6 +2003,12 @@ function buildPesertaSection(r, nomor, anggota, isTeam, cabangConfig) {
     const ktpUrl  = esc(a.link_ktp        ||'');
     const sertUrl = esc(a.link_sertifikat ||'');
     const nameEsc = esc(a.nama_lengkap    ||'-');
+    // FIX BUG #3: versi khusus utk argumen onclick — lihat escJsAttr() &
+    // catatan yang sama di section peserta individu di atas.
+    const fotoUrlJs  = escJsAttr(a.link_foto       ||'');
+    const ktpUrlJs   = escJsAttr(a.link_ktp        ||'');
+    const sertUrlJs  = escJsAttr(a.link_sertifikat ||'');
+    const nameJsAttr = escJsAttr(a.nama_lengkap    ||'-');
     return `<div class="member-mini" style="margin-bottom:12px">
       <div class="member-mini-head">
         <div class="member-mini-num" style="${isKetua?'background:var(--gold)':''}">${i+1}</div>
@@ -1959,9 +2030,9 @@ function buildPesertaSection(r, nomor, anggota, isTeam, cabangConfig) {
         <div class="detail-field full">
           <div class="lbl">Dokumen</div>
           <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">
-            ${fotoUrl?`<button class="doc-link" onclick="openDocPreview('${fotoUrl}','Foto - ${nameEsc}')">📸 Foto</button>`:'<span class="no-doc">Belum ada foto</span>'}
-            ${ktpUrl ?`<button class="doc-link" onclick="openDocPreview('${ktpUrl}', 'KTP - ${nameEsc}')">🪪 KTP/KK</button>`:'<span class="no-doc">Belum ada KTP</span>'}
-            ${sertUrl?`<button class="doc-link" onclick="openDocPreview('${sertUrl}','Sertifikat - ${nameEsc}')">🏅 Sertifikat</button>`:''}
+            ${fotoUrl?`<button class="doc-link" onclick="openDocPreview('${fotoUrlJs}','Foto - ${nameJsAttr}')">📸 Foto</button>`:'<span class="no-doc">Belum ada foto</span>'}
+            ${ktpUrl ?`<button class="doc-link" onclick="openDocPreview('${ktpUrlJs}', 'KTP - ${nameJsAttr}')">🪪 KTP/KK</button>`:'<span class="no-doc">Belum ada KTP</span>'}
+            ${sertUrl?`<button class="doc-link" onclick="openDocPreview('${sertUrlJs}','Sertifikat - ${nameJsAttr}')">🏅 Sertifikat</button>`:''}
           </div>
         </div>
       </div>
@@ -2097,11 +2168,13 @@ window.addEventListener('resize', () => {
 });
 
 </script>
-  <script src="js/document-previewer.js"></script>
+  <!-- FIX: ?v= cache-busting — NAIKKAN setiap kali file js/ ini diupdate
+       (lihat catatan sama di index.html) -->
+  <script src="js/document-previewer.js?v=20260807"></script>
 
   <!-- ══ Manajemen Maqra — dimuat setelah admin login ══ -->
-  <script src="js/admin-maqra.js"></script>
-  <script src="js/admin-penilaian.js"></script>
+  <script src="js/admin-maqra.js?v=20260807"></script>
+  <script src="js/admin-penilaian.js?v=20260807"></script>
   <style>
     /* Sistem Penilaian tab buttons */
     .pn-tab-btn        { transition: background .2s, color .2s, box-shadow .2s; }
