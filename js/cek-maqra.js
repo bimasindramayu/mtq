@@ -196,6 +196,37 @@ function applyTheme(t) {
   if (ic) ic.textContent = t === 'dark' ? '☀️' : '🌙';
 }
 
+// ── Navigasi Tahapan (ganti "halaman" + indikator) ──────────────
+// FIX: sebelumnya panel lama (mis. searchCard) tetap ada di DOM dan
+// cuma discroll lewat — jadi kontennya menumpuk ke bawah (searchCard
+// masih kelihatan di atas walau user sudah pindah tahap). goToPanel()
+// membuat hanya SATU .tahapan-panel yang tampil (display:block),
+// panel lain disembunyikan (display:none) — benar-benar berpindah
+// "halaman", bukan cuma scroll — sekaligus menyinkronkan indikator
+// 1/2/3 di #tahapanBar (is-active/is-done). Dipanggil dari:
+//   - fetchAndRenderStatus()  → panel 2 (hasil pencarian NIK tampil)
+//   - goToMaqraStep()         → panel 3 (user lanjut ke ambil maqra)
+//   - tombol "← Kembali"      → panel 1 atau 2 (mundur satu tahap)
+function goToPanel(step) {
+  document.querySelectorAll('.tahapan-panel').forEach(function(p) { p.classList.remove('active'); });
+  const target = document.getElementById('panel' + step);
+  if (target) target.classList.add('active');
+
+  for (let i = 1; i <= 3; i++) {
+    const el = document.getElementById('tpStep' + i);
+    if (!el) continue;
+    const dot = el.querySelector('.tahapan-dot');
+    el.classList.remove('is-active', 'is-done');
+    if (i < step)        { el.classList.add('is-done');   if (dot) dot.textContent = '✓'; }
+    else if (i === step) { el.classList.add('is-active'); if (dot) dot.textContent = String(i); }
+    else                  { if (dot) dot.textContent = String(i); }
+  }
+
+  setTimeout(() => {
+    document.getElementById('tahapanBar')?.scrollIntoView({ behavior:'smooth', block:'start' });
+  }, 50);
+}
+
 // ════════════════════════════════════════════════════════════
 //  STEP 1 — Cek Status NIK
 // ════════════════════════════════════════════════════════════
@@ -251,20 +282,23 @@ async function fetchAndRenderStatus(nik) {
     const data = await jsonpGet({ action: 'checkNIK', nik });
     if (!data.success || !data.found) {
       renderNotFound(nik);
-      scrollToResult();
+      goToPanel(2);   // FIX: pindah ke panel status, panel pencarian disembunyikan
       return;
     }
     _record = data.record;
     // FIX #2 — teruskan kunci Drive API (dibatasi HTTP referrer + Drive API only, lihat config.gs)
     if (previewer) previewer.config.googleDriveApiKey = data.driveApiKey || '';
     renderStatusCard(_record);
-    scrollToResult();   // FIX #3 — langsung bawa user ke hasil, tidak perlu scroll manual
+    goToPanel(2);   // FIX #3 — pindah ke panel status (searchCard ikut disembunyikan), tidak perlu scroll manual
 
-    const status = (_record.status_verifikasi || '').trim();
-    if (status === 'Terverifikasi') {
-      // Langsung load maqra — NIK sudah ada dari _record
-      await loadMaqra(_record);
-    }
+    // FIX: maqra TIDAK lagi otomatis dimuat di sini. Sebelumnya baris ini
+    // langsung memanggil loadMaqra() begitu status Terverifikasi diketahui,
+    // sehingga kartu status + kartu maqra + tombol spin semua muncul
+    // sekaligus dalam satu layar (terasa seperti landing page — user
+    // bingung mau klik yang mana). Sekarang pengambilan maqra jadi
+    // langkah terpisah (Tahap 3) yang baru dimuat saat user menekan
+    // tombol "Lanjut: Ambil Maqra" di action-row status card — lihat
+    // goToMaqraStep() di bagian STEP 2 di bawah.
   } catch (err) {
     showToast('Error', 'Gagal menghubungi server. Coba lagi.', 'error');
     log.error(err);
@@ -285,12 +319,7 @@ function clearAreas() {
   _spinning    = false;
 }
 
-// ── FIX #3: auto-scroll ke hasil — sebelumnya user harus scroll manual ──
-function scrollToResult() {
-  setTimeout(() => {
-    document.getElementById('statusArea')?.scrollIntoView({ behavior:'smooth', block:'start' });
-  }, 100);
-}
+// ── STEP 1 selesai — lanjut ke render kartu status di bawah ──
 
 // ════════════════════════════════════════════════════════════
 //  STATUS CARD
@@ -313,7 +342,7 @@ function renderStatusCard(rec) {
   if (status === 'Menunggu') {
     bannerHtml = banner('info-gold','⏳','Sedang Diverifikasi','Mohon tunggu konfirmasi dari panitia via WhatsApp.');
   } else if (status === 'Terverifikasi') {
-    bannerHtml = banner('info-green','✅','Terverifikasi','Pendaftaran Anda sudah diverifikasi. Gulir ke bawah untuk mengambil maqra.');
+    bannerHtml = banner('info-green','✅','Terverifikasi','Pendaftaran Anda sudah diverifikasi. Tekan tombol di bawah untuk lanjut ke Tahap 3: Ambil Maqra.');
   } else if (status === 'Ditolak') {
     bannerHtml = banner('info-red','❌','Pendaftaran Ditolak',esc(rec.catatan || 'Tidak ada keterangan'));
   } else if (status === 'Nonaktif') {
@@ -338,17 +367,27 @@ function renderStatusCard(rec) {
       </div>`;
   }
 
-  // Action buttons
+  // Action buttons — FIX: satu tombol UTAMA per status (bukan beberapa
+  // tombol sejajar dengan bobot visual sama) supaya jelas satu aksi yang
+  // harus diklik. Aksi lain (unduh kartu, beranda) jadi link kecil di
+  // bawahnya (.secondary-links), bukan tombol penuh — lihat juga
+  // perubahan CSS .action-row di cekstatus.html.
   let actionHtml = '';
   if (status === 'Ditolak') {
-    actionHtml = `<button class="btn btn-red" onclick="showEditForm()">✏️ Perbaiki Data</button>`;
+    actionHtml = `
+      <button class="btn btn-red" onclick="showEditForm()" style="width:100%;justify-content:center;font-size:15px;padding:13px">✏️ Perbaiki Data</button>
+      <div class="secondary-links"><a href="index.html">🏠 Beranda</a></div>`;
+  } else if (status === 'Terverifikasi') {
+    actionHtml = `
+      <button class="btn btn-emerald" onclick="goToMaqraStep()" style="width:100%;justify-content:center;font-size:15px;padding:13px;background:linear-gradient(135deg,#065f46,#059669);box-shadow:0 2px 8px rgba(5,150,105,.35)">➡️ Lanjut: Ambil Maqra</button>
+      <div class="secondary-links">
+        <button onclick="downloadKartuPeserta()">🪪 Unduh Kartu Peserta</button>
+        <a href="index.html">🏠 Beranda</a>
+      </div>`;
+  } else {
+    // Menunggu / Nonaktif — belum ada aksi yang bisa dilakukan user
+    actionHtml = `<div class="secondary-links"><a href="index.html">🏠 Beranda</a></div>`;
   }
-  if (status === 'Terverifikasi') {
-    actionHtml += `<button class="btn btn-emerald" onclick="downloadKartuPeserta()" style="background:linear-gradient(135deg,#065f46,#059669);box-shadow:0 2px 8px rgba(5,150,105,.35)">
-      🪪 Unduh Kartu Peserta
-    </button>`;
-  }
-  actionHtml += `<a href="index.html" class="btn btn-outline">🏠 Beranda</a>`;
 
   document.getElementById('statusArea').innerHTML = `
     <div class="result-card">
@@ -403,6 +442,18 @@ function renderNotFound(nik) {
 // ════════════════════════════════════════════════════════════
 //  STEP 2 — Load & Render Maqra Section
 // ════════════════════════════════════════════════════════════
+
+// Dipanggil dari tombol "➡️ Lanjut: Ambil Maqra" di action-row status
+// card (renderStatusCard). Ini titik masuk Panel 3 — sengaja dibuat
+// eksplisit lewat klik, bukan otomatis, supaya alurnya terasa bertahap
+// dan panel status (panel 2) benar-benar berpindah/hilang, bukan cuma
+// discroll lewat.
+async function goToMaqraStep() {
+  if (!_record) return;
+  await loadMaqra(_record);
+  goToPanel(3);
+}
+
 async function loadMaqra(rec) {
   showLoading(true, 'Memuat data maqra...');
   try {
@@ -469,10 +520,12 @@ function renderMaqraArea(maqraData, rec) {
         <div class="mrc-surah">${esc(m.maqra_detail||m.surah||'')}</div>
         <div class="mrc-nomor">Nomor Undian: ${esc(m.nomor_maqra||'-')}</div>
       </div>
-      <div style="display:flex;gap:10px;justify-content:center;margin-bottom:8px;flex-wrap:wrap">
-        <button class="btn btn-emerald btn-sm" onclick="downloadKartuPeserta()" style="background:linear-gradient(135deg,#065f46,#059669);gap:6px">🪪 Kartu Peserta PDF</button>
-        <button class="btn btn-outline btn-sm" onclick="downloadBukti()">⬇️ Unduh Bukti Maqra</button>
-        <a href="index.html" class="btn btn-outline btn-sm">🏠 Beranda</a>
+      <div style="max-width:380px;margin:0 auto 8px">
+        <button class="btn btn-emerald" onclick="downloadKartuPeserta()" style="width:100%;justify-content:center;font-size:15px;padding:13px;background:linear-gradient(135deg,#065f46,#059669);box-shadow:0 2px 8px rgba(5,150,105,.35)">🪪 Unduh Kartu Peserta PDF</button>
+        <div class="secondary-links">
+          <button onclick="downloadBukti()">⬇️ Unduh Bukti Maqra</button>
+          <a href="index.html">🏠 Beranda</a>
+        </div>
       </div>`;
     return;
   }
@@ -524,10 +577,12 @@ function buildSpinCardHtml() {
               <div class="mrc-surah" id="resultSurah">—</div>
               <div class="mrc-nomor" id="resultNomor">—</div>
             </div>
-            <div style="display:flex;gap:10px;justify-content:center;margin-top:14px;flex-wrap:wrap">
-              <button class="btn btn-emerald btn-sm" onclick="downloadKartuPeserta()" style="background:linear-gradient(135deg,#065f46,#059669)">🪪 Kartu Peserta PDF</button>
-              <button class="btn btn-outline btn-sm" onclick="downloadBukti()">⬇️ Unduh Bukti</button>
-              <a href="index.html" class="btn btn-outline btn-sm">🏠 Beranda</a>
+            <div style="max-width:340px;margin:14px auto 0">
+              <button class="btn btn-emerald" onclick="downloadKartuPeserta()" style="width:100%;justify-content:center;font-size:15px;padding:13px;background:linear-gradient(135deg,#065f46,#059669)">🪪 Unduh Kartu Peserta PDF</button>
+              <div class="secondary-links">
+                <button onclick="downloadBukti()">⬇️ Unduh Bukti</button>
+                <a href="index.html">🏠 Beranda</a>
+              </div>
             </div>
           </div>
         </div>

@@ -98,12 +98,58 @@
     .info-banner strong{display:block;font-size:14px;font-weight:700;margin-bottom:2px}
 
     /* ── Action row ── */
-    .action-row{display:flex;gap:10px;flex-wrap:wrap;padding:16px 24px;border-top:1px solid var(--g100);background:var(--g50)}
+    /* FIX: dulu flex row yang bisa memuat beberapa tombol sejajar (bikin
+       user bingung mau klik yang mana, kesannya seperti landing page).
+       Sekarang selalu 1 kolom: 1 tombol utama + link sekunder di
+       bawahnya (.secondary-links) — lihat juga js/cek-maqra.js. */
+    .action-row{display:flex;flex-direction:column;align-items:stretch;gap:10px;padding:16px 24px;border-top:1px solid var(--g100);background:var(--g50)}
     .btn{padding:10px 18px;border-radius:var(--r-sm);font-size:14px;font-weight:600;cursor:pointer;border:none;transition:all .2s;display:inline-flex;align-items:center;gap:6px;text-decoration:none}
     .btn-emerald{background:var(--em);color:#fff}.btn-emerald:hover{background:var(--em-d)}
     .btn-outline{background:transparent;color:var(--g600);border:1.5px solid var(--g200)}.btn-outline:hover{border-color:var(--em);color:var(--em);background:var(--em-xs)}
     .btn-red{background:var(--red);color:#fff}.btn-red:hover{background:#b91c1c}
     .btn-sm{padding:8px 14px;font-size:13px}
+
+    /* ── Aksi sekunder (link kecil di bawah tombol utama) ── */
+    /* <a href> untuk navigasi sungguhan (mis. Beranda), <button> untuk
+       aksi JS (mis. unduh) — supaya tetap bisa diakses via keyboard. */
+    .secondary-links{display:flex;gap:18px;justify-content:center;flex-wrap:wrap;margin-top:2px}
+    .secondary-links a,.secondary-links button{background:none;border:none;font-family:inherit;font-size:12.5px;font-weight:700;color:var(--g500);text-decoration:none;display:inline-flex;align-items:center;gap:4px;padding-bottom:1px;border-bottom:1px dashed transparent;transition:color .2s,border-color .2s;cursor:pointer}
+    .secondary-links a:hover,.secondary-links button:hover{color:var(--em);border-color:var(--em)}
+
+    /* ══════════════════════════════════════════════════════════ */
+    /* ── TAHAPAN (indikator langkah) ────────────────────────── */
+    /* ══════════════════════════════════════════════════════════ */
+    /* FIX: supaya proses "cari NIK → lihat status → ambil maqra" terasa
+       bertahap (bukan semua kartu+tombol muncul sekaligus), halaman ini
+       menampilkan indikator 3 langkah di atas. Statusnya (aktif/selesai)
+       diatur lewat goToPanel() di js/cek-maqra.js — fungsi yang sama
+       yang juga mengganti panel mana yang ditampilkan (lihat di bawah). */
+    .tahapan-bar{background:var(--white);border-radius:var(--r-xl);box-shadow:var(--shadow);padding:18px 20px 16px;margin-bottom:20px}
+    .tahapan-track{display:flex;align-items:flex-start;max-width:380px;margin:0 auto}
+    .tahapan-step{display:flex;flex-direction:column;align-items:center;gap:7px;flex:1;position:relative}
+    .tahapan-step::before{content:'';position:absolute;top:15px;left:calc(50% + 16px);right:calc(-50% + 16px);height:2px;background:var(--g200);transition:background .3s}
+    .tahapan-step:last-child::before{display:none}
+    .tahapan-step.is-done::before{background:var(--em-light)}
+    .tahapan-dot{position:relative;z-index:1;width:30px;height:30px;border-radius:50%;background:var(--g100);border:2px solid var(--g200);color:var(--g400);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;transition:all .25s}
+    .tahapan-step.is-active .tahapan-dot{background:var(--em);border-color:var(--em);color:#fff;box-shadow:0 0 0 4px var(--em-xs)}
+    .tahapan-step.is-done .tahapan-dot{background:var(--em-light);border-color:var(--em-light);color:#065f46}
+    .tahapan-label{font-size:11px;font-weight:700;color:var(--g400);text-align:center;line-height:1.3;max-width:92px}
+    .tahapan-step.is-active .tahapan-label{color:var(--em)}
+    .tahapan-step.is-done .tahapan-label{color:var(--g600)}
+    @media(max-width:420px){.tahapan-label{font-size:9.5px;max-width:70px}.tahapan-dot{width:26px;height:26px;font-size:12px}.tahapan-step::before{top:13px}}
+
+    /* ── Panel (satu "halaman" per tahap) ── */
+    /* FIX: sebelumnya searchCard/statusArea/maqraArea semua dalam alur
+       dokumen normal sehingga menumpuk ke bawah (searchCard tetap
+       kelihatan di atas walau sudah pindah tahap). Sekarang tiap tahap
+       adalah .tahapan-panel — hanya yang ".active" yang ditampilkan,
+       sisanya display:none. Ganti panel via goToPanel() di cek-maqra.js. */
+    .tahapan-panel{display:none}
+    .tahapan-panel.active{display:block;animation:slideUp .35s ease}
+    .panel-back{display:inline-flex;align-items:center;gap:6px;background:none;border:none;
+      font-family:inherit;color:var(--g500);font-size:13px;font-weight:700;cursor:pointer;
+      padding:9px 4px;margin-bottom:6px;transition:color .2s}
+    .panel-back:hover{color:var(--em)}
 
     /* ── Members ── */
     .member-list{display:flex;flex-direction:column;gap:8px;margin-top:12px}
@@ -236,7 +282,7 @@
 
     /* Misc */
     @media(max-width:560px){.search-row{flex-direction:column}.btn-search{width:100%;justify-content:center}}
-    @media(max-width:560px){.action-row{flex-direction:column}.action-row .btn{justify-content:center}}
+    @media(max-width:560px){.action-row .btn{justify-content:center}}
   </style>
 </head>
 <body>
@@ -265,7 +311,26 @@
 <!-- MAIN -->
 <div class="main">
 
-  <!-- NIK Search -->
+  <!-- Tahapan (indikator langkah) -->
+  <div class="tahapan-bar" id="tahapanBar">
+    <div class="tahapan-track">
+      <div class="tahapan-step is-active" id="tpStep1">
+        <div class="tahapan-dot">1</div>
+        <div class="tahapan-label">Cari NIK</div>
+      </div>
+      <div class="tahapan-step" id="tpStep2">
+        <div class="tahapan-dot">2</div>
+        <div class="tahapan-label">Status Pendaftaran</div>
+      </div>
+      <div class="tahapan-step" id="tpStep3">
+        <div class="tahapan-dot">3</div>
+        <div class="tahapan-label">Ambil Maqra</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ PANEL 1 — Cari NIK ═══ -->
+  <div class="tahapan-panel active" id="panel1">
   <div class="search-card" id="searchCard">
     <div class="search-title">🪪 Cari Data Peserta</div>
     <div class="search-sub">Masukkan NIK (16 digit) — berlaku untuk ketua maupun anggota tim</div>
@@ -318,15 +383,20 @@
     <button class="btn-search" id="searchBtn" onclick="cekStatus()"
       style="width:100%;margin-top:14px;justify-content:center">🔍 Cek Status</button>
   </div>
+  </div>
 
-  <!-- Status result area -->
-  <div id="statusArea"></div>
+  <!-- ═══ PANEL 2 — Status Pendaftaran ═══ -->
+  <div class="tahapan-panel" id="panel2">
+    <button class="panel-back" onclick="goToPanel(1)">← Kembali ke Pencarian</button>
+    <div id="statusArea"></div>
+    <div id="editArea"></div>
+  </div>
 
-  <!-- Maqra section (shown after verified) -->
-  <div id="maqraArea"></div>
-
-  <!-- Edit form (shown if status = Ditolak) -->
-  <div id="editArea"></div>
+  <!-- ═══ PANEL 3 — Ambil Maqra ═══ -->
+  <div class="tahapan-panel" id="panel3">
+    <button class="panel-back" onclick="goToPanel(2)">← Kembali ke Status</button>
+    <div id="maqraArea"></div>
+  </div>
 
 </div>
 
@@ -367,6 +437,6 @@
 <script src="js/document-previewer.js?v=20260808"></script>
 <script src="js/document-previewer.config.js?v=20260808"></script>
 
-<script src="js/cek-maqra.js?v=20260808"></script>
+<script src="js/cek-maqra.js?v=20260811b"></script>
 </body>
 </html>
