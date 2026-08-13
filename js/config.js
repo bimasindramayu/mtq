@@ -87,14 +87,14 @@ const MTQ_CONFIG = {
   // ── Developer Mode ───────────────────────────────────────────
   // true  = tampilkan tombol Random Fill (untuk testing)
   // false = sembunyikan (untuk produksi)
-  DEV_MODE: false,
+  DEV_MODE: true,
 
   // ── Logger — SATU PINTU on/off untuk SEMUA logger frontend ────
   // Dipakai oleh objek `log` di bawah, adminLog (admin.html), dan
   // MTQ_LOG (penilaian.html). true = tampil di console (dan panel
   // logger di penilaian.html), false = senyap di semua halaman.
   // Ganti HANYA di sini — jangan hardcode ulang di file lain.
-  LOGGER_ENABLED: false,
+  LOGGER_ENABLED: true,
 };
 
 // ── Turunan otomatis: nama cabang saja (untuk dropdown/filter) ──
