@@ -314,26 +314,47 @@ function jsonp(url, cbPrefix, fn, timeout = 8000) {
 }
 
 // JSONP klasik — jalur kedua kalau fetch() sama sekali tidak bisa dipakai
+// FIX #15: dulu satu `cleanup()` menangani sukses/onerror/timeout SEKALIGUS
+// dan langsung `delete window[cbName]` di ketiganya, dijaga flag `done` biar
+// cuma jalan sekali. Masalahnya: kalau timeout duluan yang "menyerah" (fn(null)
+// terlanjur dipanggil), lalu respons ASLI baru sampai setelah itu — nama
+// callback sudah dihapus, jadi <script> yang telat itu meledak "Uncaught
+// ReferenceError: ...is not defined" di console DAN datanya percuma dibuang
+// (script.remove() tidak menjamin request yang sudah terlanjur jalan lewat
+// redirect script.google.com→googleusercontent.com benar2 batal). Sekarang:
+// jalur sukses TIDAK dijaga `gaveUp` (respons asli selalu diproses, self-
+// healing walau telat), dan window[cbName] TIDAK dihapus saat timeout —
+// hanya onerror (yang berarti browser sudah pasti menyerah total di request
+// itu) yang membersihkannya. Lihat penjelasan sama di doyourmagic.html.
 function _jsonpClassic(url, cbPrefix, fn, timeout) {
   const cbName = cbPrefix + '_' + Date.now();
   const script = document.createElement('script');
-  let done = false;
+  let gaveUp = false;
   let timer;
 
-  function cleanup(result) {
-    if (done) return;
-    done = true;
+  // Respons ASLI — selalu diproses, baik tepat waktu maupun telat setelah
+  // timeout sudah melapor gagal duluan (self-healing, lihat catatan di atas).
+  window[cbName] = (data) => {
     clearTimeout(timer);
-    delete window[cbName];
     script.remove();
-    try { fn(result); } catch(e) { log.error('JSONP callback error', e); }
-  }
-
-  window[cbName] = (data) => cleanup(data);
+    try { fn(data); } catch(e) { log.error('JSONP callback error', e); }
+  };
 
   script.src = `${url}&callback=${cbName}`;
-  script.onerror = () => { log.warn('JSONP script error for', url); cleanup(null); };
-  timer = setTimeout(() => { log.warn('JSONP timeout for', url); cleanup(null); }, timeout);
+  script.onerror = () => {
+    if (gaveUp) return;
+    gaveUp = true;
+    log.warn('JSONP script error for', url);
+    script.remove();
+    fn(null);
+  };
+  timer = setTimeout(() => {
+    if (gaveUp) return;
+    gaveUp = true;
+    log.warn('JSONP timeout for', url);
+    fn(null);
+    // window[cbName] SENGAJA tidak dihapus di sini — lihat FIX #15 di atas.
+  }, timeout);
 
   document.head.appendChild(script);
 }

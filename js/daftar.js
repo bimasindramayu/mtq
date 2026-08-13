@@ -1,7 +1,11 @@
 // ============================================================
-//  MTQ 2026 — js/daftar.js  (rev 3)
+//  MTQ 2026 — js/daftar.js  (rev 4)
 //  Fix: year clamp, precise age lock, gender lock, file preview,
 //       file name overflow, submit logging, CORS POST workaround
+//  rev 4 — FIX #15: _jsonpClassic tidak lagi menghapus callback saat
+//  timeout, supaya respons yang datang telat (server lambat, bukan
+//  benar2 mati) diproses normal alih-alih meledak di console dan
+//  datanya dibuang. Lihat catatan lengkap di fungsi itu sendiri.
 // ============================================================
 
 // API_URL: satu sumber dari js/config.js (window.MTQ_API_URL) — jangan ubah di sini
@@ -145,31 +149,48 @@ function jsonp(url, cbPrefix, fn, timeout = 8000) {
 }
 
 // JSONP klasik sebagai fallback jika fetch tidak bisa (mis. CORS block)
+// FIX #15: dulu satu `cleanup()` menangani sukses/onerror/timeout SEKALIGUS
+// dan langsung `delete window[cbName]` di ketiganya, dijaga flag `done` biar
+// cuma jalan sekali. Masalahnya: kalau timeout duluan "menyerah" (fn(null)
+// terlanjur dipanggil, mis. saat checkNIK/checkDuplicate/register kena GAS
+// yang sedang lambat menjelang penutupan pendaftaran), lalu respons ASLI
+// baru sampai setelah itu — nama callback sudah dihapus, jadi <script> yang
+// telat itu meledak "Uncaught ReferenceError: ...is not defined" di console
+// DAN datanya percuma dibuang (script.remove() tidak menjamin request yang
+// sudah terlanjur jalan lewat redirect script.google.com→googleusercontent.com
+// benar2 batal). Sekarang: jalur sukses TIDAK dijaga `gaveUp` (respons asli
+// selalu diproses, self-healing walau telat), dan window[cbName] TIDAK
+// dihapus saat timeout — hanya onerror (browser sudah pasti menyerah total
+// di request itu) yang membersihkannya. Lihat penjelasan sama di
+// doyourmagic.html/main.js.
 function _jsonpClassic(url, cbPrefix, fn, timeout) {
   const cbName = cbPrefix + '_' + Date.now();
   const script = document.createElement('script');
-  let done = false;
+  let gaveUp = false;
   let timer;
 
-  function cleanup(result) {
-    if (done) return;
-    done = true;
+  // Respons ASLI — selalu diproses, baik tepat waktu maupun telat setelah
+  // timeout sudah melapor gagal duluan (self-healing, lihat catatan di atas).
+  window[cbName] = (data) => {
     clearTimeout(timer);
-    delete window[cbName];
     script.remove();
-    try { fn(result); } catch(e) { log.error('JSONP callback error', e); }
-  }
-
-  window[cbName] = (data) => cleanup(data);
+    try { fn(data); } catch(e) { log.error('JSONP callback error', e); }
+  };
 
   script.src = `${url}&callback=${cbName}`;
   script.onerror = () => {
+    if (gaveUp) return;
+    gaveUp = true;
     log.warn('JSONP script error for', url);
-    cleanup(null);
+    script.remove();
+    fn(null);
   };
   timer = setTimeout(() => {
+    if (gaveUp) return;
+    gaveUp = true;
     log.warn('JSONP timeout for', url);
-    cleanup(null);
+    fn(null);
+    // window[cbName] SENGAJA tidak dihapus di sini — lihat FIX #15 di atas.
   }, timeout);
 
   document.head.appendChild(script);

@@ -21,6 +21,17 @@
 //     submitPerbaikan() memakai postJSON() — fetch() POST asli dengan
 //     Content-Type text/plain (menghindari CORS preflight yang tidak
 //     ditangani GAS) — ke endpoint doPost yang sama.
+//  ✅ FIX #15: _jsonp() dulu langsung `delete window[cbName]` begitu
+//     timeout/onerror "menyerah". Kalau server ternyata cuma lambat (bukan
+//     benar2 mati) dan responsnya baru sampai setelah itu, browser tetap
+//     mengeksekusi <script> yang telat itu dan meledak "Uncaught
+//     ReferenceError: ...is not defined" di console. Sekarang window[cbName]
+//     tidak dihapus saat timeout — respons telat diproses dengan aman
+//     (walau, beda dari jsonp()/_jsonpClassic di main.js/daftar.js/
+//     doyourmagic.html, Promise di sini cuma bisa settle sekali: kalau
+//     timeout sudah reject() duluan, resolve() yang telat cuma jadi no-op
+//     aman, bukan "menghidupkan lagi" hasil .then() pemanggil — tapi
+//     setidaknya tidak lagi crash).
 // ============================================================
 
 // API_URL dibaca LAZILY saat dipakai (bukan saat file di-parse)
@@ -1816,11 +1827,14 @@ function _jsonp(baseUrl, timeout) {
     const cbName = 'mtq_' + Date.now() + '_' + Math.floor(Math.random() * 999999);
     const sep    = baseUrl.includes('?') ? '&' : '?';
     const script = document.createElement('script');
-    let   timer;
+    let   timer, gaveUp = false;
 
+    // Respons ASLI — tetap diproses walau baru datang setelah timeout
+    // sudah reject() duluan (lihat FIX #15 di header file). resolve() yang
+    // telat begini otomatis jadi no-op aman kalau promise-nya sudah settle
+    // (perilaku bawaan Promise) — tidak lagi meledak ReferenceError.
     window[cbName] = function(data) {
       clearTimeout(timer);
-      try { delete window[cbName]; } catch(_) { window[cbName] = undefined; }
       script.remove();
       resolve(data);
     };
@@ -1828,8 +1842,9 @@ function _jsonp(baseUrl, timeout) {
     script.src = `${baseUrl}${sep}callback=${cbName}`;
 
     script.onerror = function() {
+      if (gaveUp) return;
+      gaveUp = true;
       clearTimeout(timer);
-      try { delete window[cbName]; } catch(_) { window[cbName] = undefined; }
       script.remove();
       // FIX: sama seperti postJSON() di atas — detail troubleshooting hanya
       // ke console, pesan yang di-reject() (sering langsung tampil ke user
@@ -1840,10 +1855,12 @@ function _jsonp(baseUrl, timeout) {
     };
 
     timer = setTimeout(function() {
-      try { delete window[cbName]; } catch(_) { window[cbName] = undefined; }
-      script.remove();
+      if (gaveUp) return;
+      gaveUp = true;
       log.error('[MTQ] JSONP timeout untuk', baseUrl);
       reject(new Error('Server tidak merespons — coba lagi sesaat lagi.'));
+      // FIX #15: window[cbName] SENGAJA tidak dihapus di sini — lihat
+      // catatan di atas fungsi ini / di header file.
     }, timeout);
 
     document.head.appendChild(script);

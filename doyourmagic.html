@@ -366,7 +366,7 @@
   <div class="login-overlay" id="loginOverlay">
     <div class="login-box">
       <div class="login-logo">🛡️</div>
-      <h2>Admin MTQ 2026.</h2>
+      <h2>Admin MTQ 2026</h2>
       <p>Masukkan password untuk mengakses panel admin</p>
       <div class="field-group" style="text-align:left">
         <label class="field-label">Password</label>
@@ -1460,7 +1460,7 @@
     }
     
     // ── Load All ──────────────────────────────────────────────────
-    function loadAll() {
+    function loadAll(onDone) {
       adminLog.info('loadAll');
       document.getElementById('tableSubtitle').textContent = 'Memuat data...';
       document.getElementById('pesertaTbody').innerHTML =
@@ -1472,6 +1472,7 @@
           if (data?.message?.includes('tidak valid')) { doLogout(); return; }
           toast('Gagal', data?.message || 'Gagal memuat data', 'error');
           document.getElementById('tableSubtitle').textContent = 'Gagal memuat data';
+          if (onDone) onDone(false);
           return;
         }
         adm.allData = data.data || [];
@@ -1488,9 +1489,42 @@
         updateSidebarBadge();
         document.getElementById('tableSubtitle').textContent =
           `${adm.allData.length} peserta — ${new Date().toLocaleTimeString('id-ID')}`;
+        if (onDone) onDone(true);
       });
     }
     function refreshData() { loadAll(); toast('Refresh', 'Data diperbarui', 'info', 2000); }
+
+    // FIX #18: kalau JSONP gagal karena __jsonpError (timeout/onerror) untuk
+    // action yang MENULIS data (updateStatus/deactivate/editPeserta), kita
+    // TIDAK TAHU apakah tulisannya beneran gagal di server, atau SUKSES tapi
+    // cuma respons-nya yang gagal balik ke browser. Kasus nyata yang memicu
+    // fix ini: H1J-004 kena "script.onerror" di FE (bukan timeout) tapi
+    // begitu dicek manual, status di spreadsheet SUDAH "Ditolak" — server
+    // sudah berhasil menulis, cuma responsnya yang gagal sampai ke browser.
+    // Kalau langsung bilang "Gagal" di kasus begini, UI jadi TIDAK SINKRON
+    // dengan server (masih nampilin "Menunggu" padahal sebenarnya sudah
+    // "Ditolak") sampai admin sadar dan reload manual — bisa berujung admin
+    // mengira gagal lalu klik ulang tanpa perlu (walau ini tidak berbahaya,
+    // updateRowField_ idempoten — menulis nilai yang sama dua kali aman).
+    // Ini KHUSUS untuk __jsonpError (respons tidak jelas) — BUKAN untuk
+    // kegagalan yang jelas dikirim server (mis. {success:false,message:
+    // 'nomor tidak ditemukan'}), yang sudah pasti gagal dan tidak perlu
+    // dicek ulang. reconcileAfterWriteError_ reload data lalu cek apakah
+    // nomor tsb SUDAH sesuai yang diharapkan, baru putuskan pesan final ke
+    // admin — dan refresh modal detail juga kalau lagi dibuka untuk nomor
+    // yang sama.
+    function reconcileAfterWriteError_(nomor, checkFn) {
+      toast('Memeriksa…', 'Respons tidak jelas — memeriksa ulang ke server', 'info', 3000);
+      loadAll(() => {
+        const row = adm.allData.find(r => r.nomor_pendaftaran === nomor);
+        if (row && checkFn(row)) {
+          toast('Sudah tersimpan', 'Ternyata berhasil di server — respons-nya saja yang sempat gagal sampai ke browser', 'success', 5000);
+        } else {
+          toast('Gagal', 'Perubahan tidak tersimpan di server — silakan coba lagi', 'error', 5000);
+        }
+        if (adm.editing && adm.editing.nomor_pendaftaran === nomor) openDetail(nomor);
+      });
+    }
     
     // ── Filters ───────────────────────────────────────────────────
     // FIX: nama dasar cabang tanpa akhiran gender (Putra/Putri). Dipakai supaya
@@ -1740,6 +1774,8 @@
           document.getElementById(`ef_${fieldKey}_edit`)?.classList.remove('show');
           toast('Tersimpan', `${fieldKey} berhasil diperbarui`, 'success');
           renderTable(adm.filtered);
+        } else if (data?.__jsonpError) {
+          reconcileAfterWriteError_(nomor, r => String(r[fieldKey]||'').trim() === (newVal||'').trim());
         } else {
           toast('Gagal', data?.message || 'Gagal menyimpan', 'error');
         }
@@ -1774,6 +1810,8 @@
           toast('Berhasil', `${nomor} → ${status}`, 'success');
           applyFilters(); updateSidebarBadge();
           openDetail(nomor); // refresh modal in-place with new status
+        } else if (data?.__jsonpError) {
+          reconcileAfterWriteError_(nomor, r => String(r.status_verifikasi||'').toLowerCase() === status.toLowerCase());
         } else {
           toast('Gagal', data?.message||'Gagal update status', 'error');
         }
@@ -1803,6 +1841,8 @@
           toast('Nonaktif', `Peserta ${nomor} dinonaktifkan`, 'warning');
           applyFilters(); updateSidebarBadge();
           openDetail(nomor); // refresh modal in-place
+        } else if (data?.__jsonpError) {
+          reconcileAfterWriteError_(nomor, r => String(r.status_verifikasi||'').toLowerCase() === 'nonaktif');
         } else {
           toast('Gagal', data?.message||'Gagal nonaktifkan', 'error');
         }
@@ -1942,27 +1982,70 @@
     // lihat FIX #11 di api.gs — tapi action lain seperti adminLogin/
     // getAllPendaftar tetap butuh buka Spreadsheet, jadi timeout global
     // di sini tetap dilonggarkan untuk semuanya.)
-    function jsonp(url, cbPrefix, fn, timeout=20000) {
+    // FIX #15: dulu, saat timeout "menyerah", kode ini langsung
+    // `delete window[cbName]` lalu script.remove(). Masalahnya:
+    // script.remove() TIDAK menjamin request jaringan yang sudah
+    // terlanjur berjalan benar2 dibatalkan (apalagi lewat redirect
+    // script.google.com → googleusercontent.com yang dipakai Apps
+    // Script). Kalau GAS-nya cuma LAMBAT — bukan benar2 mati/salah
+    // deploy, mis. action getAllPendaftar yang harus buka Spreadsheet
+    // besar (lihat FIX #16 di helper.gs/api.gs) — respons ASLI tetap
+    // sampai ke browser beberapa detik setelah kita "menyerah" di sisi
+    // client. Browser lalu tetap mengeksekusi <script> itu dan memanggil
+    // getAllPendaftar_xxx(...) — begitu nama itu sudah dihapus dari
+    // window, panggilan itu meledak sebagai "Uncaught ReferenceError:
+    // ...is not defined" di console (persis error yang dilaporkan user,
+    // MUNCUL SETELAH panel sudah menampilkan pesan "Gagal memuat data"
+    // dari timeout, dan data yang sebetulnya sudah berhasil diambil
+    // server jadi terbuang sia-sia).
+    // Fix: JANGAN delete window[cbName] saat timeout — biarkan tetap
+    // terdefinisi. Kalau respons asli toh datang belakangan, ia akan
+    // diproses NORMAL lewat handler sukses di bawah — panel admin
+    // akhirnya tetap terisi walau sempat menampilkan pesan timeout
+    // (self-healing), bukan meledak di console dan macet permanen.
+    // Kalau responsnya memang tidak pernah datang (server benar2
+    // mati/URL salah), fungsi callback ini cuma nongkrong diam di
+    // window sampai halaman ditutup/reload — tidak berbahaya.
+    // FIX #17: default dinaikkan 20s → 35s. Sesi ini sedang dipakai
+    // bersamaan oleh banyak alur (pendaftaran di daftar.html, cek status
+    // di cekstatus.html, verifikasi+edit di sini, pengambilan maqra) —
+    // Apps Script punya batas eksekusi SIMULTAN per akun; saat traffic
+    // padat (mis. mendekati penutupan pendaftaran), request bisa antre
+    // menunggu slot eksekusi, bukan karena kode di sini lambat. Dengan
+    // FIX #15 (self-heal) di atas, respons yang telat tetap akan
+    // diproses benar begitu datang — jadi menaikkan timeout di sini
+    // TIDAK berisiko (tidak ada downside selain toast error yang lebih
+    // jarang muncul prematur), cuma memberi lebih banyak waktu sebelum
+    // UI "menyerah" duluan padahal server sebenarnya masih memprosesnya.
+    function jsonp(url, cbPrefix, fn, timeout=35000) {
       const cbName = cbPrefix+'_'+Date.now();
       const script = document.createElement('script');
-      let timer;
+      let timer, gaveUp = false;
+
+      // Respons ASLI — selalu diproses, baik datang tepat waktu maupun
+      // telat setelah timeout sudah "menyerah" (lihat FIX #15 di atas).
       window[cbName] = (data) => {
         clearTimeout(timer);
+        script.remove();
         try { fn(data); } catch(e){ adminLog.error('JSONP cb error',e); }
-        delete window[cbName]; script.remove();
       };
       script.src = `${url}&callback=${cbName}`;
       script.onerror = () => {
+        if (gaveUp) return;
+        gaveUp = true;
         clearTimeout(timer);
         adminLog.error('JSONP script.onerror — server returned non-JS or HTTP error for:', cbPrefix);
         adminLog.error('URL attempted:', url.split('?')[0]+'?action='+new URLSearchParams(url.split('?')[1]||'').get('action'));
-        delete window[cbName]; script.remove();
+        script.remove();
         fn({ __jsonpError: true, message: 'JSONP_LOAD_FAILED' });
       };
       timer = setTimeout(() => {
+        if (gaveUp) return;
+        gaveUp = true;
         adminLog.warn(`JSONP timeout after ${timeout/1000}s for:`, cbPrefix);
-        delete window[cbName]; script.remove();
         fn({ __jsonpError: true, message: 'JSONP_TIMEOUT' });
+        // FIX #15: window[cbName] SENGAJA tidak dihapus di sini — lihat
+        // penjelasan panjang di atas fungsi ini.
       }, timeout);
       document.head.appendChild(script);
     }
