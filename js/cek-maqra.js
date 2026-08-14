@@ -137,6 +137,10 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('captchaInput')?.addEventListener('keydown', e => {
     if (e.key === 'Enter') cekStatus();
   });
+  // FIX: Escape untuk tutup modal "Daftar Peserta Ditolak" (lihat openDitolakModal())
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeDitolakModal();
+  });
 });
 
 // ── FIX: link "Daftar" di navbar dinonaktifkan otomatis kalau ──────
@@ -448,6 +452,122 @@ function renderNotFound(nik) {
         <a href="daftar.html" class="btn btn-emerald" style="display:inline-flex">📝 Daftar Sekarang</a>
       </div>
     </div>`;
+}
+
+// ════════════════════════════════════════════════════════════
+//  MODAL — Daftar Peserta Ditolak (publik, tanpa perlu NIK)
+// ════════════════════════════════════════════════════════════
+// Dipicu dari link "📋 Lihat Peserta Ditolak" di search-card (Panel 1).
+// Server (apiGetDitolak_ di api.gs) SENGAJA hanya mengembalikan field
+// yang aman untuk publik (nama, cabang, kecamatan, catatan) — TIDAK ada
+// NIK/alamat/no_hp/email seperti checkNIK, dan TIDAK butuh token admin
+// seperti getAllPendaftar.
+let _dtData = [];
+let _dtSort = { field: 'nama_peserta', dir: 1 };   // dir: 1 = A→Z, -1 = Z→A
+
+const DT_COLS = [
+  { key: 'nama_peserta', label: 'Nama Peserta' },
+  { key: 'cabang_lomba', label: 'Cabang Lomba' },
+  { key: 'kecamatan',    label: 'Kecamatan' },
+  { key: 'catatan',      label: 'Catatan' },
+];
+
+async function openDitolakModal() {
+  document.getElementById('dtOverlay')?.classList.add('show');
+  document.body.style.overflow = 'hidden';
+  await loadDitolakData();
+}
+
+function closeDitolakModal() {
+  document.getElementById('dtOverlay')?.classList.remove('show');
+  document.body.style.overflow = '';
+}
+
+async function loadDitolakData() {
+  const body = document.getElementById('dtModalBody');
+  const sub  = document.getElementById('dtModalSub');
+  if (!body) return;
+
+  body.innerHTML = dtStateHtml('⏳', 'Memuat Data...', 'Mohon tunggu sebentar.');
+  if (sub) sub.textContent = 'Memuat data…';
+
+  if (!getApiUrl()) {
+    body.innerHTML = dtStateHtml('⚠️', 'Konfigurasi Bermasalah', 'API_URL belum terkonfigurasi di js/config.js.');
+    if (sub) sub.textContent = 'Gagal memuat';
+    return;
+  }
+
+  try {
+    const data = await jsonpGet({ action: 'getDitolak' });
+    if (!data.success) throw new Error(data.message || 'Gagal memuat data.');
+    _dtData = data.data || [];
+    _dtSort = { field: 'nama_peserta', dir: 1 };
+    renderDitolakTable();
+  } catch (err) {
+    body.innerHTML = dtStateHtml('⚠️', 'Gagal Memuat Data', err.message || 'Tidak bisa menghubungi server.');
+    if (sub) sub.textContent = 'Gagal memuat';
+    log.error('[MTQ] loadDitolakData error:', err);
+  }
+}
+
+function renderDitolakTable() {
+  const body = document.getElementById('dtModalBody');
+  const sub  = document.getElementById('dtModalSub');
+  if (!body) return;
+
+  if (!_dtData.length) {
+    body.innerHTML = dtStateHtml('✅', 'Tidak Ada Peserta Ditolak', 'Semua pendaftar saat ini berstatus menunggu, terverifikasi, atau nonaktif.');
+    if (sub) sub.textContent = '0 peserta';
+    return;
+  }
+
+  if (sub) sub.textContent = `${_dtData.length} peserta ditolak — klik judul kolom untuk urutkan`;
+
+  const sorted = [..._dtData].sort((a, b) => {
+    const va = String(a[_dtSort.field] || '');
+    const vb = String(b[_dtSort.field] || '');
+    return va.localeCompare(vb, 'id', { sensitivity: 'base' }) * _dtSort.dir;
+  });
+
+  const theadHtml = DT_COLS.map(c => {
+    const active = _dtSort.field === c.key;
+    const arrow  = active ? (_dtSort.dir === 1 ? '▲' : '▼') : '↕';
+    return `<th class="${active ? 'is-sorted' : ''}" onclick="sortDitolakBy('${c.key}')">${esc(c.label)}<span class="dt-arrow">${arrow}</span></th>`;
+  }).join('');
+
+  const rowsHtml = sorted.map(r => {
+    const isTeam   = r.tipe_lomba === 'team';
+    const tagCls   = isTeam ? 'team' : 'individu';
+    const tagLabel = isTeam ? 'Tim' : 'Individu';
+    return `<tr>
+      <td>${esc(r.nama_peserta || '-')}<span class="dt-name-tag ${tagCls}">${tagLabel}</span></td>
+      <td>${esc(r.cabang_lomba || '-')}</td>
+      <td>${esc(r.kecamatan || '-')}</td>
+      <td class="dt-catatan">${esc(r.catatan || 'Tidak ada keterangan')}</td>
+    </tr>`;
+  }).join('');
+
+  body.innerHTML = `
+    <div class="dt-table-wrap">
+      <table class="dt-table">
+        <thead><tr>${theadHtml}</tr></thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+    </div>`;
+}
+
+function sortDitolakBy(field) {
+  if (_dtSort.field === field) _dtSort.dir *= -1;
+  else { _dtSort.field = field; _dtSort.dir = 1; }
+  renderDitolakTable();
+}
+
+function dtStateHtml(icon, title, msg) {
+  return `<div class="dt-state">
+    <div class="dt-state-icon">${icon}</div>
+    <div class="dt-state-title">${esc(title)}</div>
+    <div class="dt-state-msg">${esc(msg)}</div>
+  </div>`;
 }
 
 // ════════════════════════════════════════════════════════════

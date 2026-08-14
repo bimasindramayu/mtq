@@ -283,6 +283,48 @@
     /* Misc */
     @media(max-width:560px){.search-row{flex-direction:column}.btn-search{width:100%;justify-content:center}}
     @media(max-width:560px){.action-row .btn{justify-content:center}}
+
+    /* ══════════════════════════════════════════════════════════ */
+    /* ── MODAL: Daftar Peserta Ditolak (publik, tanpa NIK) ──── */
+    /* ══════════════════════════════════════════════════════════ */
+    /* FIX: fitur baru — tombol "📋 Lihat Peserta Ditolak" di search-card
+       membuka modal ini, isinya tabel yang bisa diurutkan (sort) per
+       kolom. Logic lengkap: js/cek-maqra.js (openDitolakModal dst),
+       data dari api.gs → apiGetDitolak_() (lihat catatan di sana soal
+       kenapa field yang dikirim sengaja dibatasi). */
+    .dt-overlay{position:fixed;inset:0;background:rgba(15,23,42,.55);backdrop-filter:blur(3px);z-index:450;display:flex;align-items:center;justify-content:center;padding:18px;opacity:0;pointer-events:none;transition:opacity .25s}
+    .dt-overlay.show{opacity:1;pointer-events:all}
+    .dt-modal{background:var(--white);border-radius:var(--r-xl);box-shadow:0 24px 70px rgba(0,0,0,.32);width:100%;max-width:860px;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;transform:translateY(12px) scale(.97);transition:transform .25s}
+    .dt-overlay.show .dt-modal{transform:translateY(0) scale(1)}
+    .dt-modal-header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:20px 22px;background:linear-gradient(135deg,var(--red-p),#fee2e2);border-bottom:1px solid var(--red-light);flex-shrink:0}
+    .dt-modal-title{font-size:16.5px;font-weight:800;color:var(--red)}
+    .dt-modal-sub{font-size:12px;color:#b91c1c;margin-top:2px}
+    .dt-modal-close{width:32px;height:32px;border-radius:50%;border:none;background:rgba(255,255,255,.65);color:var(--red);font-size:15px;cursor:pointer;flex-shrink:0;transition:background .2s,transform .2s}
+    .dt-modal-close:hover{background:#fff;transform:rotate(90deg)}
+    .dt-modal-body{overflow-y:auto;flex:1}
+
+    .dt-table-wrap{overflow-x:auto}
+    .dt-table{width:100%;border-collapse:collapse;font-size:13.5px}
+    .dt-table thead th{position:sticky;top:0;background:var(--g50);color:var(--g600);text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;font-weight:800;padding:12px 16px;border-bottom:2px solid var(--g200);cursor:pointer;user-select:none;white-space:nowrap;transition:color .15s}
+    .dt-table thead th:hover{color:var(--em)}
+    .dt-table thead th.is-sorted{color:var(--em)}
+    .dt-table .dt-arrow{display:inline-block;margin-left:4px;font-size:9px;opacity:.4}
+    .dt-table thead th.is-sorted .dt-arrow{opacity:1}
+    .dt-table tbody td{padding:12px 16px;border-bottom:1px solid var(--g100);color:var(--g700);vertical-align:top}
+    .dt-table tbody tr:last-child td{border-bottom:none}
+    .dt-table tbody tr:hover td{background:var(--g50)}
+    .dt-table td.dt-catatan{color:var(--g600);max-width:280px;overflow-wrap:break-word}
+    .dt-name-tag{display:inline-block;font-size:10px;font-weight:700;padding:1px 7px;border-radius:999px;margin-left:6px;vertical-align:middle;white-space:nowrap}
+    .dt-name-tag.team{background:var(--gold-p);color:var(--gold)}
+    .dt-name-tag.individu{background:#eff6ff;color:#2563eb}
+    [data-theme="dark"] .dt-name-tag.individu{background:#1e3a5f;color:#93c5fd}
+
+    .dt-state{padding:56px 24px;text-align:center;color:var(--g400)}
+    .dt-state-icon{font-size:38px;margin-bottom:10px}
+    .dt-state-title{font-size:14px;font-weight:700;color:var(--g600);margin-bottom:4px}
+    .dt-state-msg{font-size:13px}
+
+    @media(max-width:640px){.dt-modal{max-height:90vh;border-radius:var(--r-lg)}.dt-table{font-size:12.5px}.dt-table thead th,.dt-table tbody td{padding:10px 11px}}
   </style>
 </head>
 <body>
@@ -382,6 +424,13 @@
 
     <button class="btn-search" id="searchBtn" onclick="cekStatus()"
       style="width:100%;margin-top:14px;justify-content:center">🔍 Cek Status</button>
+
+    <!-- FIX: tombol publik untuk lihat daftar peserta berstatus "Ditolak" —
+         tidak perlu isi NIK, langsung buka modal (lihat js/cek-maqra.js:
+         openDitolakModal() & api.gs: apiGetDitolak_()). -->
+    <div class="secondary-links" style="margin-top:14px">
+      <button type="button" onclick="openDitolakModal()">📋 Lihat Peserta Ditolak</button>
+    </div>
   </div>
   </div>
 
@@ -413,6 +462,23 @@
 <div class="toast-container" id="toastContainer"></div>
 <div class="confetti-container" id="confettiContainer"></div>
 
+<!-- ═══ Modal: Daftar Peserta Ditolak (publik, tanpa NIK) ═══ -->
+<!-- Dipicu dari tombol "📋 Lihat Peserta Ditolak" di search-card (Panel 1).
+     Logic: js/cek-maqra.js → openDitolakModal()/closeDitolakModal()/
+     loadDitolakData()/renderDitolakTable()/sortDitolakBy(). -->
+<div class="dt-overlay" id="dtOverlay" onclick="if(event.target===this) closeDitolakModal()">
+  <div class="dt-modal" role="dialog" aria-modal="true" aria-labelledby="dtModalTitle">
+    <div class="dt-modal-header">
+      <div>
+        <div class="dt-modal-title" id="dtModalTitle">❌ Peserta Ditolak</div>
+        <div class="dt-modal-sub" id="dtModalSub">Memuat data…</div>
+      </div>
+      <button type="button" class="dt-modal-close" onclick="closeDitolakModal()" aria-label="Tutup">✕</button>
+    </div>
+    <div class="dt-modal-body" id="dtModalBody"></div>
+  </div>
+</div>
+
 <!-- PENTING: config.js HARUS dimuat pertama agar window.MTQ_API_URL tersedia -->
 <!-- FIX: ?v= cache-busting — NAIKKAN setiap kali js/config.js atau
      js/cek-maqra.js diupdate (lihat catatan sama di index.html) -->
@@ -437,6 +503,6 @@
 <script src="js/document-previewer.js?v=20260808"></script>
 <script src="js/document-previewer.config.js?v=20260808"></script>
 
-<script src="js/cek-maqra.js?v=20260811b"></script>
+<script src="js/cek-maqra.js?v=20260815"></script>
 </body>
 </html>
