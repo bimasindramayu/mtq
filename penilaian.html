@@ -963,29 +963,37 @@ function isApiReady() {
 
 /**
  * JSONP core — inject <script> tag, tunggu callback global, cleanup
+ * FIX #19: dulu `delete window[cbName]` dipanggil di SEMUA jalur berhenti
+ * (sukses/onerror/timeout) lewat done() yang sama. Sama persis dengan bug
+ * yang ditemukan di doyourmagic.html (lihat FIX #15 di sana): kalau timeout
+ * "menyerah" duluan lalu respons ASLI baru datang setelahnya (server cuma
+ * lambat, bukan mati), callback yang sudah dihapus itu bikin browser
+ * meledak "Uncaught ReferenceError: ...is not defined". Sekarang jalur
+ * timeout TIDAK menghapus window[cbName] — hanya onerror yang membersihkan
+ * (karena onerror berarti browser sudah pasti menyerah total di request
+ * itu, tidak ada respons susulan yang mungkin datang).
  */
 function jsonpRequest(url, prefix, timeoutMs = 25000) {
   return new Promise((resolve) => {
     const cbName = prefix + '_' + Date.now() + '_' + (Math.random() * 99999 | 0);
     const script = document.createElement('script');
-    let settled = false;
+    let gaveUp = false;
 
-    const done = (data) => {
-      if (settled) return;
-      settled = true;
+    // Respons ASLI — selalu diproses, baik tepat waktu maupun telat
+    // setelah timeout sudah menyerah duluan (self-healing, lihat FIX #19).
+    window[cbName] = (data) => {
+      MTQ_LOG.api(`JSONP callback: ${prefix}`, data);
       clearTimeout(timer);
-      delete window[cbName];
       if (script.parentNode) script.remove();
       resolve(data);
     };
-
-    window[cbName] = (data) => {
-      MTQ_LOG.api(`JSONP callback: ${prefix}`, data);
-      done(data);
-    };
     script.onerror = (e) => {
+      if (gaveUp) return;
+      gaveUp = true;
       MTQ_LOG.error(`JSONP script error: ${url.slice(0, 80)}...`, e);
-      done(null);
+      clearTimeout(timer);
+      if (script.parentNode) script.remove();
+      resolve(null);
     };
 
     const sep = url.includes('?') ? '&' : '?';
@@ -993,8 +1001,11 @@ function jsonpRequest(url, prefix, timeoutMs = 25000) {
     MTQ_LOG.api(`JSONP request → ${script.src.slice(0, 100)}...`);
 
     const timer = setTimeout(() => {
+      if (gaveUp) return;
+      gaveUp = true;
       MTQ_LOG.warn(`JSONP timeout (${timeoutMs}ms): ${prefix}`);
-      done(null);
+      resolve(null);
+      // FIX #19: window[cbName] SENGAJA tidak dihapus di sini.
     }, timeoutMs);
 
     document.head.appendChild(script);
@@ -1047,16 +1058,29 @@ async function apiGet(action, params = {}) {
 /**
  * apiPost — tulis data ke GAS via JSONP GET
  * Selalu simpan ke localStorage dulu (durability), lalu kirim ke GAS
+ *
+ * FIX #20: sebelumnya SEMUA jalur (sukses GAS asli, GAS gagal, timeout,
+ * API belum siap) sama-sama berujung `{success:true, ...}` ke pemanggil —
+ * submitNilai() lalu SELALU menampilkan "✅ Nilai Tersimpan!" seolah semua
+ * jalur itu setara. Padahal cuma `synced:true` yang berarti nilai itu
+ * BENAR sampai ke spreadsheet — sisanya cuma tersimpan di localStorage
+ * BROWSER INI SAJA, dan sheet Nilai/rekap admin tidak akan pernah melihatnya
+ * kalau tidak pernah berhasil disinkronkan. Ini serius untuk data nilai
+ * lomba (bukan sekadar UI yang telat sinkron seperti kasus2 lain) — kalau
+ * device hakim rusak/ganti sebelum sempat sinkron, nilai itu hilang permanen
+ * tanpa ada yang sadar. Sekarang setiap hasil ditandai `synced` eksplisit,
+ * dipakai oleh resyncPendingNilai() (lihat di bawah) untuk tahu nilai mana
+ * yang masih perlu dicoba ulang.
  */
 async function apiPost(action, payload = {}) {
   MTQ_LOG.api(`POST ${action}`, payload);
 
   // 1. Simpan lokal dulu — data aman walau API mati
-  localPost(action, payload);
+  localPost(action, payload, false);   // synced=false sampai terbukti sebaliknya
 
   if (!isApiReady()) {
     MTQ_LOG.local(`POST ${action} → localStorage only (API tidak siap)`);
-    return { success: true, source: 'local' };
+    return { success: true, source: 'local', synced: false };
   }
 
   // 2. Strip base64 besar sebelum encode URL
@@ -1066,7 +1090,7 @@ async function apiPost(action, payload = {}) {
   const payloadStr = JSON.stringify(slim);
   if (payloadStr.length > 7500) {
     MTQ_LOG.warn(`POST ${action} payload terlalu besar (${payloadStr.length} chars) → localStorage only`);
-    return { success: true, source: 'local_overflow' };
+    return { success: true, source: 'local_overflow', synced: false };
   }
 
   const qs = new URLSearchParams({ action, payload: payloadStr }).toString();
@@ -1074,16 +1098,17 @@ async function apiPost(action, payload = {}) {
 
   if (!data) {
     MTQ_LOG.warn(`POST ${action} → API gagal, data tersimpan lokal saja`);
-    return { success: true, source: 'local_fallback' };
+    return { success: true, source: 'local_fallback', synced: false };
   }
 
   if (!data.success) {
     MTQ_LOG.error(`POST ${action} → GAS error: ${data.error}`, data);
-  } else {
-    MTQ_LOG.api(`POST ${action} ✓ → GAS + local`, data);
+    return { ...data, synced: false };
   }
 
-  return data;
+  MTQ_LOG.api(`POST ${action} ✓ → GAS + local`, data);
+  localPost(action, payload, true);   // tandai tersinkron di cache lokal
+  return { ...data, synced: true };
 }
 
 // ── localStorage handlers (cache / fallback) ──────────────────
@@ -1123,7 +1148,7 @@ function localGet(action, params) {
   }
 }
 
-function localPost(action, payload) {
+function localPost(action, payload, synced) {
   switch (action) {
     case 'saveHakim': {
       const list = load('hakim', []);
@@ -1157,10 +1182,49 @@ function localPost(action, payload) {
       break;
     }
     case 'saveNilai': {
+      // FIX #20: simpan payload.key/payload.data ASLI (dibutuhkan utuh oleh
+      // resyncPendingNilai untuk mengirim ulang), plus flag _synced di
+      // sebelahnya tanpa mengotori objek data nilai itu sendiri (yang juga
+      // dipakai apa adanya oleh getNilai/buildPeringkat).
       S.scores[payload.key] = payload.data;
+      const syncMap = load('nilaiSynced', {});
+      syncMap[payload.key] = !!synced;
+      store('nilaiSynced', syncMap);
       store('nilai', S.scores);
       break;
     }
+  }
+}
+
+// FIX #20: sapu ulang nilai yang masih tertanda BELUM tersinkron (mis. sempat
+// kena timeout/onerror JSONP saat submit, atau koneksi terputus) dan coba
+// kirim ulang ke GAS. Dipanggil saat halaman dibuka dan saat koneksi
+// kembali online (lihat pemanggilnya di DOMContentLoaded) — supaya nilai
+// yang "ketinggalan" tetap sampai ke spreadsheet tanpa hakim/admin perlu
+// melakukan apa pun secara manual. Baca langsung dari localStorage (bukan
+// S.scores, yang baru terisi lewat submit/getNilai di sesi berjalan) —
+// supaya tetap benar walau dipanggil di awal sebelum S.scores sempat diisi.
+let _resyncingNilai = false;
+async function resyncPendingNilai() {
+  if (_resyncingNilai || !isApiReady()) return;
+  const syncMap  = load('nilaiSynced', {});
+  const allNilai = load('nilai', {});
+  const pendingKeys = Object.keys(syncMap).filter(k => !syncMap[k] && allNilai[k]);
+  if (!pendingKeys.length) return;
+
+  _resyncingNilai = true;
+  MTQ_LOG.info(`resyncPendingNilai: ${pendingKeys.length} nilai belum tersinkron, mencoba ulang...`);
+  let ok = 0;
+  for (const key of pendingKeys) {
+    try {
+      const res = await apiPost('saveNilai', { key, data: allNilai[key] });
+      if (res.synced) ok++;
+    } catch (e) { MTQ_LOG.error('resyncPendingNilai gagal untuk', key, e); }
+  }
+  _resyncingNilai = false;
+  if (ok > 0) {
+    MTQ_LOG.info(`resyncPendingNilai: ${ok}/${pendingKeys.length} berhasil disinkronkan`);
+    toast('🔄 Sinkron Selesai', `${ok} nilai yang sempat tertunda kini sudah tersimpan di server`, 'success', 6000);
   }
 }
 
@@ -1299,6 +1363,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   initPinInputs();
   initHakimCaptcha();
   populateCabangDropdowns();
+
+  // FIX #20: coba sinkronkan nilai yang sempat tertunda dari sesi
+  // sebelumnya (device ini), lalu coba lagi tiap kali koneksi kembali
+  // online. Tidak diblokir/di-await — berjalan diam-diam di belakang.
+  resyncPendingNilai();
+  window.addEventListener('online', resyncPendingNilai);
 
   // Keyboard shortcut: Ctrl+Shift+L buka logger panel
   document.addEventListener('keydown', e => {
@@ -1830,12 +1900,19 @@ async function submitNilai() {
       const res = await apiPost('saveNilai', { key: scoreKey, data: scoreData });
       hideOverlay();
 
-      if (!res.success && !res.source) {
-        // GAS menolak (misal sudah ada) — tapi lokal sudah tersimpan
-        MTQ_LOG.warn('GAS menolak saveNilai', res);
+      // FIX #20: dulu toast sukses SELALU sama persis, tidak peduli nilai
+      // benar2 sampai ke server atau cuma tersimpan lokal di browser ini.
+      // Untuk data nilai lomba, bedanya penting — hakim/admin perlu tahu
+      // kalau ada yang masih "menggantung" di satu device, bukan diam-diam
+      // dianggap beres. resyncPendingNilai() akan terus mencoba mengirim
+      // ulang di latar belakang; toast di bawah hanya soal percobaan SAAT
+      // INI berhasil sampai ke server atau belum.
+      if (res.synced) {
+        toast('✅ Nilai Tersimpan!', `${peserta.nama} — ${total.toFixed(2)} (tersinkron ke server)`, 'success');
+      } else {
+        MTQ_LOG.warn('saveNilai belum tersinkron ke server', res);
+        toast('⚠️ Tersimpan Lokal', `${peserta.nama} — ${total.toFixed(2)}. Belum sampai ke server, akan dicoba otomatis lagi. Jangan hapus data browser di HP/laptop ini sebelum tersinkron.`, 'warning', 8000);
       }
-
-      toast('✅ Nilai Tersimpan!', `${peserta.nama} — ${total.toFixed(2)}`, 'success');
 
       // ── Simpan thumbnail bukti ke localStorage untuk pratinjau pasca-submit ──
       // PENTING: di-AWAIT (bukan fire-and-forget) agar localStorage.setItem

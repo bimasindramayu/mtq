@@ -40,6 +40,17 @@ function _pnToken() {
 //
 // Solusi: buat JSONP helper sendiri dengan nama callback yang UNIK menggunakan
 // counter global (incrementing) + komponen acak. Tidak pernah bisa collision.
+//
+// FIX #22: masalah TERPISAH yang sama bahayanya — window[name] dulu dihapus
+// di finish(), yang dipanggil dari SEMUA jalur termasuk timeout. Kalau
+// timeout "menyerah" duluan lalu respons ASLI baru datang (server cuma
+// lambat, bukan mati), callback yang sudah dihapus itu bikin browser
+// meledak "ReferenceError: ...is not defined" — bug yang sama persis
+// dengan yang ditemukan & diperbaiki di doyourmagic.html (FIX #15),
+// penilaian.html (FIX #19), dan admin-maqra.js (FIX #22). Sekarang
+// window[name] hanya dihapus di onerror (browser sudah pasti tidak akan
+// mencoba lagi), bukan di timeout — respons yang telat tetap diproses
+// normal lewat handler sukses.
 let _pnSeq = 0;
 function _pnFetch(url, timeout) {
   timeout = timeout || 30000;
@@ -47,20 +58,30 @@ function _pnFetch(url, timeout) {
     // Callback name: _pnCb<seq>_<random5> — tidak pernah collision walau 1000 panggilan/ms
     const name = '_pnCb' + (++_pnSeq) + '_' + Math.random().toString(36).slice(2, 7);
     const s = document.createElement('script');
-    let done = false;
+    let gaveUp = false;
 
-    const finish = function(data) {
-      if (done) return;
-      done = true;
+    // Respons ASLI — selalu diproses, baik tepat waktu maupun telat
+    // setelah timeout sudah menyerah duluan (self-healing, lihat FIX #22).
+    window[name] = function(data) {
       clearTimeout(t);
-      try { delete window[name]; } catch(e) {}
       try { if (s.parentNode) s.remove(); } catch(e) {}
       resolve(data || { success: false, error: 'no_response' });
     };
-
-    window[name] = finish;
-    s.onerror = function() { finish({ success: false, error: 'script_load_failed' }); };
-    var t = setTimeout(function() { finish({ success: false, error: 'timeout' }); }, timeout);
+    s.onerror = function() {
+      if (gaveUp) return;
+      gaveUp = true;
+      clearTimeout(t);
+      try { delete window[name]; } catch(e) {}
+      try { if (s.parentNode) s.remove(); } catch(e) {}
+      resolve({ success: false, error: 'script_load_failed' });
+    };
+    var t = setTimeout(function() {
+      if (gaveUp) return;
+      gaveUp = true;
+      try { if (s.parentNode) s.remove(); } catch(e) {}
+      resolve({ success: false, error: 'timeout' });
+      // FIX #22: window[name] SENGAJA tidak dihapus di sini.
+    }, timeout);
     s.src = url + (url.indexOf('?') >= 0 ? '&' : '?') + 'callback=' + name;
     document.head.appendChild(s);
   });

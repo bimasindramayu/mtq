@@ -1716,7 +1716,32 @@ async function submitPerbaikan(nomor, memberCount) {
       showToast('Gagal', data.message || 'Terjadi kesalahan', 'error', 5000);
     }
   } catch (err) {
-    showToast('Error', 'Gagal menghubungi server: ' + err.message, 'error');
+    // FIX #21: sama seperti submitForm() di daftar.js — kalau errornya
+    // AMBIGU (timeout/koneksi putus, bukan penolakan jelas dari server),
+    // kita tidak tahu apakah perbaikan ini sebenarnya sudah tersimpan.
+    // apiPerbaikan_ mensyaratkan status SAAT INI = 'Ditolak' dan resetnya
+    // ke status lain setelah berhasil (lihat api.gs) — jadi status yang
+    // sudah TIDAK LAGI 'Ditolak' adalah sinyal kuat kalau perbaikan ini
+    // sebenarnya sukses, meski responsnya gagal sampai ke browser.
+    const isAmbiguous = err?.name === 'AbortError' ||
+      /gagal menghubungi server|tidak merespons/i.test(err?.message || '');
+    let reconciled = false;
+    if (isAmbiguous && _record?.nik) {
+      try {
+        const recon = await jsonpGet({ action: 'checkNIK', nik: _record.nik }, 15000);
+        if (recon?.found && recon.record && String(recon.record.status_verifikasi||'').trim() !== 'Ditolak') {
+          reconciled = true;
+          showToast('Sudah Tersimpan', 'Koneksi sempat bermasalah, tapi perbaikan Anda ternyata sudah berhasil tersimpan.', 'success', 8000);
+          document.getElementById('editArea').innerHTML = '';
+          await fetchAndRenderStatus(_record.nik);
+        }
+      } catch (reconErr) {
+        log.error('[MTQ] submitPerbaikan reconciliation gagal', reconErr);
+      }
+    }
+    if (!reconciled) {
+      showToast('Error', 'Gagal menghubungi server: ' + err.message, 'error');
+    }
   } finally {
     showLoading(false);
     if (btn) btn.disabled = false;

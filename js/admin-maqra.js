@@ -670,17 +670,24 @@ function maqraHandleSessionExpired() {
 }
 
 // ── JSONP Transport ───────────────────────────────────────────
+// FIX #22: sama seperti FIX #15 (doyourmagic.html) / FIX #19 (penilaian.html)
+// — dulu `delete window[cb]` dipanggil di jalur timeout juga, jadi kalau
+// respons ASLI baru datang setelah kita menyerah (server cuma lambat),
+// browser meledak "ReferenceError: ...is not defined" alih-alih memproses
+// data yang sebenarnya sudah berhasil. Sekarang window[cb] hanya dihapus
+// di onerror (yang berarti browser sudah pasti tidak akan mencoba lagi),
+// bukan di timeout.
 function maqraJsonpGet(params, timeout = 15000) {
   return new Promise((resolve, reject) => {
     const cb  = 'mtqMqG_' + Date.now() + '_' + Math.floor(Math.random()*9999);
     const qs  = Object.entries(params)
       .map(([k,v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&');
     const s   = document.createElement('script');
-    let timer;
-    window[cb] = d => { clearTimeout(timer); delete window[cb]; s.remove(); resolve(d); };
+    let timer, gaveUp = false;
+    window[cb] = d => { clearTimeout(timer); s.remove(); resolve(d); };
     s.src    = `${MAQRA_API_URL()}?${qs}&callback=${cb}`;
-    s.onerror = () => { clearTimeout(timer); delete window[cb]; s.remove(); reject(new Error('Network error')); };
-    timer    = setTimeout(() => { delete window[cb]; s.remove(); reject(new Error('Timeout')); }, timeout);
+    s.onerror = () => { if (gaveUp) return; gaveUp = true; clearTimeout(timer); delete window[cb]; s.remove(); reject(new Error('Network error')); };
+    timer    = setTimeout(() => { if (gaveUp) return; gaveUp = true; s.remove(); reject(new Error('Timeout')); }, timeout);
     document.head.appendChild(s);
   });
 }
@@ -696,16 +703,22 @@ function maqraJsonpGet(params, timeout = 15000) {
 // lama; mutasi baru pakai maqraPostJSON di bawah (fetch POST asli, body
 // di request body bukan URL — sama seperti postJSON() di cek-maqra.js
 // yang sudah terbukti jalan untuk kasus serupa).
+// FIX #22: sama seperti maqraJsonpGet di atas — window[cb] tidak lagi
+// dihapus di jalur timeout, cuma di onerror, supaya respons asli yang
+// telat (bukan cuma teori — komentar di atas ini SENDIRI mendeskripsikan
+// persis kejadian nyatanya: data tersimpan, respons gagal sampai) tidak
+// meledak ReferenceError kalau toh masih ada pemanggil lama yang pakai
+// fungsi deprecated ini.
 function maqraJsonpPost(payload, timeout = 30000) {
   return new Promise((resolve, reject) => {
     const cb  = 'mtqMqP_' + Date.now() + '_' + Math.floor(Math.random()*9999);
     const enc = encodeURIComponent(JSON.stringify(payload));
     const s   = document.createElement('script');
-    let timer;
-    window[cb] = d => { clearTimeout(timer); delete window[cb]; s.remove(); resolve(d); };
+    let timer, gaveUp = false;
+    window[cb] = d => { clearTimeout(timer); s.remove(); resolve(d); };
     s.src    = `${MAQRA_API_URL()}?postData=${enc}&callback=${cb}`;
-    s.onerror = () => { clearTimeout(timer); delete window[cb]; s.remove(); reject(new Error('Network error')); };
-    timer    = setTimeout(() => { delete window[cb]; s.remove(); reject(new Error('Timeout')); }, timeout);
+    s.onerror = () => { if (gaveUp) return; gaveUp = true; clearTimeout(timer); delete window[cb]; s.remove(); reject(new Error('Network error')); };
+    timer    = setTimeout(() => { if (gaveUp) return; gaveUp = true; s.remove(); reject(new Error('Timeout')); }, timeout);
     document.head.appendChild(s);
   });
 }

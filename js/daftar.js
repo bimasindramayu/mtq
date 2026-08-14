@@ -836,7 +836,17 @@ function checkNIKDuplicate(idx, nik) {
   if (!nik || nik.length < 16) return;
 
   jsonp(`${API_URL}?action=checkNIK&nik=${encodeURIComponent(nik)}`, 'nikChk', (data) => {
-    if (data && data.isDuplicate) {
+    // FIX #21: kode ini sebelumnya mengecek `data.isDuplicate`, tapi
+    // apiCheckNIK_v2_ (api.gs) tidak pernah mengembalikan field itu — yang
+    // benar-benar dikirim adalah `data.found`. Akibatnya peringatan "NIK
+    // sudah terdaftar" ini TIDAK PERNAH muncul saat mengisi form, sejak
+    // awal — data.isDuplicate selalu undefined jadi selalu masuk cabang
+    // else. Pengecekan NIK duplikat yang SEBENARNYA menolak tetap jalan
+    // (server-side, saat submit — lihat checkNIKDuplicate_ di helper.gs),
+    // jadi ini bukan celah keamanan/data, cuma peringatan dini yang mati
+    // — peserta baru tahu NIK-nya dobel di langkah paling akhir (submit),
+    // bukan saat masih mengetik.
+    if (data && data.found) {
       if (errEl) { errEl.textContent = `❌ NIK ${nik} sudah terdaftar. Satu NIK hanya boleh mendaftar satu kali.`; errEl.classList.add('show'); }
       el?.classList.add('error');
       log.warn(`NIK duplikat terdeteksi: ${nik}`);
@@ -1404,6 +1414,58 @@ async function submitForm() {
   } catch (err) {
     log.error('submitForm ✗ —', err?.name, err?.message, err);
     log.timeEnd('submitForm');
+
+    // FIX #21: kalau errornya AMBIGU (timeout/koneksi putus di antara
+    // fetch() dan res.json() — kita benar2 tidak tahu apakah server sempat
+    // selesai MENYIMPAN sebelum responsnya gagal sampai balik ke sini),
+    // cek dulu apakah pendaftaran ini SEBENARNYA sudah masuk lewat checkNIK
+    // (endpoint yang sama dipakai cekstatus.html), sebelum bilang "Gagal
+    // Mendaftar" ke peserta. Pendaftaran adalah aksi paling krusial di
+    // sistem ini — kalau peserta dikira "gagal" padahal sudah tersimpan,
+    // mereka bisa mendaftar ulang tanpa perlu (ke-tolak oleh NIK dup check
+    // di server dengan pesan yang membingungkan kalau mengira percobaan
+    // PERTAMA tidak pernah berhasil), atau lebih buruk — putus asa dan
+    // tidak jadi ikut padahal sudah terdaftar. Ini TIDAK berlaku untuk
+    // penolakan yang jelas dari server (mis. "NIK sudah terdaftar", "Kuota
+    // penuh") — itu sudah pasti & tidak perlu dicek ulang.
+    const isAmbiguous = err?.name === 'AbortError' ||
+      (err?.name === 'TypeError' && /fetch|network/i.test(err?.message || ''));
+    let reconciled = false;
+
+    if (isAmbiguous) {
+      const leadNik = document.getElementById('m0_nik')?.value?.trim();
+      if (leadNik && leadNik.length >= 16) {
+        try {
+          log.info('submitForm — respons ambigu, cek ulang via checkNIK:', leadNik);
+          const recon = await new Promise((resolve) => {
+            jsonp(`${API_URL}?action=checkNIK&nik=${encodeURIComponent(leadNik)}`,
+                  'nikRecon', resolve, 15000);
+          });
+          if (recon && recon.found && recon.record?.nomor_pendaftaran) {
+            reconciled = true;
+            log.info('submitForm — reconciled: pendaftaran ternyata SUDAH masuk', recon.record.nomor_pendaftaran);
+            state.formData = {
+              kecamatan   : document.getElementById('kecamatan')?.value || '',
+              cabang_lomba: document.getElementById('cabang_lomba')?.value || '',
+              members     : Array.from({ length: state.members.length }, (_, i) => ({
+                nama_lengkap: document.getElementById(`m${i}_nama`)?.value?.trim() || '',
+                no_hp       : document.getElementById(`m${i}_no_hp`)?.value?.trim() || '',
+              })),
+            };
+            state.regNumber = recon.record.nomor_pendaftaran;
+            log.timeEnd('submitForm');
+            hideLoading();
+            showSuccessPage(recon.record);
+            showToast('Sudah Tersimpan', 'Koneksi sempat bermasalah, tapi pendaftaran Anda ternyata sudah berhasil tersimpan.', 'success', 8000);
+          }
+        } catch (reconErr) {
+          log.error('submitForm — reconciliation check gagal', reconErr);
+        }
+      }
+    }
+
+    if (reconciled) { state.isSubmitting = false; return; }
+
     hideLoading();
     // FIX: pesan lebih spesifik untuk kasus timeout/jaringan, supaya
     // tidak semua kegagalan tampil sebagai pesan generik yang sama.
@@ -1415,7 +1477,14 @@ async function submitForm() {
     } else if (!userMsg) {
       userMsg = 'Terjadi kesalahan. Coba beberapa saat lagi.';
     }
-    showToast('Gagal Mendaftar', userMsg, 'error', 7000);
+    // FIX #21: kita sudah coba cek (isAmbiguous) tapi tidak berhasil
+    // memastikan — beri tahu peserta untuk cek status dulu via NIK sebelum
+    // mendaftar ulang, alih-alih langsung menganggap belum terdaftar sama
+    // sekali.
+    if (isAmbiguous) {
+      userMsg += ' Sebelum mendaftar ulang, cek dulu status Anda di halaman Cek Status memakai NIK — kalau ternyata sudah tersimpan, mendaftar ulang bisa ditolak sebagai data ganda.';
+    }
+    showToast('Gagal Mendaftar', userMsg, 'error', isAmbiguous ? 10000 : 7000);
     state.isSubmitting = false;
   }
   log.end();
