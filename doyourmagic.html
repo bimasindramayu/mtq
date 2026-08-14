@@ -2270,7 +2270,40 @@
         pdfScale     : 1.5,
         pdfWorkerUrl : 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js',
         pdfCmapUrl   : 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/',
-        googleDriveApiKey: '',    // filled in after loadAll() returns driveApiKey
+        googleDriveApiKey: '',    // FIX #23: tidak lagi dipakai (lihat driveFetcher di bawah) — dibiarkan terisi kosong untuk kompatibilitas kalau ada kode lama yang membacanya
+        // FIX #23: dulu DocumentPreviewer fetch() LANGSUNG dari browser ke
+        // googleapis.com/drive/v3/files/{id}?alt=media pakai
+        // googleDriveApiKey di atas — dan ini SELALU gagal "blocked by
+        // CORS policy" begitu dicoba dengan data asli (lihat error
+        // "Access to fetch at 'https://www.googleapis.com/drive/v3/...'
+        // ... has been blocked by CORS policy"). Ini BUKAN salah
+        // konfigurasi API key atau deployment — Google Drive API memang
+        // tidak mengirim header Access-Control-Allow-Origin untuk
+        // endpoint unduh konten (alt=media), beda dari endpoint metadata
+        // (?fields=...) yang mendukung CORS (makanya nama file tetap
+        // sempat kebaca sebelum unduhan isinya gagal). Tidak ada cara
+        // memperbaiki ini dari sisi browser sama sekali.
+        // Fix: ambil file lewat backend (Apps Script) sendiri via JSONP
+        // — DriveApp API di server tidak kena CORS — pakai jsonp() yang
+        // sama (otomatis dapat semua perbaikan timeout/self-heal
+        // sebelumnya) memanggil action=getDriveFile (baru, lihat api.gs).
+        driveFetcher: (fileId) => new Promise((resolve) => {
+          jsonp(`${API_URL}?action=getDriveFile&token=${encodeURIComponent(adm.token)}&id=${encodeURIComponent(fileId)}`,
+                'dpFile', (data) => {
+            if (!data || data.__jsonpError || !data.success) {
+              resolve({ error: data?.message || 'Gagal mengambil file dari server.' });
+              return;
+            }
+            try {
+              const byteChars = atob(data.base64);
+              const bytes = new Uint8Array(byteChars.length);
+              for (let i = 0; i < byteChars.length; i++) bytes[i] = byteChars.charCodeAt(i);
+              resolve({ blob: new Blob([bytes], { type: data.mimeType || 'application/octet-stream' }), name: data.name });
+            } catch (e) {
+              resolve({ error: 'Gagal memproses data file: ' + e.message });
+            }
+          }, 30000);
+        }),
         debug        : false,
         onOpen: (url, name) => {
           adminLog.info('DocPreviewer opened:', name, url);

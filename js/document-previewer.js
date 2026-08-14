@@ -409,6 +409,36 @@ class DocumentPreviewer {
     }
 
     async _fetchFromDrive(fileId) {
+        // FIX #23: kalau halaman yang memakai komponen ini menyediakan
+        // config.driveFetcher (async function(fileId) => {blob, name} atau
+        // {error}), pakai itu — melewati fetch() langsung ke Drive API di
+        // bawah sama sekali. INI PENTING karena Google Drive API TIDAK
+        // mengirim header CORS untuk endpoint alt=media (unduh konten
+        // biner) — beda dari endpoint metadata yang mendukung CORS — jadi
+        // fetch() langsung dari browser (di bawah) SELALU gagal "blocked
+        // by CORS policy" di origin manapun selain milik Google sendiri,
+        // terlepas dari API key-nya benar/salah atau dibatasi referrer
+        // apapun. Ini keterbatasan Google, bukan sesuatu yang bisa
+        // diperbaiki dari sisi komponen ini. driveFetcher adalah cara
+        // resmi bagi proyek yang punya backend sendiri (mis. Apps Script,
+        // yang tidak kena CORS karena jalan di server) untuk menyediakan
+        // jalur pengambilan file yang tidak kena masalah itu, sambil
+        // komponen ini sendiri tetap generik/standalone (fetch() langsung
+        // di bawah tetap jadi default kalau driveFetcher tidak diisi).
+        if (typeof this.config.driveFetcher === 'function') {
+            const result = await this.config.driveFetcher(fileId);
+            if (result && result.blob) {
+                if (result.name) {
+                    const clean = this._cleanFileName(result.name);
+                    this._dom.title.textContent = clean;
+                    this._state.currentName     = clean;
+                }
+                await this._renderBlob(result.blob);
+                return;
+            }
+            throw new Error((result && result.error) || 'driveFetcher tidak mengembalikan file.');
+        }
+
         if (!this.config.googleDriveApiKey)
             throw new Error('googleDriveApiKey belum dikonfigurasi.');
 
@@ -1091,6 +1121,15 @@ class DocumentPreviewer {
 ================================================================ */
 DocumentPreviewer.defaultConfig = {
     googleDriveApiKey : '',
+    // FIX #23: opsional — async function(fileId) => Promise<{blob, name}|{error}>.
+    // Kalau diisi, dipakai UNTUK MENGGANTI fetch() langsung ke Drive API
+    // (yang googleDriveApiKey di atas dipakai untuk itu) — lihat catatan
+    // panjang di _fetchFromDrive() soal kenapa: googleapis.com tidak
+    // mengirim header CORS untuk unduhan konten (alt=media), jadi fetch()
+    // langsung dari browser akan selalu gagal di kebanyakan origin.
+    // Isi ini dengan fungsi yang mengambil file lewat backend Anda sendiri
+    // (yang tidak kena CORS) kalau itu terjadi pada Anda.
+    driveFetcher      : null,
     modalId           : 'dp-modal',
     zoomStep          : 0.25,
     zoomMin           : 0.25,

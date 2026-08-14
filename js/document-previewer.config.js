@@ -27,6 +27,15 @@ const MY_DP_CONFIG = {
     pdfWorkerUrl : 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js',
     pdfCmapUrl   : 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/cmaps/',
     debug        : false,
+    // FIX #23: kalau file yang dipratinjau ada di Google Drive, JANGAN
+    // andalkan googleDriveApiKey saja — Drive API tidak mengirim header
+    // CORS untuk endpoint unduh konten (alt=media), jadi fetch() langsung
+    // dari browser akan gagal "blocked by CORS policy" di hampir semua
+    // origin. Isi driveFetcher dengan fungsi yang mengambil file lewat
+    // backend Anda sendiri (server-side, tidak kena CORS) sebagai
+    // gantinya — lihat contoh pemakaiannya di doyourmagic.html (proyek
+    // MTQ 2026), yang mengambil file lewat Apps Script + JSONP.
+    driveFetcher : null,
     onOpen       : null,
     onClose      : null,
     onError      : null
