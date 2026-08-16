@@ -193,8 +193,63 @@ function initDocumentPreviewer() {
     return;
   }
   const baseCfg = (typeof MY_DP_CONFIG !== 'undefined') ? MY_DP_CONFIG : {};
-  previewer = new DocumentPreviewer({ ...baseCfg, googleDriveApiKey: '' });
+  previewer = new DocumentPreviewer({
+    ...baseCfg,
+    // FIX: googleDriveApiKey SENGAJA dikosongkan — jalur fetch() langsung
+    // ke Drive API dari browser di document-previewer.js SELALU gagal
+    // CORS untuk endpoint alt=media (unduh konten biner), apa pun nilai
+    // key-nya (lihat komentar panjang di document-previewer.js →
+    // _fetchFromDrive() dan di api.gs → apiGetDriveFile_). driveFetcher
+    // di bawah ini yang benar-benar dipakai.
+    googleDriveApiKey: '',
+    // FIX: proxy lewat backend kita sendiri (action=getDriveFile di
+    // api.gs, server-ke-server jadi tidak kena CORS sama sekali) — lihat
+    // dpDriveFetcher() di bawah. Efek samping yang disengaja: URL Drive
+    // asli tidak pernah diminta langsung oleh browser peserta.
+    driveFetcher: dpDriveFetcher,
+  });
   previewer.bindTriggers('.dp-trigger');
+}
+
+// FIX: driveFetcher untuk DocumentPreviewer. Menerima fileId (sudah
+// diekstrak duluan oleh DocumentPreviewer dari URL Drive lewat
+// _extractFileId()), mengambil bytenya lewat action=getDriveFile
+// (JSONP, sama seperti seluruh transport lain di file ini), lalu
+// mengembalikan { blob, name } — atau { error } kalau gagal, sesuai
+// kontrak yang diharapkan _fetchFromDrive() di document-previewer.js.
+async function dpDriveFetcher(fileId) {
+  try {
+    const data = await jsonpGet({ action: 'getDriveFile', id: fileId }, 25000);
+    if (!data || !data.success || !data.base64) {
+      return { error: (data && data.message) || 'Gagal mengambil dokumen dari server.' };
+    }
+    return {
+      blob: dpBase64ToBlob(data.base64, data.mimeType || 'application/octet-stream'),
+      name: data.name || '',
+    };
+  } catch (err) {
+    return { error: err.message || 'Tidak bisa menghubungi server.' };
+  }
+}
+
+function dpBase64ToBlob(base64, mimeType) {
+  const bin = atob(base64);
+  const arr = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  return new Blob([arr], { type: mimeType });
+}
+
+// FIX: dipanggil LANGSUNG dari tombol .uz-zoom-btn (bukan lewat delegasi
+// previewer.bindTriggers() ke document) — tombol itu sengaja memanggil
+// event.stopPropagation() supaya kliknya tidak ikut membuka file picker
+// milik .uz-photo di belakangnya (lihat uzMini()), tapi stopPropagation()
+// itu juga menghentikan event sebelum sempat bubbling naik ke listener
+// document yang dipasang bindTriggers() — jadi delegasi itu TIDAK PERNAH
+// menyala untuk tombol ini kalau tidak dipanggil langsung seperti ini.
+function openDocPreview(url, name) {
+  if (!url) { showToast('Info', 'Dokumen belum tersedia untuk peserta ini.', 'warning'); return; }
+  if (!previewer) { showToast('Error', 'Komponen preview belum siap, muat ulang halaman.', 'error'); return; }
+  previewer.open(url, name || 'Dokumen');
 }
 
 function initDarkMode() {
@@ -211,35 +266,42 @@ function applyTheme(t) {
   if (ic) ic.textContent = t === 'dark' ? '☀️' : '🌙';
 }
 
-// ── Navigasi Tahapan (ganti "halaman" + indikator) ──────────────
+// ── Navigasi Tahapan (ganti "halaman") ──────────────────────────
 // FIX: sebelumnya panel lama (mis. searchCard) tetap ada di DOM dan
 // cuma discroll lewat — jadi kontennya menumpuk ke bawah (searchCard
 // masih kelihatan di atas walau user sudah pindah tahap). goToPanel()
 // membuat hanya SATU .tahapan-panel yang tampil (display:block),
 // panel lain disembunyikan (display:none) — benar-benar berpindah
-// "halaman", bukan cuma scroll — sekaligus menyinkronkan indikator
-// 1/2/3 di #tahapanBar (is-active/is-done). Dipanggil dari:
+// "halaman", bukan cuma scroll. Dipanggil dari:
 //   - fetchAndRenderStatus()  → panel 2 (hasil pencarian NIK tampil)
 //   - goToMaqraStep()         → panel 3 (user lanjut ke ambil maqra)
 //   - tombol "← Kembali"      → panel 1 atau 2 (mundur satu tahap)
+// FIX: indikator langkah 1/2/3 (#tahapanBar / #tpStep1-3) sudah dihapus
+// dari cekstatus.html atas permintaan — logika penyinkronan status
+// aktif/selesai & auto-scroll ke situ yang dulu ada di sini ikut
+// dihapus juga karena elemen targetnya sudah tidak ada.
 function goToPanel(step) {
   document.querySelectorAll('.tahapan-panel').forEach(function(p) { p.classList.remove('active'); });
   const target = document.getElementById('panel' + step);
   if (target) target.classList.add('active');
+}
 
-  for (let i = 1; i <= 3; i++) {
-    const el = document.getElementById('tpStep' + i);
-    if (!el) continue;
-    const dot = el.querySelector('.tahapan-dot');
-    el.classList.remove('is-active', 'is-done');
-    if (i < step)        { el.classList.add('is-done');   if (dot) dot.textContent = '✓'; }
-    else if (i === step) { el.classList.add('is-active'); if (dot) dot.textContent = String(i); }
-    else                  { if (dot) dot.textContent = String(i); }
+// FIX: tombol "← Kembali ke Pencarian" di atas panel2 sekarang sadar
+// konteks. statusArea & editArea adalah 2 "tab" terpisah di dalam
+// panel2 (lihat showEditForm()/closeEditForm()) — kalau editArea yang
+// lagi tampil (form perbaikan terbuka), "kembali" seharusnya balik ke
+// kartu status dulu (statusArea), BUKAN langsung lompat ke panel
+// pencarian (panel1) — sebelumnya itu yang terjadi, dan form perbaikan
+// yang sedang diisi jadi hilang begitu saja tanpa konfirmasi. Kalau
+// statusArea yang tampil (kondisi normal), perilakunya seperti biasa:
+// balik ke panel1. Dipanggil dari tombol id="panel2BackBtn".
+function backFromPanel2() {
+  const editArea = document.getElementById('editArea');
+  if (editArea && editArea.style.display === 'block') {
+    closeEditForm();
+  } else {
+    goToPanel(1);
   }
-
-  setTimeout(() => {
-    document.getElementById('tahapanBar')?.scrollIntoView({ behavior:'smooth', block:'start' });
-  }, 50);
 }
 
 // ════════════════════════════════════════════════════════════
@@ -301,8 +363,11 @@ async function fetchAndRenderStatus(nik) {
       return;
     }
     _record = data.record;
-    // FIX #2 — teruskan kunci Drive API (dibatasi HTTP referrer + Drive API only, lihat config.gs)
-    if (previewer) previewer.config.googleDriveApiKey = data.driveApiKey || '';
+    // FIX: baris "previewer.config.googleDriveApiKey = data.driveApiKey"
+    // yang lama dihapus dari sini — driveFetcher (lihat initDocumentPreviewer())
+    // sekarang jadi satu-satunya jalur DocumentPreviewer mengambil file,
+    // dan itu dikonfigurasi sekali saja saat halaman dimuat, tidak perlu
+    // diperbarui per-record seperti ini.
     renderStatusCard(_record);
     goToPanel(2);   // FIX #3 — pindah ke panel status (searchCard ikut disembunyikan), tidak perlu scroll manual
 
@@ -329,6 +394,17 @@ function clearAreas() {
     const el = document.getElementById(id);
     if (el) el.innerHTML = '';
   });
+  // FIX: statusArea & editArea sekarang berperilaku seperti 2 "tab" yang
+  // saling eksklusif di panel2 (lihat showEditForm()/closeEditForm()) —
+  // bukan lagi menumpuk vertikal. Setiap kali area di-reset (pencarian
+  // NIK baru, atau refresh setelah kirim perbaikan berhasil), pastikan
+  // mulai dari kondisi "tab" statusArea yang tampil.
+  const statusEl = document.getElementById('statusArea');
+  const editEl   = document.getElementById('editArea');
+  if (statusEl) statusEl.style.display = 'block';
+  if (editEl)   editEl.style.display   = 'none';
+  const backBtn = document.getElementById('panel2BackBtn');
+  if (backBtn) backBtn.textContent = '← Kembali ke Pencarian';
   _maqraList   = [];
   _maqraResult = null;
   _spinning    = false;
@@ -1475,6 +1551,15 @@ function loadScript(src) {
 // ════════════════════════════════════════════════════════════
 function showEditForm() {
   if (!_record) return;
+  // FIX: editArea sekarang tampil sebagai "tab"/halaman terpisah dari
+  // statusArea (bukan menumpuk di bawahnya) — lihat closeEditForm() untuk
+  // arah sebaliknya, dan clearAreas() untuk reset state saat pencarian
+  // baru / setelah kirim perbaikan berhasil.
+  document.getElementById('statusArea').style.display = 'none';
+  // FIX: label tombol "← Kembali" di atas panel2 ikut disesuaikan supaya
+  // sesuai dengan tujuannya yang sekarang (lihat backFromPanel2()).
+  const backBtn = document.getElementById('panel2BackBtn');
+  if (backBtn) backBtn.textContent = '← Kembali ke Status';
   const rec     = _record;
   const isTeam  = (rec.tipe_lomba || '').toLowerCase() === 'team';
   // FIX #2: sebelumnya syarat "isTeam &&" di sini membuat peserta INDIVIDU
@@ -1587,10 +1672,12 @@ function showEditForm() {
             onclick="submitPerbaikan('${esc(rec.nomor_pendaftaran||'')}', ${anggota.length})">
             ✨ Kirim Perbaikan
           </button>
-          <button class="btn btn-outline" onclick="document.getElementById('editArea').innerHTML=''">✕ Batal</button>
+          <button type="button" class="btn btn-outline" onclick="closeEditForm()">✕ Batal</button>
         </div>
       </div>
     </div>`;
+
+  document.getElementById('editArea').style.display = 'block';
 
   // Bind upload zones
   for (let i = 0; i < anggota.length; i++) {
@@ -1599,6 +1686,19 @@ function showEditForm() {
   }
   bindUZ('rekom');
   setTimeout(() => document.getElementById('editArea').scrollIntoView({ behavior:'smooth', block:'start' }), 100);
+}
+
+// FIX: kebalikan dari showEditForm() — kembali ke "tab" statusArea.
+// Dipanggil dari tombol "✕ Batal" di form perbaikan, dan dari
+// backFromPanel2() saat tombol "← Kembali" di atas panel2 diklik
+// ketika editArea sedang tampil.
+function closeEditForm() {
+  const editEl = document.getElementById('editArea');
+  editEl.innerHTML    = '';
+  editEl.style.display = 'none';
+  document.getElementById('statusArea').style.display = 'block';
+  const backBtn = document.getElementById('panel2BackBtn');
+  if (backBtn) backBtn.textContent = '← Kembali ke Pencarian';
 }
 
 // ── Validasi Tanggal Lahir pada Edit Form ────────────────────
@@ -1692,7 +1792,7 @@ function uzMini(key, label, existingUrl) {
           <span>${hasExisting ? '🔄' : '📷'}</span>
           <span>${hasExisting ? 'Tap untuk ganti' : 'Tap untuk upload'}</span>
         </div>
-        ${hasExisting ? `<button type="button" class="uz-zoom-btn dp-trigger" data-file-url="${esc(existingUrl)}" data-doc-name="${esc(label)}" onclick="event.stopPropagation()" title="Lihat ukuran penuh">🔍</button>` : ``}
+        ${hasExisting ? `<button type="button" class="uz-zoom-btn dp-trigger" data-file-url="${esc(existingUrl)}" data-doc-name="${esc(label)}" onclick="event.stopPropagation();openDocPreview('${esc(existingUrl)}','${esc(label)}')" title="Lihat ukuran penuh">🔍</button>` : ``}
       </div>
       <div class="uz-caption">
         <span class="uz-caption-label">${esc(label)}</span>

@@ -116,28 +116,6 @@
     .secondary-links a,.secondary-links button{background:none;border:none;font-family:inherit;font-size:12.5px;font-weight:700;color:var(--g500);text-decoration:none;display:inline-flex;align-items:center;gap:4px;padding-bottom:1px;border-bottom:1px dashed transparent;transition:color .2s,border-color .2s;cursor:pointer}
     .secondary-links a:hover,.secondary-links button:hover{color:var(--em);border-color:var(--em)}
 
-    /* ══════════════════════════════════════════════════════════ */
-    /* ── TAHAPAN (indikator langkah) ────────────────────────── */
-    /* ══════════════════════════════════════════════════════════ */
-    /* FIX: supaya proses "cari NIK → lihat status → ambil maqra" terasa
-       bertahap (bukan semua kartu+tombol muncul sekaligus), halaman ini
-       menampilkan indikator 3 langkah di atas. Statusnya (aktif/selesai)
-       diatur lewat goToPanel() di js/cek-maqra.js — fungsi yang sama
-       yang juga mengganti panel mana yang ditampilkan (lihat di bawah). */
-    .tahapan-bar{background:var(--white);border-radius:var(--r-xl);box-shadow:var(--shadow);padding:18px 20px 16px;margin-bottom:20px}
-    .tahapan-track{display:flex;align-items:flex-start;max-width:380px;margin:0 auto}
-    .tahapan-step{display:flex;flex-direction:column;align-items:center;gap:7px;flex:1;position:relative}
-    .tahapan-step::before{content:'';position:absolute;top:15px;left:calc(50% + 16px);right:calc(-50% + 16px);height:2px;background:var(--g200);transition:background .3s}
-    .tahapan-step:last-child::before{display:none}
-    .tahapan-step.is-done::before{background:var(--em-light)}
-    .tahapan-dot{position:relative;z-index:1;width:30px;height:30px;border-radius:50%;background:var(--g100);border:2px solid var(--g200);color:var(--g400);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;transition:all .25s}
-    .tahapan-step.is-active .tahapan-dot{background:var(--em);border-color:var(--em);color:#fff;box-shadow:0 0 0 4px var(--em-xs)}
-    .tahapan-step.is-done .tahapan-dot{background:var(--em-light);border-color:var(--em-light);color:#065f46}
-    .tahapan-label{font-size:11px;font-weight:700;color:var(--g400);text-align:center;line-height:1.3;max-width:92px}
-    .tahapan-step.is-active .tahapan-label{color:var(--em)}
-    .tahapan-step.is-done .tahapan-label{color:var(--g600)}
-    @media(max-width:420px){.tahapan-label{font-size:9.5px;max-width:70px}.tahapan-dot{width:26px;height:26px;font-size:12px}.tahapan-step::before{top:13px}}
-
     /* ── Panel (satu "halaman" per tahap) ── */
     /* FIX: sebelumnya searchCard/statusArea/maqraArea semua dalam alur
        dokumen normal sehingga menumpuk ke bawah (searchCard tetap
@@ -146,10 +124,15 @@
        sisanya display:none. Ganti panel via goToPanel() di cek-maqra.js. */
     .tahapan-panel{display:none}
     .tahapan-panel.active{display:block;animation:slideUp .35s ease}
-    .panel-back{display:inline-flex;align-items:center;gap:6px;background:none;border:none;
-      font-family:inherit;color:var(--g500);font-size:13px;font-weight:700;cursor:pointer;
-      padding:9px 4px;margin-bottom:6px;transition:color .2s}
-    .panel-back:hover{color:var(--em)}
+    /* FIX: sebelumnya link teks polos abu-abu (gampang keluput dilihat).
+       Sekarang jadi pill emerald supaya lebih jelas terlihat "bisa
+       diklik" — memudahkan user yang mengecek status banyak NIK
+       berturut-turut untuk kembali ke pencarian. */
+    .panel-back{display:inline-flex;align-items:center;gap:6px;
+      background:var(--em-xs);border:1.5px solid var(--em-light);border-radius:999px;
+      font-family:inherit;color:var(--em-d);font-size:13.5px;font-weight:700;cursor:pointer;
+      padding:9px 16px;margin-bottom:14px;transition:all .2s}
+    .panel-back:hover{background:var(--em-light);border-color:var(--em);color:var(--em-d);transform:translateX(-2px)}
 
     /* ── Members ── */
     .member-list{display:flex;flex-direction:column;gap:8px;margin-top:12px}
@@ -248,8 +231,12 @@
     .uz-photo.thumb-fail{background:var(--g100)}
     .uz-photo.has-new{border-color:var(--em);border-width:2px}
     .uz-photo.has-new .uz-photo-overlay{background:linear-gradient(0deg,rgba(5,150,105,.8),rgba(5,150,105,0))}
-    .uz-zoom-btn{position:absolute;top:6px;right:6px;width:27px;height:27px;border-radius:50%;border:none;background:rgba(0,0,0,.55);color:#fff;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .2s;z-index:2}
+    /* FIX: 27px → 34px — target sentuh terlalu kecil untuk jempol di HP
+       (ini sekarang jadi tombol fungsional membuka DocumentPreviewer,
+       bukan cuma indikator visual, lihat openDocPreview() di cek-maqra.js). */
+    .uz-zoom-btn{position:absolute;top:5px;right:5px;width:34px;height:34px;border-radius:50%;border:none;background:rgba(0,0,0,.55);color:#fff;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .2s;z-index:2}
     .uz-zoom-btn:hover{background:rgba(0,0,0,.75)}
+    .uz-zoom-btn:active{background:rgba(0,0,0,.85);transform:scale(.94)}
     .uz-caption{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:6px;font-size:11.5px}
     .uz-caption-label{font-weight:700;color:var(--g700)}
     .uz-caption-status{color:var(--g500);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:58%;text-align:right}
@@ -325,6 +312,30 @@
     .dt-state-msg{font-size:13px}
 
     @media(max-width:640px){.dt-modal{max-height:90vh;border-radius:var(--r-lg)}.dt-table{font-size:12.5px}.dt-table thead th,.dt-table tbody td{padding:10px 11px}}
+
+    /* ══════════════════════════════════════════════════════════ */
+    /* ── DocumentPreviewer — override KHUSUS halaman ini ─────── */
+    /* ══════════════════════════════════════════════════════════ */
+    /* FIX: sembunyikan tombol "Buka di Google Drive" & "Download" bawaan
+       komponen (js/document-previewer.js) — keduanya membuka tab baru
+       langsung ke drive.google.com, yang berarti memperlihatkan/
+       mengarahkan ke URL Drive asli. Di halaman publik ini dokumen HANYA
+       boleh dilihat di dalam modal preview, tidak ada jalan keluar ke
+       Drive. Sengaja TIDAK diubah di document-previewer.css sendiri
+       (file itu dipakai bersama, mis. panel admin, yang mungkin masih
+       perlu tombol itu) — override cuma berlaku di halaman ini karena
+       aturan CSS ini dimuat setelah document-previewer.css. Struktur
+       toolbar aslinya: [zoom out|label|zoom in] | [rotate|reset] |
+       [Buka|Download] — grup terakhir beserta divider sebelumnya yang
+       disembunyikan di sini. dp-error-btn disembunyikan juga — itu
+       tombol "Buka di Google Drive" versi darurat yang muncul di state
+       gagal-muat (_showError di document-previewer.js), jalur terpisah
+       dari toolbar yang kalau tidak ikut ditutup tetap bisa
+       memperlihatkan/redirect ke URL Drive asli saat pengambilan file
+       gagal. */
+    .dp-controls .dp-controls-group:last-child{display:none}
+    .dp-controls .dp-divider:has(+ .dp-controls-group:last-child){display:none}
+    .dp-error-btn{display:none}
   </style>
 </head>
 <body>
@@ -352,24 +363,6 @@
 
 <!-- MAIN -->
 <div class="main">
-
-  <!-- Tahapan (indikator langkah) -->
-  <div class="tahapan-bar" id="tahapanBar">
-    <div class="tahapan-track">
-      <div class="tahapan-step is-active" id="tpStep1">
-        <div class="tahapan-dot">1</div>
-        <div class="tahapan-label">Cari NIK</div>
-      </div>
-      <div class="tahapan-step" id="tpStep2">
-        <div class="tahapan-dot">2</div>
-        <div class="tahapan-label">Status Pendaftaran</div>
-      </div>
-      <div class="tahapan-step" id="tpStep3">
-        <div class="tahapan-dot">3</div>
-        <div class="tahapan-label">Ambil Maqra</div>
-      </div>
-    </div>
-  </div>
 
   <!-- ═══ PANEL 1 — Cari NIK ═══ -->
   <div class="tahapan-panel active" id="panel1">
@@ -436,9 +429,21 @@
 
   <!-- ═══ PANEL 2 — Status Pendaftaran ═══ -->
   <div class="tahapan-panel" id="panel2">
-    <button class="panel-back" onclick="goToPanel(1)">← Kembali ke Pencarian</button>
+    <!-- FIX: dulu selalu goToPanel(1) — sekarang lewat backFromPanel2()
+         (js/cek-maqra.js) yang cek dulu apakah editArea sedang tampil:
+         kalau ya, "kembali" berarti balik ke statusArea (bukan lompat ke
+         panel pencarian yang akan membuang form perbaikan tanpa
+         konfirmasi); kalau tidak, perilakunya seperti biasa ke panel1.
+         Teks tombol juga ikut disesuaikan dari showEditForm()/
+         closeEditForm()/clearAreas(). -->
+    <button class="panel-back" id="panel2BackBtn" onclick="backFromPanel2()">← Kembali ke Pencarian</button>
     <div id="statusArea"></div>
-    <div id="editArea"></div>
+    <!-- FIX: editArea & statusArea sekarang berperilaku seperti 2 "tab"
+         yang saling eksklusif (bukan menumpuk ke bawah) — lihat
+         showEditForm()/closeEditForm() & clearAreas() di js/cek-maqra.js.
+         display:none di sini cuma jaga-jaga default awal; kontrol
+         sebenarnya tetap lewat JS. -->
+    <div id="editArea" style="display:none"></div>
   </div>
 
   <!-- ═══ PANEL 3 — Ambil Maqra ═══ -->
@@ -503,6 +508,6 @@
 <script src="js/document-previewer.js?v=20260808"></script>
 <script src="js/document-previewer.config.js?v=20260808"></script>
 
-<script src="js/cek-maqra.js?v=20260815"></script>
+<script src="js/cek-maqra.js?v=20260816b"></script>
 </body>
 </html>
