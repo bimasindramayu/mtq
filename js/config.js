@@ -17,7 +17,7 @@
 const MTQ_CONFIG = {
 
   // ── Google Apps Script Web App URL — SATU-SATUNYA tempat edit ──
-  API_URL: 'https://script.google.com/macros/s/AKfycbyMy9HL0Ds7j5iwn4iY7PjO1gsAMlnteVTHd8-D-SmWkdkJCRGCh6ecbkfSLqvMSt4M/exec',
+  API_URL: 'https://script.google.com/macros/s/AKfycbyHpPdqRkFhipbmwXzN66ANyasFBZDb7MFfiUpjbN6c2FecMq8FPOkaIjNUH827Cqf1/exec',
 
   // ── Tanggal pendaftaran & cutoff umur ────────────────────────
   // Fallback bila API tidak terjangkau — akan ditimpa nilai live
