@@ -170,10 +170,7 @@ async function updateNavDaftarStatus_() {
   }
 
   try {
-    // FIX #25: _ = timestamp memaksa URL selalu unik per request, supaya
-    // status buka/tutup pendaftaran di link "Daftar" ini tidak pernah
-    // kena respons GET yang di-cache dari kunjungan sebelumnya.
-    const data = await jsonpGet({ action: 'getStats', _: Date.now() });
+    const data = await jsonpGet({ action: 'getStats' });
     if (!data || !data.success) throw new Error('respons getStats tidak valid');
     applyDaftarStatus(data.isOpen, data.status);
   } catch (err) {
@@ -1582,8 +1579,20 @@ function showEditForm() {
     maxThn: rec.umur_max_tahun   ?? 99,
     maxBln: rec.umur_max_bulan   ?? 11,
     maxHri: rec.umur_max_hari    ?? 30,
-    cutoff: (typeof MTQ_CONFIG !== 'undefined' ? MTQ_CONFIG.AGE_CUTOFF_DATE : null)
-            || rec.age_cutoff || new Date().toISOString().slice(0,10),
+    // FIX #26 (Bug 3): urutan fallback DIBALIK — rec.age_cutoff sekarang
+    // menang duluan. rec.age_cutoff dikirim FRESH oleh server di setiap
+    // respons checkNIK (lihat _buildNIKRecord di api.gs, field age_cutoff
+    // = PENDAFTARAN_CONFIG.AGE_CUTOFF_DATE), jadi selalu akurat. Sebelumnya
+    // MTQ_CONFIG.AGE_CUTOFF_DATE (fallback statis dari config.js) dicek
+    // LEBIH DULU — karena nilai itu SELALU ada (bukan kosong/undefined),
+    // rec.age_cutoff yang live jadi tidak akan pernah kepakai sama sekali.
+    // Tidak salah SAAT INI (kedua nilai kebetulan sama), tapi kalau
+    // AGE_CUTOFF_DATE diubah di config.gs tanpa mengubah config.js juga,
+    // form perbaikan ini diam-diam akan validasi pakai tanggal cutoff yang
+    // salah walau server sendiri sudah benar.
+    cutoff: rec.age_cutoff
+            || (typeof MTQ_CONFIG !== 'undefined' ? MTQ_CONFIG.AGE_CUTOFF_DATE : null)
+            || new Date().toISOString().slice(0,10),
   };
   // FIX #1: syarat usia sekarang ditampilkan eksplisit di form (bukan cuma
   // divalidasi diam-diam sesudah user salah isi tanggal lahir).
@@ -1887,8 +1896,12 @@ async function submitPerbaikan(nomor, memberCount) {
     maxThn: _record?.umur_max_tahun ?? 99,
     maxBln: _record?.umur_max_bulan ?? 11,
     maxHri: _record?.umur_max_hari  ?? 30,
-    cutoff: (typeof MTQ_CONFIG !== 'undefined' ? MTQ_CONFIG.AGE_CUTOFF_DATE : null)
-            || _record?.age_cutoff || new Date().toISOString().slice(0,10),
+    // FIX #26 (Bug 3): lihat catatan yang sama di showEditForm() di atas —
+    // _record?.age_cutoff (live dari server saat checkNIK) sekarang menang
+    // duluan atas MTQ_CONFIG.AGE_CUTOFF_DATE (fallback statis).
+    cutoff: _record?.age_cutoff
+            || (typeof MTQ_CONFIG !== 'undefined' ? MTQ_CONFIG.AGE_CUTOFF_DATE : null)
+            || new Date().toISOString().slice(0,10),
   };
   if (!allDOBValid(memberCount, _ageRule)) {
     showToast('Data Tidak Valid', 'Tanggal lahir tidak memenuhi syarat usia cabang lomba ini', 'error');

@@ -190,6 +190,35 @@
     .inline-edit-row .btn-cancel { padding:6px 10px; font-size:12px; background:var(--gray-100); color:var(--gray-600); border:none; border-radius:6px; cursor:pointer;
       transition:background .15s ease, color .15s ease; }
     .inline-edit-row .btn-cancel:hover { background:var(--gray-200); color:var(--gray-800); }
+
+    /* FIX #26 (Bug 1): di perangkat tanpa hover sungguhan (HP/tablet),
+       .edit-pen SEBELUMNYA cuma keliatan penuh (opacity:1) saat parent
+       .detail-field di-:hover — sentuhan layar tidak pernah memicu :hover
+       secara konsisten (banyak mobile browser mensimulasikan hover di tap
+       PERTAMA lalu baru menjalankan klik di tap KEDUA), jadi pena edit
+       terasa "tidak bisa di-tap" di HP — persis laporan bug #1. Target
+       sentuhnya juga cuma ~13px, di bawah ukuran minimum yang nyaman
+       disentuh jari (≈32px). (hover:none) mendeteksi perangkat yang
+       TIDAK PUNYA hover sungguhan (touchscreen): opacity dipaksa 1 (tidak
+       menunggu hover apa pun) dan area sentuh diperbesar. Input di dalam
+       inline-edit-row juga dinaikkan ke 16px — di bawah itu iOS Safari
+       otomatis nge-zoom halaman saat input difokus, yang terasa seperti
+       "form-nya rusak" walau sebenarnya cuma auto-zoom bawaan browser. */
+    @media (hover: none), (pointer: coarse) {
+      .edit-pen {
+        opacity: 1;
+        font-size: 16px;
+        padding: 8px 9px;
+        min-width: 30px;
+        min-height: 30px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .inline-edit-row .field-input { font-size: 16px; padding: 9px 12px; }
+      .inline-edit-row .btn-save,
+      .inline-edit-row .btn-cancel { min-height: 34px; padding: 8px 14px; font-size: 13px; }
+    }
     
     /* doc preview */
     .doc-link { display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:600;
@@ -1754,6 +1783,45 @@
       const input = document.getElementById(`ef_${fieldKey}_input`);
       const newVal = input?.value?.trim();
       if (newVal === undefined) return;
+
+      // FIX #26 (Bug 2): validasi umur di FE SEBELUM request dikirim ke
+      // server — pola yang sama dengan validateMemberAge() di daftar.js
+      // (calcAgeAt/checkAgeRange dari config.js, sudah dimuat di halaman
+      // ini). BE (apiEditPesertaGet_ di api.gs) TETAP memvalidasi ulang
+      // secara independen — FE hanya untuk feedback instan, bukan satu-
+      // satunya penjagaan (FE selalu bisa dilewati/dimanipulasi).
+      if (fieldKey === 'tanggal_lahir') {
+        const cfg = (adm.cabangConfig||[]).find(c => c.cabang_lomba === adm.editing?.cabang_lomba) || null;
+        if (!newVal) {
+          toast('Tidak Valid', 'Tanggal lahir tidak boleh kosong', 'error');
+          input.classList.add('error');
+          return;
+        }
+        // FIX #26 (Bug 2): input ini type="text" biasa (bukan date-picker
+        // seperti di daftar.html/cekstatus.html yang type="date"), jadi
+        // format tidak dipaksa browser — admin bisa mengetik apa saja.
+        // calcAgeAt()/calcAgeAtCutoff_() memakai `new Date(str+'T00:00:00')`
+        // yang untuk string bukan-ISO menghasilkan Invalid Date → semua
+        // perbandingan umur jadi NaN, dan NaN < / > apa pun selalu FALSE,
+        // jadi tanpa cek ini format ngawur akan diam-diam LOLOS validasi
+        // (bukan tertolak). Cek format dulu sebelum hitung umur sama sekali.
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(newVal)) {
+          toast('Format Tidak Valid', 'Tanggal lahir harus berformat YYYY-MM-DD, contoh: 1990-12-31', 'error');
+          input.classList.add('error');
+          return;
+        }
+        if (cfg && typeof calcAgeAt === 'function' && typeof checkAgeRange === 'function') {
+          const age   = calcAgeAt(newVal, MTQ_CONFIG.AGE_CUTOFF_DATE);
+          const check = checkAgeRange(age, cfg.umur_min, cfg.umur_max_tahun, cfg.umur_max_bulan||0, cfg.umur_max_hari||0);
+          if (!check.ok) {
+            toast('Usia Tidak Valid', check.msg, 'error');
+            input.classList.add('error');
+            return;   // batal — jangan kirim ke server sama sekali
+          }
+        }
+        input.classList.remove('error');
+      }
+
       adminLog.info('saveEdit', fieldKey, nomor, newVal);
       const btn = input.nextElementSibling;
       btn.disabled = true; btn.innerHTML = '<span class="spin"></span>';
@@ -1772,6 +1840,15 @@
           const displayText = fieldKey === 'tanggal_lahir' ? fmtTglIndo(newVal) : (newVal || '—');
           document.getElementById(`ef_${fieldKey}_val`).textContent = displayText;
           document.getElementById(`ef_${fieldKey}_edit`)?.classList.remove('show');
+          // FIX #26 (Bug 2): umur_display disinkronkan dari respons BE (lihat
+          // apiEditPesertaGet_ di api.gs) supaya kartu "Usia" tidak basi
+          // sampai modal ditutup-buka ulang.
+          if (fieldKey === 'tanggal_lahir' && data.umur_display) {
+            if (row) row.umur_display = data.umur_display;
+            if (adm.editing) adm.editing.umur_display = data.umur_display;
+            const usiaEl = document.getElementById('usiaVal');
+            if (usiaEl) usiaEl.textContent = data.umur_display;
+          }
           toast('Tersimpan', `${fieldKey} berhasil diperbarui`, 'success');
           renderTable(adm.filtered);
         } else if (data?.__jsonpError) {
@@ -2111,6 +2188,16 @@
           adm.cabangConfig = data.config;
           adminLog.info('cabangConfig loaded:', data.config.length, 'cabang');
         }
+        // FIX #26 (Bug 2): sebelumnya MTQ_CONFIG.AGE_CUTOFF_DATE TIDAK PERNAH
+        // ditimpa nilai live dari server di halaman ini — beda dengan
+        // daftar.js → loadConfig() yang sudah benar memanggil ini. Akibatnya
+        // kalau AGE_CUTOFF_DATE diubah di config.gs, syarat usia yang
+        // ditampilkan DAN divalidasi di modal Detail Peserta diam-diam tetap
+        // memakai nilai lama dari config.js (fallback statis). Baris ini
+        // menyamakan dengan pola yang sudah benar di daftar.js.
+        if (typeof MTQ_CONFIG !== 'undefined' && MTQ_CONFIG.applyServerConfig) {
+          MTQ_CONFIG.applyServerConfig(data);
+        }
       });
     }
     
@@ -2123,8 +2210,15 @@
       const maxStr = cfg && cfg.umur_max_tahun < 99
         ? `${cfg.umur_max_tahun} thn${cfg.umur_max_bulan?' '+cfg.umur_max_bulan+' bln':''}${cfg.umur_max_hari?' '+cfg.umur_max_hari+' hr':''}`
         : '∞';
+      // FIX #26 (Bug 2): "per 1 Jul 2026" sebelumnya teks statis, tidak
+      // pernah sinkron dengan AGE_CUTOFF_DATE yang sebenarnya (config.gs
+      // saat ini: 1 November 2026) — admin bisa salah menilai kelayakan
+      // umur peserta hanya karena tanggal acuan yang ditampilkan salah.
+      // Sekarang dari MTQ_CONFIG.AGE_CUTOFF_DATE (live, lihat loadCabangConfig()).
+      const cutoffStr = (typeof MTQ_CONFIG !== 'undefined' && MTQ_CONFIG.AGE_CUTOFF_DATE)
+        ? fmtTglIndo(MTQ_CONFIG.AGE_CUTOFF_DATE) : '—';
       const reqStr = cfg
-        ? `<div style="font-size:11px;color:var(--gray-400);margin-top:4px">⚙️ Syarat cabang: maks. <strong style="color:var(--emerald)">${maxStr}</strong> per 1 Jul 2026${cfg.umur_min>0?' | min. '+cfg.umur_min+' thn':''}</div>`
+        ? `<div style="font-size:11px;color:var(--gray-400);margin-top:4px">⚙️ Syarat cabang: maks. <strong style="color:var(--emerald)">${maxStr}</strong> per ${cutoffStr}${cfg.umur_min>0?' | min. '+cfg.umur_min+' thn':''}</div>`
         : '';
     
       if (!isTeam) {
@@ -2150,7 +2244,7 @@
             ${ef('Tgl Lahir',     r.tanggal_lahir,  'tanggal_lahir', nomor, false, false, fmtTglIndo(r.tanggal_lahir))}
             <div class="detail-field">
               <div class="lbl">Usia</div>
-              <div class="val">${esc(r.umur_display||'—')}</div>
+              <div class="val" id="usiaVal">${esc(r.umur_display||'—')}</div>
               ${reqStr}
             </div>
             ${ef('Jenis Kelamin', r.jenis_kelamin,  'jenis_kelamin', nomor)}
