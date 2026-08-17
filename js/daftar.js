@@ -204,7 +204,11 @@ function loadConfig() {
   sel.disabled  = true;
   log.info('loadConfig → meminta getConfig dari API');
 
-  jsonp(`${API_URL}?action=getConfig`, 'mtqConfig', (data) => {
+  // FIX #25: &_=timestamp memaksa URL selalu unik per request, supaya
+  // browser/perantara tidak pernah menyajikan respons GET yang di-cache
+  // dari kunjungan sebelumnya — termasuk registrationConfig.buka/tutup
+  // yang dipakai untuk mengunci/membuka form di bawah.
+  jsonp(`${API_URL}?action=getConfig&_=${Date.now()}`, 'mtqConfig', (data) => {
     let regInfo = null; // { status, buka, tutup, isOpen } — dipakai untuk kunci form di bawah
 
     if (data && data.success && Array.isArray(data.config) && data.config.length) {

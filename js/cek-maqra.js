@@ -170,7 +170,10 @@ async function updateNavDaftarStatus_() {
   }
 
   try {
-    const data = await jsonpGet({ action: 'getStats' });
+    // FIX #25: _ = timestamp memaksa URL selalu unik per request, supaya
+    // status buka/tutup pendaftaran di link "Daftar" ini tidak pernah
+    // kena respons GET yang di-cache dari kunjungan sebelumnya.
+    const data = await jsonpGet({ action: 'getStats', _: Date.now() });
     if (!data || !data.success) throw new Error('respons getStats tidak valid');
     applyDaftarStatus(data.isOpen, data.status);
   } catch (err) {

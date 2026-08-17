@@ -254,20 +254,32 @@
       <h2 class="section-title">Jadwal Kegiatan</h2>
     </div>
     <div class="schedule-list">
+      <!-- FIX #24: id ditambahkan di date-box + teks pembukaan/penutupan.
+           SEBELUMNYA tanggal di sini ("...hingga 15 Agustus 2026") murni
+           teks statis di HTML — TIDAK PERNAH baca PENDAFTARAN_CONFIG dari
+           config.gs/config.js sama sekali, jadi berapa pun kali tanggal
+           diubah + web app di-deploy ulang, teks ini tidak akan pernah
+           berubah. Ini salah satu sumber laporan "sudah update tanggal
+           tapi masih tanggal lama". js/main.js (lihat FIX #24 di sana)
+           sekarang mengisi elemen-elemen ber-id ini dari data live yang
+           sama dengan #heroRegBanner/#heroRegPeriod. Teks fallback di
+           bawah (dipakai sebelum JS jalan/jika JS gagal) juga sudah
+           disamakan ke 30 Agustus 2026 (nilai PENDAFTARAN_CONFIG.TUTUP
+           saat ini), bukan lagi 15 Agustus. -->
       <div class="schedule-item animate-in">
-        <div class="date-box"><div class="day">05</div><div class="month">Agu</div></div>
-        <div class="info"><h4>📋 Pembukaan Pendaftaran Online</h4><p>Pendaftaran resmi dibuka via website hingga 15 Agustus 2026</p></div>
+        <div class="date-box"><div class="day" id="jadwalBukaDay">05</div><div class="month" id="jadwalBukaMonth">Agu</div></div>
+        <div class="info"><h4>📋 Pembukaan Pendaftaran Online</h4><p id="jadwalBukaText">Pendaftaran resmi dibuka via website hingga 30 Agustus 2026</p></div>
         <span class="time-badge">08.00 WIB</span>
       </div>
       <div class="schedule-item animate-in">
-        <div class="date-box"><div class="day">30</div><div class="month">Agu</div></div>
+        <div class="date-box"><div class="day" id="jadwalTutupDay">30</div><div class="month" id="jadwalTutupMonth">Agu</div></div>
         <div class="info"><h4>🔒 Penutupan Pendaftaran Online</h4><p>Batas akhir pendaftaran online peserta</p></div>
         <span class="time-badge">23.59 WIB</span>
       </div>
       <div class="schedule-item animate-in">
-        <div class="date-box"><div class="day">18</div><div class="month">Agu</div></div>
+        <div class="date-box"><div class="day">1</div><div class="month">Sep</div></div>
         <div class="info"><h4>⚖️ Masa Sanggah</h4><p>1–2 September 2026 — LPTQ Kecamatan dapat mengajukan sanggahan atas data calon peserta kecamatan lain yang terindikasi tidak sah</p></div>
-        <span class="time-badge" style="background:var(--gold-pale);color:var(--gold)">3 Hari</span>
+        <span class="time-badge" style="background:var(--gold-pale);color:var(--gold)">2 Hari</span>
       </div>
       <div class="schedule-item animate-in">
         <div class="date-box"><div class="day">3</div><div class="month">Sep</div></div>
@@ -486,7 +498,7 @@
       </div>
       <div class="faq-item animate-in">
         <div class="faq-question">Apa itu masa sanggah pendaftaran?<span class="icon">+</span></div>
-        <div class="faq-answer">Masa sanggah berlangsung 18–20 Agustus 2026, dengan pengumuman hasil sanggahan pada 21 Agustus 2026. Pada periode ini, LPTQ Kecamatan dapat menyampaikan sanggahan tertulis (ditandatangani Ketua LPTQ Kecamatan, dilampiri bukti otentik) kepada Seksi Bimas Islam Kantor Kemenag Kab. Indramayu jika ada indikasi pemalsuan data pada calon peserta kecamatan lain. Setelah masa sanggah ditutup, sanggahan tidak dapat lagi diajukan.</div>
+        <div class="faq-answer">Masa sanggah berlangsung 1-2 September 2026, dengan pengumuman hasil sanggahan pada 3 September 2026. Pada periode ini, LPTQ Kecamatan dapat menyampaikan sanggahan tertulis (ditandatangani Ketua LPTQ Kecamatan, dilampiri bukti otentik) kepada Seksi Bimas Islam Kantor Kemenag Kab. Indramayu jika ada indikasi pemalsuan data pada calon peserta kecamatan lain. Setelah masa sanggah ditutup, sanggahan tidak dapat lagi diajukan.</div>
       </div>
       <div class="faq-item animate-in">
         <div class="faq-question">Bagaimana sistem penilaian Juara Umum tingkat kabupaten?<span class="icon">+</span></div>
@@ -549,7 +561,7 @@
      yang sudah pernah buka halaman ini sebelumnya) langsung ambil versi
      baru, bukan salinan lama dari cache. -->
 <script src="js/config.js?v=20260817"></script>
-<script src="js/main.js?v=20260817"></script>
+<script src="js/main.js?v=20260817b"></script>
 <script>
 // ── Hasil Penilaian Publik — index.html ──────────────────────
 // Variabel CABANG_LIST untuk filter pills (mirror dari penilaian.html)

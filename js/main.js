@@ -119,7 +119,10 @@ function loadStats() {
 
   statEls.forEach(el => { el.textContent = '–'; });
 
-  jsonp(`${CONFIG.API_URL}?action=getStats`, 'mtqStats', (data) => {
+  // FIX #25: &_=timestamp memaksa URL selalu unik per request, supaya
+  // browser/perantara tidak pernah menyajikan respons GET yang di-cache
+  // dari kunjungan sebelumnya (URL yang identik adalah kunci cache HTTP).
+  jsonp(`${CONFIG.API_URL}?action=getStats&_=${Date.now()}`, 'mtqStats', (data) => {
     if (data && data.success) {
       statEls.forEach(el => {
         const key = el.dataset.stat;
@@ -186,6 +189,30 @@ function loadRegStatus() {
       periodEl.textContent = `${fmtShort(buka)}–${fmtShort(tutup)}`;
     }
 
+    // ── FIX #24: section #jadwal (Jadwal Kegiatan) — item "Pembukaan/
+    // Penutupan Pendaftaran Online". SEBELUMNYA tanggal di sini di-hardcode
+    // langsung sebagai teks di index.html ("...hingga 15 Agustus 2026") dan
+    // TIDAK PERNAH ikut ter-update walau PENDAFTARAN_CONFIG di config.gs/js
+    // sudah diubah + web app sudah di-deploy ulang — ini salah satu sumber
+    // laporan "sudah update tanggal tapi cek lagi masih tanggal lama".
+    // Disamakan dengan periodEl di atas: dihitung ulang tiap kali
+    // applyStatus() jalan, dari buka/tutup live yang sama.
+    const MONTH_ID = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+    function setJadwalDateBox(dayId, monthId, iso) {
+      if (!iso) return;
+      const d = new Date(iso);
+      const dayEl = document.getElementById(dayId);
+      const monEl = document.getElementById(monthId);
+      if (dayEl) dayEl.textContent = String(d.getDate()).padStart(2, '0');
+      if (monEl) monEl.textContent = MONTH_ID[d.getMonth()];
+    }
+    if (buka)  setJadwalDateBox('jadwalBukaDay',  'jadwalBukaMonth',  buka);
+    if (tutup) setJadwalDateBox('jadwalTutupDay', 'jadwalTutupMonth', tutup);
+    const jadwalBukaTextEl = document.getElementById('jadwalBukaText');
+    if (jadwalBukaTextEl && tutup) {
+      jadwalBukaTextEl.textContent = `Pendaftaran resmi dibuka via website hingga ${tutupDate}`;
+    }
+
     // ── Tombol "Daftar Sekarang" (navbar, hero, mobile) ──
     daftarBtns.forEach(btn => {
       if (!isOpen) { btn.classList.add('btn-daftar-disabled'); btn.setAttribute('aria-disabled', 'true'); }
@@ -225,7 +252,8 @@ function loadRegStatus() {
   // admin (PENDAFTARAN_CONFIG.OVERRIDE di config.gs), yang memang tidak ada
   // representasinya di MTQ_CONFIG. Kalau gagal/timeout: diamkan saja — banner
   // sudah benar sejak baris di atas, tidak perlu fallback apa pun lagi di sini.
-  jsonp(`${CONFIG.API_URL}?action=getStats`, 'mtqRegStatus', (data) => {
+  // FIX #25: lihat catatan di loadStats() di atas — nonce cache-busting.
+  jsonp(`${CONFIG.API_URL}?action=getStats&_=${Date.now()}`, 'mtqRegStatus', (data) => {
     if (data && data.success) {
       applyStatus(data.isOpen, data.status, data.buka, data.tutup);
     } else if (!localBuka || !localTutup) {
