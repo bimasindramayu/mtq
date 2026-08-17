@@ -219,6 +219,24 @@
       .inline-edit-row .btn-save,
       .inline-edit-row .btn-cancel { min-height: 34px; padding: 8px 14px; font-size: 13px; }
     }
+
+    /* FIX #28 (Mobile Bug 1): .inline-edit-row sebelumnya row flex dengan
+       input + 2 tombol berbagi lebar yang sama sempit di layar kecil —
+       input jadi begitu sempit sampai isinya nyaris tidak kelihatan/tidak
+       nyaman diketik. flex-wrap + input dipaksa flex-basis:100% berarti
+       input SELALU mengambil satu baris penuh sendiri, dan kedua tombol
+       otomatis turun ke baris berikutnya — tanpa perlu ubah struktur HTML. */
+    @media (max-width: 480px) {
+      .inline-edit-row { flex-wrap: wrap; }
+      .inline-edit-row .field-input,
+      .inline-edit-row select.field-input {
+        flex: 1 0 100%;
+        box-sizing: border-box;
+        width: 100%;
+      }
+      .inline-edit-row .btn-save,
+      .inline-edit-row .btn-cancel { flex: 1; }
+    }
     
     /* doc preview */
     .doc-link { display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:600;
@@ -1742,6 +1760,20 @@
     // ef(label, value, fieldKey, nomor, full, rawHtml)
     // rawHtml=true  → value is trusted HTML, render as-is (no escaping)
     // rawHtml=false → escape value before rendering (default, safe)
+    // FIX #28 (Bug 2): 31 kecamatan Kabupaten Indramayu — disalin PERSIS
+    // dari dropdown pendaftaran di daftar.html (termasuk ejaan "Kedokan
+    // Bunder" dengan spasi), supaya nilai yang sudah tersimpan dari
+    // pendaftaran awal selalu cocok dengan salah satu opsi di sini. Kalau
+    // daftar ini pernah perlu diubah, ubah juga di daftar.html supaya
+    // kedua form tidak diam-diam berbeda.
+    const KECAMATAN_LIST = [
+      'Anjatan','Arahan','Balongan','Bangodua','Bongas','Cantigi','Cikedung',
+      'Gabuswetan','Gantar','Haurgeulis','Indramayu','Jatibarang','Juntinyuat',
+      'Kandanghaur','Karangampel','Kedokan Bunder','Kertasemaya','Krangkeng',
+      'Kroya','Lelea','Lohbener','Losarang','Patrol','Pasekan','Sindang',
+      'Sliyeg','Sukagumiwang','Sukra','Terisi','Tukdana','Widasari'
+    ];
+
     function ef(label, value, fieldKey, nomor, full=false, rawHtml=false, displayOverride=null) {
       const id      = fieldKey ? `ef_${fieldKey}` : `ef_ro_${label.replace(/\s/g,'_')}`;
       const canEdit = !!fieldKey;
@@ -1758,7 +1790,25 @@
       const inputVal = typeof value === 'string'
         ? esc(value.replace(/<[^>]*>/g, ''))
         : '';
-    
+
+      // FIX #28: kontrol edit berbeda per fieldKey —
+      //  - kecamatan   → dropdown 31 opsi resmi (Bug 2), bukan teks bebas
+      //  - tanggal_lahir → input tanggal + live preview umur (Bug 3)
+      //  - lainnya     → input teks yang otomatis UPPERCASE saat diketik (Bug 1)
+      let editControl;
+      if (canEdit && fieldKey === 'kecamatan') {
+        const current = String(value||'').trim();
+        const matches = KECAMATAN_LIST.includes(current);
+        editControl = `<select class="field-input" id="${id}_input">` +
+          (current && !matches ? `<option value="${esc(current)}" selected>⚠️ ${esc(current)} (tidak baku)</option>` : '') +
+          KECAMATAN_LIST.map(k => `<option value="${esc(k)}"${k===current?' selected':''}>${esc(k)}</option>`).join('') +
+          `</select>`;
+      } else if (canEdit && fieldKey === 'tanggal_lahir') {
+        editControl = `<input type="text" class="field-input" id="${id}_input" value="${inputVal}" placeholder="YYYY-MM-DD" oninput="livePreviewUsia(this.value)">`;
+      } else if (canEdit) {
+        editControl = `<input type="text" class="field-input" id="${id}_input" value="${inputVal}" style="text-transform:uppercase" oninput="toUpperInput(this)">`;
+      }
+
       return `<div class="detail-field${full?' full':''}">
         <div class="lbl">${label}</div>
         <div class="editable-field">
@@ -1766,16 +1816,64 @@
           ${canEdit ? `<span class="edit-pen" tabindex="0" role="button" aria-label="Edit ${label}" onclick="toggleEdit('${fieldKey}')" title="Edit">✏️</span>` : ''}
         </div>
         ${canEdit ? `<div class="inline-edit-row" id="${id}_edit">
-          <input type="text" class="field-input" id="${id}_input" value="${inputVal}">
+          ${editControl}
           <button class="btn btn-emerald btn-save" onclick="saveEdit('${fieldKey}','${nomor}')">💾</button>
           <button class="btn-cancel" onclick="toggleEdit('${fieldKey}')">✕</button>
         </div>` : ''}
       </div>`;
     }
     function editableField(l,v,k,n,f){ return ef(l,v,k,n,f||false,false); }
-    
+
+    // FIX #28 (Bug 1): pertahankan posisi kursor secara eksplisit — di
+    // sebagian browser, assignment ulang ke .value melompatkan kursor ke
+    // akhir teks walau panjang string tidak berubah (uppercase huruf Latin
+    // biasa selalu 1:1, jadi posisi kursor SEHARUSNYA tidak perlu geser).
+    function toUpperInput(el) {
+      const s = el.selectionStart, e = el.selectionEnd;
+      el.value = el.value.toUpperCase();
+      try { el.setSelectionRange(s, e); } catch(_) {}
+    }
+
+    // FIX #28 (Bug 3): live preview umur SAAT admin mengetik/mengganti
+    // tanggal lahir — dipanggil dari oninput input tanggal_lahir. Murni
+    // client-side (calcAgeAt/checkAgeRange dari config.js), tidak
+    // menyentuh server sama sekali, jadi aman dipanggil tiap keystroke.
+    // Warna merah kalau di luar syarat cabang — bukan penjagaan (itu tetap
+    // di saveEdit()/BE), cuma indikator visual instan.
+    function livePreviewUsia(newVal) {
+      const usiaEl = document.getElementById('usiaVal');
+      if (!usiaEl) return;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(newVal||'')) {
+        usiaEl.textContent = '—'; usiaEl.style.color = '';
+        return;
+      }
+      if (typeof calcAgeAt !== 'function' || typeof fmtAge !== 'function') return;
+      const age = calcAgeAt(newVal, MTQ_CONFIG.AGE_CUTOFF_DATE);
+      usiaEl.textContent = fmtAge(age) + ' (pratinjau)';
+      const cfg = (adm.cabangConfig||[]).find(c => c.cabang_lomba === adm.editing?.cabang_lomba) || null;
+      if (cfg && typeof checkAgeRange === 'function') {
+        const check = checkAgeRange(age, cfg.umur_min, cfg.umur_max_tahun, cfg.umur_max_bulan||0, cfg.umur_max_hari||0);
+        usiaEl.style.color = check.ok ? '' : '#ef4444';
+      }
+    }
+
     function toggleEdit(fk) {
-      document.getElementById(`ef_${fk}_edit`)?.classList.toggle('show');
+      const editEl  = document.getElementById(`ef_${fk}_edit`);
+      const opening = !!editEl && !editEl.classList.contains('show');
+      editEl?.classList.toggle('show');
+      // FIX #28 (Bug 3): saat menutup edit tanggal_lahir TANPA simpan
+      // (klik ✕, atau klik pena lagi untuk menutup), kembalikan #usiaVal
+      // ke nilai tersimpan asli — supaya hasil pratinjau dari pengeditan
+      // yang dibatalkan tidak tertinggal nyangkut di layar. (Saat simpan
+      // BERHASIL, saveEdit() menutup baris ini langsung tanpa lewat
+      // toggleEdit(), jadi tidak bentrok dengan nilai baru yang benar.)
+      if (fk === 'tanggal_lahir' && !opening) {
+        const usiaEl = document.getElementById('usiaVal');
+        if (usiaEl && adm.editing) {
+          usiaEl.textContent = adm.editing.umur_display || '—';
+          usiaEl.style.color = '';
+        }
+      }
     }
     
     // ── Save edit via JSONP GET ───────────────────────────────────
@@ -2431,16 +2529,25 @@
     
     /**
      * Open document in the side previewer.
-     * On mobile: opens in new tab instead of split layout.
+     * FIX #28 (Mobile Bug 2): SEBELUMNYA ada bailout "if (window.innerWidth
+     * <= 768) { window.open(url,'_blank'); return; }" di sini — jadi di HP,
+     * dokumen SELALU dibuka lewat redirect ke URL Google Drive asli, bukan
+     * lewat DocumentPreviewer custom (beda dengan cekstatus.html yang
+     * memang tidak pernah punya bailout ini, makanya di sana aman). Padahal
+     * previewer INI SENDIRI sudah responsif untuk mobile — CSS-nya (lihat
+     * document-previewer.css, @media max-width:768px) dan _updateDpWidth()
+     * di bawah sudah membuatnya full-width (100%) otomatis di layar kecil.
+     * Bailout itu jadi tidak perlu (kemungkinan sisa dari sebelum previewer
+     * dibuat responsif) dan dihapus — sekarang HP & desktop sama-sama pakai
+     * previewer yang sama. window.open() tetap dipakai HANYA sebagai
+     * fallback kalau previewer benar-benar gagal (lihat window._dp check &
+     * .catch() di bawah) — bukan lagi berdasar lebar layar.
      * @param {string} url   Google Drive file URL
      * @param {string} name  Display name
      */
     function openDocPreview(url, name) {
       if (!url) { toast('Dokumen', 'URL dokumen tidak tersedia', 'warning'); return; }
       adminLog.info('openDocPreview:', name, url);
-    
-      // Mobile: open in new tab
-      if (window.innerWidth <= 768) { window.open(url, '_blank'); return; }
     
       if (!window._dp) { window.open(url, '_blank'); return; }
     
