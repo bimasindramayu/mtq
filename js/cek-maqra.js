@@ -281,6 +281,14 @@ function applyTheme(t) {
 // aktif/selesai & auto-scroll ke situ yang dulu ada di sini ikut
 // dihapus juga karena elemen targetnya sudah tidak ada.
 function goToPanel(step) {
+  // FIX #29 (Bug 2): tutup dp-modal (DocumentPreviewer) setiap kali
+  // pindah panel — sebelumnya kalau preview dokumen dibuka (mis. dari
+  // statusArea atau form perbaikan) lalu user pindah panel (klik
+  // "← Kembali", lanjut ke ambil maqra, dst.), dp-modal nyangkut tetap
+  // terbuka walau panel yang membukanya sudah tidak tampil lagi.
+  // previewer?.close() aman dipanggil walau previewer belum ada/sudah
+  // tertutup (optional chaining + close() sendiri idempotent).
+  previewer?.close();
   document.querySelectorAll('.tahapan-panel').forEach(function(p) { p.classList.remove('active'); });
   const target = document.getElementById('panel' + step);
   if (target) target.classList.add('active');
@@ -1705,6 +1713,10 @@ function showEditForm() {
 // backFromPanel2() saat tombol "← Kembali" di atas panel2 diklik
 // ketika editArea sedang tampil.
 function closeEditForm() {
+  // FIX #29 (Bug 2): sama seperti goToPanel() — tutup dp-modal kalau
+  // sedang terbuka saat form perbaikan ditutup/dibatalkan lewat tombol
+  // "✕ Batal" (fungsi ini juga dipanggil dari backFromPanel2()).
+  previewer?.close();
   const editEl = document.getElementById('editArea');
   editEl.innerHTML    = '';
   editEl.style.display = 'none';

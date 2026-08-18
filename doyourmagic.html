@@ -2118,6 +2118,13 @@
         // Unlock detailModal after confirm is closed
         document.getElementById('detailModal')?.removeAttribute('data-locked');
       }
+      // FIX #29 (Bug 1): sebelumnya menutup detailModal (lewat tombol ✕,
+      // tombol "Tutup", atau Escape — semuanya lewat closeModal() ini)
+      // TIDAK ikut menutup dp-modal (DocumentPreviewer) kalau sedang
+      // terbuka di atasnya — jadi dp-modal "nyangkut" tampil sendirian
+      // walau detailModal sudah hilang. window._dp.close() aman dipanggil
+      // walau previewer sedang tertutup (cuma classList.remove yang no-op).
+      if (id === 'detailModal') { window._dp?.close(); }
       // a11y: return keyboard focus to whatever opened this modal
       const prevFocus = _modalFocusStack.pop();
       if (prevFocus && typeof prevFocus.focus === 'function' && document.body.contains(prevFocus)) {
@@ -2144,6 +2151,13 @@
         if (e.target !== overlay) return;                          // ignore child clicks
         if (overlay.getAttribute('data-locked') === '1') return;  // locked — keep open
         overlay.classList.remove('show');
+        // FIX #29 (Bug 1): jalur kedua yang bisa menutup detailModal — klik
+        // backdrop LANGSUNG memanipulasi classList di sini, sama sekali
+        // tidak lewat closeModal(). Kalau tidak ditambahkan di sini juga,
+        // dp-modal tetap nyangkut terbuka walau detailModal ditutup dengan
+        // cara ini (beda dari tombol ✕/Escape/Tutup yang sudah dibenahi
+        // lewat closeModal() di atas).
+        if (overlay.id === 'detailModal') { window._dp?.close(); }
       });
     });
     
