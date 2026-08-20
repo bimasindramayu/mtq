@@ -22,6 +22,20 @@ let _maqraAutoExpandCabang = null;
 // (jangan hardcode array cabang lagi di sini — edit config.js saja)
 const MAQRA_CABANG_LIST = MTQ_CONFIG.CABANG_LIST;
 
+// FIX #30: Manajemen Maqra sebelumnya menampilkan Putra & Putri dari
+// cabang yang sama sebagai 2 entri terpisah di dropdown & 2 kartu
+// terpisah di daftar — padahal untuk keperluan maqra ("masih 1 cabang")
+// admin cuma perlu kelola satu pool bersama. maqraKelompok() melepas
+// akhiran " Putra"/" Putri" — SAMA PERSIS dengan getMaqraKelompok_() di
+// maqra.gs (backend), supaya perbandingan grup di FE selalu konsisten
+// dengan bagaimana backend mencocokkan data. MAQRA_KELOMPOK_LIST adalah
+// versi MAQRA_CABANG_LIST yang sudah dilepas gender & di-dedup, dipakai
+// utk isi dropdown pilih cabang & filter — bukan lagi 28 opsi, tapi 14.
+function maqraKelompok(cabang) {
+  return String(cabang || '').trim().replace(/\s+(Putra|Putri)$/i, '').trim();
+}
+const MAQRA_KELOMPOK_LIST = [...new Set(MAQRA_CABANG_LIST.map(maqraKelompok))];
+
 // ── Init: dipanggil saat tab Maqra dibuka ─────────────────────
 function maqraInit() {
   // Ambil token dari sesi admin.js yang sudah login
@@ -37,7 +51,9 @@ function maqraPopulateCabangSelects() {
     if (!sel) return;
     // Hindari duplikat saat init ulang
     while (sel.options.length > 1) sel.remove(1);
-    MAQRA_CABANG_LIST.forEach(c => {
+    // FIX #30: MAQRA_KELOMPOK_LIST (14, tanpa gender) — bukan lagi
+    // MAQRA_CABANG_LIST (28, dengan Putra/Putri terpisah).
+    MAQRA_KELOMPOK_LIST.forEach(c => {
       const opt = document.createElement('option');
       opt.value = c; opt.textContent = c;
       sel.appendChild(opt);
@@ -89,7 +105,10 @@ function maqraUpdateStats(stats) {
 }
 
 function maqraUpdateFilterCabang(list) {
-  const cabangs = [...new Set(list.map(m => m.cabang_lomba).filter(Boolean))].sort();
+  // FIX #30: dedup lewat kelompok (tanpa gender) — supaya data lama yang
+  // masih tersimpan sebagai "... Putra"/"... Putri" tidak muncul sebagai
+  // 2 opsi filter terpisah.
+  const cabangs = [...new Set(list.map(m => maqraKelompok(m.cabang_lomba)).filter(Boolean))].sort();
   const sel = document.getElementById('maqraFilterCabang');
   if (!sel) return;
   while (sel.options.length > 1) sel.remove(1);
@@ -149,7 +168,10 @@ function maqraOnCabangChange() {
   if (!infoBox) return;
   if (!cabang) { infoBox.style.display = 'none'; return; }
 
-  const existing = _allMaqra.filter(m => m.cabang_lomba === cabang);
+  // FIX #30: cabang di sini sekarang nama KELOMPOK (dropdown sudah
+  // MAQRA_KELOMPOK_LIST) — cocokkan lewat maqraKelompok() juga di sisi
+  // data, supaya baris lama yang masih ber-gender ikut terhitung.
+  const existing = _allMaqra.filter(m => maqraKelompok(m.cabang_lomba) === cabang);
   const tersedia = existing.filter(m => !m.sudah_diambil).length;
   const diambil  = existing.filter(m => m.sudah_diambil).length;
 
@@ -182,11 +204,17 @@ function maqraRenderMaqraTable(list) {
     return;
   }
 
-  // Group by cabang
+  // FIX #30: Group by KELOMPOK (tanpa gender), bukan cabang_lomba persis
+  // — inilah perbaikan utama yang diminta: Putra & Putri dari cabang yang
+  // sama sekarang tampil sebagai SATU kartu gabungan, bukan 2 kartu
+  // terpisah. Baris lama yang masih tersimpan dengan cabang_lomba
+  // ber-akhiran " Putra"/" Putri" otomatis ikut tergabung lewat
+  // maqraKelompok() ini juga — tidak perlu migrasi data manual.
   const groups = {};
   list.forEach(m => {
-    if (!groups[m.cabang_lomba]) groups[m.cabang_lomba] = [];
-    groups[m.cabang_lomba].push(m);
+    const kelompok = maqraKelompok(m.cabang_lomba);
+    if (!groups[kelompok]) groups[kelompok] = [];
+    groups[kelompok].push(m);
   });
 
   const sortedCabangs = Object.keys(groups).sort();
@@ -372,7 +400,9 @@ function maqraFilterTable() {
   const query  = (document.getElementById('maqraSearchInput')?.value || '').toLowerCase().trim();
 
   let filtered = _allMaqra;
-  if (cabang) filtered = filtered.filter(m => m.cabang_lomba === cabang);
+  // FIX #30: maqraFilterCabang sekarang berisi nama kelompok (lihat
+  // maqraUpdateFilterCabang) — cocokkan lewat maqraKelompok() juga.
+  if (cabang) filtered = filtered.filter(m => maqraKelompok(m.cabang_lomba) === cabang);
   if (status === 'tersedia') filtered = filtered.filter(m => !m.sudah_diambil);
   if (status === 'diambil')  filtered = filtered.filter(m =>  m.sudah_diambil);
   if (query)  filtered = filtered.filter(m =>
@@ -497,7 +527,10 @@ async function maqraSaveMaqra() {
 
   // ── Hitung nomor urut mulai dari maqra terakhir cabang ini ──
   // Agar penambahan baru tidak bentrok dengan yang sudah ada
-  const existingForCabang = _allMaqra.filter(m => m.cabang_lomba === cabang);
+  // FIX #30: cabang di sini nama kelompok — cocokkan existingForCabang
+  // lewat maqraKelompok() juga, supaya baris lama ber-gender ikut
+  // terhitung (nomor urut & cek duplikat tetap akurat gabungan).
+  const existingForCabang = _allMaqra.filter(m => maqraKelompok(m.cabang_lomba) === cabang);
   const startUrut = replace ? 1 : existingForCabang.length + 1;
 
   // FIX #2: penjagaan duplikat — sebelumnya baris yang teksnya PERSIS

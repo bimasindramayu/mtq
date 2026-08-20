@@ -1048,7 +1048,7 @@ function downloadBukti() {
   const m = _maqraResult, rec = _record;
   const html = `<!DOCTYPE html><html lang="id"><head><meta charset="UTF-8">
 <title>Bukti Maqra MTQ 2026</title>
-<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Georgia',serif;background:#f9fafb;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}.card{background:#fff;border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,.15);width:100%;max-width:480px;overflow:hidden}.header{background:linear-gradient(135deg,#064e3b,#059669);padding:28px 32px;color:#fff;text-align:center}.header h1{font-size:22px;margin-bottom:4px}.header p{font-size:13px;opacity:.8}.body{padding:28px 32px}.ornament{text-align:center;color:#9ca3af;margin:12px 0;letter-spacing:4px}.field{margin-bottom:14px}.field label{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#9ca3af;display:block;margin-bottom:3px}.field .val{font-size:15px;font-weight:600;color:#1f2937}.mbox{background:linear-gradient(135deg,#065f46,#047857);color:#fff;border-radius:12px;padding:24px;text-align:center;margin:20px 0}.mbox .ml{font-size:11px;text-transform:uppercase;letter-spacing:.6px;opacity:.75;margin-bottom:8px}.mbox .ma{font-size:22px;font-weight:700;margin-bottom:4px}.mbox .ms{font-size:14px;opacity:.85}.mbox .mn{background:rgba(255,255,255,.15);border-radius:999px;padding:5px 16px;font-size:12px;font-weight:600;display:inline-block;margin-top:10px}.warn{background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px 16px;font-size:12px;color:#b45309;margin-top:16px}.footer{border-top:1px solid #e5e7eb;padding:16px 32px;font-size:12px;color:#9ca3af;text-align:center}@media print{body{background:#fff}.card{box-shadow:none}}</style></head>
+<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Georgia',serif;background:#f9fafb;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}.card{background:#fff;border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,.15);width:100%;max-width:480px;overflow:hidden}.header{background:linear-gradient(135deg,#064e3b,#059669);padding:28px 32px;color:#fff;text-align:center}.header h1{font-size:22px;margin-bottom:4px}.header p{font-size:13px;opacity:.8}.body{padding:28px 32px}.ornament{text-align:center;color:#9ca3af;margin:12px 0;letter-spacing:4px}.field{margin-bottom:14px}.field label{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#9ca3af;display:block;margin-bottom:3px}.field .val{font-size:15px;font-weight:600;color:#1f2937}.mbox{background:linear-gradient(135deg,#065f46,#047857);color:#fff;border-radius:12px;padding:24px;text-align:center;margin:20px 0}.mbox .ml{font-size:11px;text-transform:uppercase;letter-spacing:.6px;opacity:.75;margin-bottom:8px}.mbox .ma{font-size:22px;font-weight:700;margin-bottom:4px}.mbox .ms{font-size:14px;opacity:.85}.mbox .mn{background:rgba(255,255,255,.15);border-radius:999px;padding:5px 16px;font-size:12px;font-weight:600;display:inline-block;margin-top:10px}.warn{background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px 16px;font-size:12px;color:#b45309;margin-top:16px}.ttd-section{display:flex;gap:18px;margin-top:26px;padding-top:18px;border-top:1px dashed #d1d5db}.ttd-box{flex:1;text-align:center}.ttd-role{font-size:10.5px;color:#6b7280;margin-bottom:46px;line-height:1.4}.ttd-line{border-bottom:1px solid #9ca3af;margin:0 6px}.ttd-name{font-size:9.5px;color:#9ca3af;margin-top:4px;font-style:italic}.footer{border-top:1px solid #e5e7eb;padding:16px 32px;font-size:12px;color:#9ca3af;text-align:center}@media print{body{background:#fff}.card{box-shadow:none}}</style></head>
 <body><div class="card">
 <div class="header"><h1>📖 Bukti Maqra MTQ 2026</h1><p>Kabupaten Indramayu — ${new Date().toLocaleString('id-ID')}</p></div>
 <div class="body"><div class="ornament">✦ ✦ ✦</div>
@@ -1057,8 +1057,21 @@ function downloadBukti() {
 <div class="field"><label>Cabang Lomba</label><div class="val">${esc(rec.cabang_lomba||'-')}</div></div>
 <div class="field"><label>Kecamatan</label><div class="val">${esc(rec.kecamatan||'-')}</div></div>
 <div class="mbox"><div class="ml">📖 Maqra</div><div class="ma">${esc(m.maqra_teks||m.maqra||'-')}</div><div class="ms">${esc(m.maqra_detail||m.surah||'')}</div><div class="mn">Nomor Undian: ${esc(m.nomor_maqra||'-')}</div></div>
-<div class="warn">⚠️ Simpan dokumen ini. Maqra tidak dapat diubah. Tunjukkan kepada panitia MTQ 2026.</div></div>
-<div class="footer">MTQ Kabupaten Indramayu 2026 — Dokumen sah tanpa tanda tangan</div>
+<div class="warn">⚠️ Simpan dokumen ini. Maqra tidak dapat diubah. Cetak dan mintakan tanda tangan panitia serta admin kecamatan di bawah sebagai bukti sah.</div>
+<div class="ttd-section">
+  <div class="ttd-box">
+    <div class="ttd-role">Panitia Pengambilan Maqra</div>
+    <div class="ttd-line"></div>
+    <div class="ttd-name">( Nama &amp; Tanda Tangan )</div>
+  </div>
+  <div class="ttd-box">
+    <div class="ttd-role">Admin Kecamatan<br>${esc(rec.kecamatan||'-')}</div>
+    <div class="ttd-line"></div>
+    <div class="ttd-name">( Nama &amp; Tanda Tangan )</div>
+  </div>
+</div>
+</div>
+<div class="footer">MTQ Kabupaten Indramayu 2026 — Sah setelah ditandatangani panitia &amp; admin kecamatan</div>
 </div><script>window.print();<\/script></body></html>`;
   const a = Object.assign(document.createElement('a'), {
     href    : URL.createObjectURL(new Blob([html], { type:'text/html;charset=utf-8' })),
@@ -1197,9 +1210,11 @@ async function renderKartuCanvas(member, rec, memberIdx, isTeam, CW, CH) {
   // ─────────────────────────────────────────────────────────
   const hdrH = px(23);
   const hGrad = ctx.createLinearGradient(0, 0, CW, 0);
-  hGrad.addColorStop(0, '#047857');
-  hGrad.addColorStop(0.5, '#059669');
-  hGrad.addColorStop(1, '#047857');
+  hGrad.addColorStop(0,   '#047857');
+  // FIX #31 (poin 1): sentuhan biru di tengah header — persis di
+  // belakang nomor peserta yang sekarang jadi elemen utama di sini.
+  hGrad.addColorStop(0.5, '#0e7490');
+  hGrad.addColorStop(1,   '#047857');
   ctx.fillStyle = hGrad;
   ctx.fillRect(stripeW, 0, CW - stripeW * 2, hdrH);
 
@@ -1211,23 +1226,32 @@ async function renderKartuCanvas(member, rec, memberIdx, isTeam, CW, CH) {
   ctx.textAlign    = 'center';
   ctx.textBaseline = 'alphabetic';
 
-  // "MTQ" besar
-  ctx.font      = `900 ${px(9)}px Georgia,serif`;
+  // FIX #31 (poin 1): "MTQ 2026" yang sebelumnya jadi judul utama
+  // ditukar jadi Nomor Peserta — inilah info yang paling sering dicari
+  // panitia/peserta sendiri saat cek kartu, jadi dibuat paling besar &
+  // paling atas. Label kecil "NOMOR PESERTA" ditambahkan di atasnya biar
+  // tetap jelas ini angka apa. "MTQ 2026" tidak hilang total — pindah ke
+  // subtitle baris kedua (lebih kecil) dan tetap ada di footer kartu.
+  ctx.font      = `600 ${px(2.4)}px 'Segoe UI',sans-serif`;
+  ctx.fillStyle = '#bae6fd';  // biru muda — FIX #31 poin 1: sentuhan biru
+  ctx.fillText('NOMOR PESERTA', CW / 2, px(5.3));
+
+  ctx.font      = `900 ${px(8.2)}px Georgia,serif`;
   ctx.fillStyle = '#ffffff';
   ctx.shadowColor   = 'rgba(0,0,0,0.5)';
   ctx.shadowBlur    = px(2);
   ctx.shadowOffsetY = px(0.8);
-  ctx.fillText('MTQ 2026', CW / 2, px(10.5));
+  ctx.fillText(noReg, CW / 2, px(13.8));
 
   ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
 
-  ctx.font      = `600 ${px(3.6)}px 'Segoe UI',sans-serif`;
+  ctx.font      = `600 ${px(3.2)}px 'Segoe UI',sans-serif`;
   ctx.fillStyle = 'rgba(255,255,255,0.88)';
-  ctx.fillText('MUSABAQAH TILAWATIL QUR\'AN', CW / 2, px(16));
+  ctx.fillText('MUSABAQAH TILAWATIL QUR\'AN', CW / 2, px(18.3));
 
-  ctx.font      = `${px(3)}px 'Segoe UI',sans-serif`;
+  ctx.font      = `${px(2.6)}px 'Segoe UI',sans-serif`;
   ctx.fillStyle = 'rgba(255,255,255,0.65)';
-  ctx.fillText('KABUPATEN INDRAMAYU', CW / 2, px(20.5));
+  ctx.fillText('KABUPATEN INDRAMAYU 2026', CW / 2, px(21.5));
 
   // ─────────────────────────────────────────────────────────
   // 5. CHIP PERAN (PESERTA / KETUA TIM / ANGGOTA TIM N)
@@ -1389,21 +1413,18 @@ async function renderKartuCanvas(member, rec, memberIdx, isTeam, CW, CH) {
   ctx.fillStyle = GOLD;
   ctx.fillRect(stripeW, footY, CW - stripeW * 2, px(0.8));
 
-  // Nomor peserta (monospace, bold)
-  ctx.font      = `bold ${px(4.2)}px 'Courier New',monospace`;
-  ctx.fillStyle = '#ffffff';
+  // FIX #31 (poin 1): nomor peserta sudah tampil besar di header —
+  // tidak diulang lagi di footer supaya tidak dobel. Teks panitia
+  // dipusatkan vertikal di ruang yang jadi lega.
+  ctx.font      = `${px(3)}px 'Segoe UI',sans-serif`;
+  ctx.fillStyle = 'rgba(255,255,255,0.65)';
   ctx.textAlign = 'center';
-  ctx.fillText(noReg, CW / 2, footY + px(7));
-
-  // Teks panitia
-  ctx.font      = `${px(2.8)}px 'Segoe UI',sans-serif`;
-  ctx.fillStyle = 'rgba(255,255,255,0.55)';
-  ctx.fillText('Panitia MTQ Kabupaten Indramayu 2026', CW / 2, footY + px(12.5));
+  ctx.fillText('Panitia MTQ Kabupaten Indramayu 2026', CW / 2, footY + px(8.5));
 
   // Dots dekoratif
   [-px(16), 0, px(16)].forEach(dx => {
     ctx.beginPath();
-    ctx.arc(CW / 2 + dx, footY + px(0.4) + px(0.8), px(0.7), 0, Math.PI * 2);
+    ctx.arc(CW / 2 + dx, footY + px(3.2), px(0.7), 0, Math.PI * 2);
     ctx.fillStyle = GOLD;
     ctx.fill();
   });
