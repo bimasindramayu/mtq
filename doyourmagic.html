@@ -17,6 +17,13 @@
   <script src="js/config.js?v=20260817"></script>
   <!-- PDF.js (required by DocumentPreviewer) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <!-- FIX #33: jsPDF + kartu-bukti-shared.js — dipakai fitur download
+       borongan (Daftar Peserta → semua kartu; Manajemen Maqra → semua
+       bukti). kartu-bukti-shared.js WAJIB dimuat sebelum inline script
+       di bawah karena berisi renderKartuCanvas()/buildBuktiMaqraCardHtml()
+       yang dipanggil dari sana — lihat isi file itu utk detail. -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="js/kartu-bukti-shared.js?v=20260820"></script>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>">
   <style>
     /* ── Extra admin styles ── */
@@ -543,6 +550,12 @@
           <div style="display:flex;gap:8px">
             <button class="btn btn-outline" style="font-size:13px" onclick="refreshData()">🔄 Refresh</button>
             <button class="btn btn-emerald" style="font-size:13px" onclick="exportCSV()">📥 Export CSV</button>
+            <!-- FIX #33 (poin 1): download semua kartu peserta dari data
+                 yang SEDANG TAMPIL di tabel (ikut filter/pencarian aktif),
+                 digabung jadi 1 file PDF. Format kartu SAMA PERSIS dengan
+                 cekstatus.html karena keduanya pakai renderKartuCanvas()
+                 yang sama dari js/kartu-bukti-shared.js. -->
+            <button class="btn" style="font-size:13px;background:rgba(59,130,246,.12);border-color:rgba(59,130,246,.3);color:#93c5fd" id="btnDownloadAllKartu" onclick="downloadAllKartuAdmin()">🪪 Download Semua Kartu</button>
           </div>
         </div>
 
@@ -885,13 +898,24 @@
           <div class="admin-card">
             <div class="admin-card-header">
               <h2>📊 Hasil Pengambilan Maqra</h2>
-              <div style="display:flex;gap:8px">
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
                 <button class="btn btn-outline" style="font-size:12px;padding:5px 10px" onclick="maqraLoadData()">🔄 Refresh</button>
                 <button class="btn btn-emerald" style="font-size:12px;padding:5px 10px" onclick="maqraExportHasil()">⬇️ Export CSV</button>
+                <!-- FIX #34 (poin 3): download semua "Bukti Maqra" dari
+                     data yang SEDANG TAMPIL di tabel ini (ikut filter
+                     cabang & pencarian aktif), digabung jadi 1 file. -->
+                <button class="btn" style="font-size:12px;padding:5px 10px;background:rgba(59,130,246,.12);border-color:rgba(59,130,246,.3);color:#93c5fd" id="btnDownloadAllBukti" onclick="maqraDownloadAllBukti()">🖨️ Download Semua Bukti</button>
               </div>
             </div>
-            <div style="padding:16px 20px">
-              <input class="field-input" id="maqraSearchHasil" placeholder="🔍 Cari nama / nomor / maqra..." oninput="maqraFilterHasil()">
+            <div style="padding:16px 20px;display:flex;gap:10px;flex-wrap:wrap">
+              <input class="field-input" id="maqraSearchHasil" placeholder="🔍 Cari nama / nomor / maqra..." style="flex:1;min-width:200px" oninput="maqraFilterHasil()">
+              <!-- FIX #34 (poin 2): filter cabang utk tabel Hasil Pengambilan
+                   — sebelumnya hanya ada pencarian teks bebas. Opsinya diisi
+                   otomatis dari MAQRA_KELOMPOK_LIST yang sama dgn tab Daftar
+                   Maqra (lihat maqraPopulateCabangSelects()). -->
+              <select class="field-select" id="maqraFilterHasilCabang" style="min-width:220px" onchange="maqraFilterHasil()">
+                <option value="">Semua Cabang</option>
+              </select>
             </div>
             <div class="table-scroll-hint">👉 Geser tabel untuk melihat kolom lainnya</div>
             <div class="table-wrap">
@@ -1693,6 +1717,10 @@
         try { anggota = JSON.parse(r.anggota_json); } catch(e) { anggota = []; }
       }
       if (!Array.isArray(anggota)) anggota = [];
+      // FIX #34 (poin 4): simpan referensi array yang sama di adm supaya
+      // saveAnggotaEdit()/toggleEditM() (dipanggil dari HTML yang di-
+      // render di bawah) bisa baca/update nilai anggota tanpa parse ulang.
+      adm.editingAnggota = anggota;
     
       // Resolve file links: for individu from anggota[0]; for team each member has theirs
       const lead      = anggota[0] || {};
@@ -1957,6 +1985,141 @@
       });
     }
     
+    // ════════════════════════════════════════════════════════════
+    // FIX #34 (poin 4): edit ANGGOTA TIM. Sebelumnya modal Detail Peserta
+    // untuk peserta tipe "team" menampilkan semua field anggota sebagai
+    // teks statis — admin sama sekali tidak bisa membetulkan typo dsb.
+    // Mekanisme ini SEJAJAR dengan ef()/toggleEdit()/saveEdit() di atas,
+    // tapi menyasar ANGGOTA_JSON lewat action=editAnggota (api.gs), bukan
+    // kolom pendaftar biasa — makanya perlu anggotaIdx & endpoint sendiri.
+    // ════════════════════════════════════════════════════════════
+
+    // Versi ef() utk 1 field milik 1 anggota tim. id memakai prefix
+    // "efm_<idx>_" (bukan "ef_") supaya tidak tabrakan dgn field peserta
+    // individu/tim lain yang fieldKey-nya sama (mis. tiap anggota punya
+    // "nama_lengkap").
+    function efMember(label, value, fieldKey, nomor, anggotaIdx, full=false, displayOverride=null) {
+      const id = `efm_${anggotaIdx}_${fieldKey}`;
+      const displayVal = displayOverride !== null ? esc(displayOverride) : esc(value || '—');
+      const inputVal   = typeof value === 'string' ? esc(value.replace(/<[^>]*>/g, '')) : '';
+
+      const editControl = fieldKey === 'tanggal_lahir'
+        ? `<input type="text" class="field-input" id="${id}_input" value="${inputVal}" placeholder="YYYY-MM-DD" oninput="livePreviewUsiaAnggota(this.value, ${anggotaIdx})">`
+        : `<input type="text" class="field-input" id="${id}_input" value="${inputVal}" style="text-transform:uppercase" oninput="toUpperInput(this)">`;
+
+      return `<div class="detail-field${full?' full':''}">
+        <div class="lbl">${label}</div>
+        <div class="editable-field">
+          <div class="val" id="${id}_val">${displayVal}</div>
+          <span class="edit-pen" tabindex="0" role="button" aria-label="Edit ${label}" onclick="toggleEditM(${anggotaIdx},'${fieldKey}')" title="Edit">✏️</span>
+        </div>
+        <div class="inline-edit-row" id="${id}_edit">
+          ${editControl}
+          <button class="btn btn-emerald btn-save" onclick="saveAnggotaEdit(${anggotaIdx},'${fieldKey}','${nomor}')">💾</button>
+          <button class="btn-cancel" onclick="toggleEditM(${anggotaIdx},'${fieldKey}')">✕</button>
+        </div>
+      </div>`;
+    }
+
+    function toggleEditM(anggotaIdx, fk) {
+      const id      = `efm_${anggotaIdx}_${fk}`;
+      const editEl  = document.getElementById(`${id}_edit`);
+      const opening = !!editEl && !editEl.classList.contains('show');
+      editEl?.classList.toggle('show');
+      // Sama seperti toggleEdit(): saat batal (bukan buka), kembalikan
+      // pratinjau usia anggota ini ke nilai tersimpan asli.
+      if (fk === 'tanggal_lahir' && !opening) {
+        const usiaEl = document.getElementById(`usiaValM_${anggotaIdx}`);
+        const original = adm.editingAnggota?.[anggotaIdx]?.umur_display;
+        if (usiaEl) { usiaEl.textContent = original || '—'; usiaEl.style.color = ''; }
+      }
+    }
+
+    function livePreviewUsiaAnggota(newVal, anggotaIdx) {
+      const usiaEl = document.getElementById(`usiaValM_${anggotaIdx}`);
+      if (!usiaEl) return;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(newVal || '')) { usiaEl.textContent = '—'; usiaEl.style.color = ''; return; }
+      if (typeof calcAgeAt !== 'function' || typeof fmtAge !== 'function') return;
+      const age = calcAgeAt(newVal, MTQ_CONFIG.AGE_CUTOFF_DATE);
+      usiaEl.textContent = fmtAge(age) + ' (pratinjau)';
+      const cfg = (adm.cabangConfig||[]).find(c => c.cabang_lomba === adm.editing?.cabang_lomba) || null;
+      if (cfg && typeof checkAgeRange === 'function') {
+        const check = checkAgeRange(age, cfg.umur_min, cfg.umur_max_tahun, cfg.umur_max_bulan||0, cfg.umur_max_hari||0);
+        usiaEl.style.color = check.ok ? '' : '#ef4444';
+      }
+    }
+
+    function saveAnggotaEdit(anggotaIdx, fieldKey, nomor) {
+      const id    = `efm_${anggotaIdx}_${fieldKey}`;
+      const input = document.getElementById(`${id}_input`);
+      const newVal = input?.value?.trim();
+      if (newVal === undefined) return;
+
+      if (fieldKey === 'tanggal_lahir') {
+        if (!newVal) {
+          toast('Tidak Valid', 'Tanggal lahir tidak boleh kosong', 'error');
+          input.classList.add('error'); return;
+        }
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(newVal)) {
+          toast('Format Tidak Valid', 'Tanggal lahir harus berformat YYYY-MM-DD, contoh: 1990-12-31', 'error');
+          input.classList.add('error'); return;
+        }
+        const cfg = (adm.cabangConfig||[]).find(c => c.cabang_lomba === adm.editing?.cabang_lomba) || null;
+        if (cfg && typeof calcAgeAt === 'function' && typeof checkAgeRange === 'function') {
+          const age   = calcAgeAt(newVal, MTQ_CONFIG.AGE_CUTOFF_DATE);
+          const check = checkAgeRange(age, cfg.umur_min, cfg.umur_max_tahun, cfg.umur_max_bulan||0, cfg.umur_max_hari||0);
+          if (!check.ok) {
+            toast('Usia Tidak Valid', `Anggota ${anggotaIdx+1}: ${check.msg}`, 'error');
+            input.classList.add('error'); return;
+          }
+        }
+        input.classList.remove('error');
+      }
+
+      const btn = input.nextElementSibling;
+      btn.disabled = true; btn.innerHTML = '<span class="spin"></span>';
+
+      jsonp(`${API_URL}?action=editAnggota&token=${encodeURIComponent(adm.token)}`+
+            `&nomor=${encodeURIComponent(nomor)}&idx=${anggotaIdx}&field=${encodeURIComponent(fieldKey)}`+
+            `&value=${encodeURIComponent(newVal)}`, 'editAnggota', (data) => {
+        btn.disabled = false; btn.innerHTML = '💾';
+        if (data && data.success) {
+          if (adm.editingAnggota && adm.editingAnggota[anggotaIdx]) {
+            adm.editingAnggota[anggotaIdx][fieldKey] = newVal;
+            if (fieldKey === 'tanggal_lahir' && data.umur_display) {
+              adm.editingAnggota[anggotaIdx].umur_display = data.umur_display;
+            }
+          }
+          // Simpan balik ke anggota_json mentah di adm.allData supaya
+          // re-render tabel/re-buka modal nanti tetap konsisten tanpa
+          // perlu reload penuh dari server.
+          const row = adm.allData.find(r => r.nomor_pendaftaran === nomor);
+          if (row && adm.editingAnggota) row.anggota_json = JSON.stringify(adm.editingAnggota);
+
+          const displayText = fieldKey === 'tanggal_lahir' ? fmtTglIndo(newVal) : (newVal || '—');
+          document.getElementById(`${id}_val`).textContent = displayText;
+          document.getElementById(`${id}_edit`)?.classList.remove('show');
+
+          if (fieldKey === 'tanggal_lahir' && data.umur_display) {
+            const usiaEl = document.getElementById(`usiaValM_${anggotaIdx}`);
+            if (usiaEl) { usiaEl.textContent = data.umur_display; usiaEl.style.color = ''; }
+          }
+          // Nama di header kartu-mini anggota ikut diperbarui langsung.
+          if (fieldKey === 'nama_lengkap') {
+            const headEl = document.getElementById(`memberName_${anggotaIdx}`);
+            if (headEl) headEl.textContent = newVal;
+            if (anggotaIdx === 0 && row) row.nama_lengkap = newVal;   // ketua tim — kolom utama ikut sinkron
+          }
+          toast('Tersimpan', `Anggota ${anggotaIdx+1}: ${fieldKey} berhasil diperbarui`, 'success');
+          renderTable(adm.filtered);
+        } else if (data?.__jsonpError) {
+          toast('Gagal', 'Koneksi terputus — muat ulang halaman untuk memastikan status tersimpan.', 'error');
+        } else {
+          toast('Gagal', data?.message || 'Gagal menyimpan', 'error');
+        }
+      });
+    }
+
     // ── Verify / Reject ───────────────────────────────────────────
     function quickVerify(nomor, status) {
       showConfirm(
@@ -2079,6 +2242,71 @@
       toast('Export',`${rows.length} baris diekspor`,'success');
     }
     
+    // FIX #33 (poin 1): download semua kartu peserta dari data yang SEDANG
+    // TAMPIL di tabel (ikut filter/pencarian aktif — sama seperti
+    // exportCSV() di atas) jadi 1 file PDF. Anggota tim dapat kartu
+    // masing-masing, persis seperti unduhan perorangan di cekstatus.html —
+    // keduanya memanggil renderKartuCanvas() yang sama dari
+    // js/kartu-bukti-shared.js supaya formatnya selalu identik.
+    function downloadAllKartuAdmin() {
+      const rows = adm.filtered.length ? adm.filtered : adm.allData;
+      if (!rows.length) { toast('Kosong', 'Tidak ada data peserta untuk diunduh (cek filter/pencarian).', 'warning'); return; }
+      showConfirm('🪪', 'Download Semua Kartu Peserta',
+        `Akan membuat 1 file PDF berisi kartu untuk <strong>${rows.length} pendaftaran</strong> yang sedang tampil di tabel (anggota tim dapat kartu masing-masing). Proses ini bisa memakan waktu beberapa menit tergantung jumlah data. Lanjutkan?`,
+        false, () => _runDownloadAllKartu(rows));
+    }
+
+    async function _runDownloadAllKartu(rows) {
+      closeModal('confirmModal');
+      const btn = document.getElementById('btnDownloadAllKartu');
+      const origHtml = btn.innerHTML;
+      btn.disabled = true;
+
+      try {
+        const CARD_W_MM = 85.6, CARD_H_MM = 140, SCALE = 3.0;
+        const PX_PER_MM = 96 / 25.4 * SCALE;
+        const CW = Math.round(CARD_W_MM * PX_PER_MM);
+        const CH = Math.round(CARD_H_MM * PX_PER_MM);
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF({ orientation:'portrait', unit:'mm', format:[CARD_W_MM, CARD_H_MM] });
+
+        // Kumpulkan semua kartu dulu (individu = 1 kartu, tim = 1 kartu
+        // per anggota) supaya progress "j/total" akurat dari awal.
+        const jobs = [];
+        rows.forEach(r => {
+          const isTeam = (r.tipe_lomba||'').toLowerCase() === 'team';
+          let anggota = [];
+          if (r.anggota_json) { try { anggota = JSON.parse(r.anggota_json); } catch(e) { anggota = []; } }
+          if (!Array.isArray(anggota)) anggota = [];
+          const leadFoto = (anggota[0] && anggota[0].link_foto) || '';
+          const members = isTeam && anggota.length
+            ? anggota
+            : [{ nama_lengkap: r.nama_lengkap, nik: r.nik, foto_url: leadFoto, no_peserta: r.nomor_pendaftaran }];
+          members.forEach((m, i) => jobs.push({ member: m, rec: r, idx: i, isTeam }));
+        });
+        if (!jobs.length) { toast('Kosong', 'Tidak ada kartu yang bisa dibuat dari data ini.', 'warning'); return; }
+
+        for (let j = 0; j < jobs.length; j++) {
+          btn.innerHTML = `<span class="spin"></span> ${j+1}/${jobs.length}`;
+          const { member, rec, idx, isTeam } = jobs[j];
+          if (j > 0) pdf.addPage([CARD_W_MM, CARD_H_MM], 'portrait');
+          const canvas = await renderKartuCanvas(member, rec, idx, isTeam, CW, CH, loadDriveImageForKartu_);
+          const imgData = canvas.toDataURL('image/jpeg', 0.95);
+          pdf.addImage(imgData, 'JPEG', 0, 0, CARD_W_MM, CARD_H_MM);
+        }
+
+        const fname = `Kartu_Peserta_MTQ2026_Borongan_${jobs.length}_${new Date().toISOString().slice(0,10)}.pdf`;
+        pdf.save(fname);
+        toast('Berhasil', `${jobs.length} kartu peserta diunduh dalam 1 file PDF.`, 'success');
+      } catch (err) {
+        adminLog.error('[downloadAllKartuAdmin]', err);
+        toast('Gagal', 'Gagal membuat kartu: ' + err.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = origHtml;
+      }
+    }
+
     // ── Confirm dialog ────────────────────────────────────────────
     function showConfirm(icon, title, msg, showCatatan, fn) {
       document.getElementById('confirmIcon').textContent  = icon;
@@ -2378,6 +2606,11 @@
       }
     
       // ── Team: show ALL anggota with full data ──────────────────────────────
+      // FIX #34 (poin 4): sebelumnya SEMUA field di sini teks statis —
+      // admin tidak bisa edit data anggota tim sama sekali. Sekarang
+      // field-field yang relevan pakai efMember() (sejajar dengan ef()
+      // yang sudah dipakai peserta individu di atas), tersambung ke
+      // action=editAnggota (api.gs) yang menulis ke ANGGOTA_JSON.
       const cards = anggota.map((a, i) => {
         const isKetua = i === 0;
         const role    = isKetua ? '👑 Ketua Tim' : `Anggota ${i+1}`;
@@ -2394,20 +2627,22 @@
         return `<div class="member-mini" style="margin-bottom:12px">
           <div class="member-mini-head">
             <div class="member-mini-num" style="${isKetua?'background:var(--gold)':''}">${i+1}</div>
-            <strong>${nameEsc}</strong>
+            <strong id="memberName_${i}">${nameEsc}</strong>
             <span style="font-size:10px;color:${isKetua?'var(--gold)':'var(--gray-400)'};margin-left:6px">${role}</span>
           </div>
           <div class="detail-grid" style="margin-top:10px">
-            <div class="detail-field"><div class="lbl">NIK</div><div class="val" style="font-family:monospace;font-size:12px">${esc(a.nik||'—')}</div></div>
-            <div class="detail-field"><div class="lbl">Jenis Kelamin</div><div class="val">${esc(a.jenis_kelamin||'—')}</div></div>
-            <div class="detail-field"><div class="lbl">Tempat Lahir</div><div class="val">${esc(a.tempat_lahir||'—')}</div></div>
+            ${efMember('Nama Lengkap', a.nama_lengkap,  'nama_lengkap',  nomor, i)}
+            ${efMember('NIK',          a.nik,           'nik',           nomor, i)}
+            ${efMember('Jenis Kelamin',a.jenis_kelamin, 'jenis_kelamin', nomor, i)}
+            ${efMember('Tempat Lahir', a.tempat_lahir,  'tempat_lahir',  nomor, i)}
+            ${efMember('Tgl Lahir',    a.tanggal_lahir, 'tanggal_lahir', nomor, i, false, fmtTglIndo(a.tanggal_lahir))}
             <div class="detail-field">
-              <div class="lbl">Tanggal Lahir & Usia</div>
-              <div class="val">${fmtTglIndo(a.tanggal_lahir)} <span style="color:var(--emerald);font-weight:600">(${esc(a.umur_display||'—')})</span></div>
+              <div class="lbl">Usia</div>
+              <div class="val" id="usiaValM_${i}">${esc(a.umur_display||'—')}</div>
               ${reqStr}
             </div>
-            <div class="detail-field"><div class="lbl">No. HP</div><div class="val">${esc(a.no_hp||'—')}</div></div>
-            <div class="detail-field full"><div class="lbl">Alamat</div><div class="val">${esc(a.alamat||'—')}</div></div>
+            ${efMember('No. HP',       a.no_hp,         'no_hp',         nomor, i)}
+            ${efMember('Alamat',       a.alamat,        'alamat',        nomor, i, true)}
             <div class="detail-field full">
               <div class="lbl">Dokumen</div>
               <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">
@@ -2541,6 +2776,30 @@
       document.documentElement.style.setProperty('--dp-width', dpW);
     }
     
+    // FIX #33: loader foto utk renderKartuCanvas() (js/kartu-bukti-shared.js)
+    // — versi doyourmagic.html, pakai jsonp() callback-style yang sudah
+    // ada di sini (beda dari jsonpGet() async/await yang dipakai
+    // cek-maqra.js untuk hal yang sama). Dipakai fitur "Download Semua
+    // Kartu Peserta" di tab Daftar Peserta.
+    function loadDriveImageForKartu_(url) {
+      return new Promise(resolve => {
+        if (!url) { resolve(null); return; }
+        let id = null;
+        let m = String(url).match(/[?&]id=([^&]+)/);
+        if (m) id = m[1];
+        if (!id) { m = String(url).match(/\/file\/d\/([^\/?&]+)/); if (m) id = m[1]; }
+        if (!id) { resolve(null); return; }
+
+        jsonp(`${API_URL}?action=getDriveImage&id=${encodeURIComponent(id)}`, 'kartuImg', (data) => {
+          if (!data || !data.success || !data.dataUrl) { resolve(null); return; }
+          const img = new Image();
+          img.onload  = () => resolve(img);
+          img.onerror = () => resolve(null);
+          img.src = data.dataUrl;
+        }, 20000);
+      });
+    }
+
     /**
      * Open document in the side previewer.
      * FIX #28 (Mobile Bug 2): SEBELUMNYA ada bailout "if (window.innerWidth
@@ -2596,7 +2855,7 @@
   <script src="js/document-previewer.js?v=20260817"></script>
 
   <!-- ══ Manajemen Maqra — dimuat setelah admin login ══ -->
-  <script src="js/admin-maqra.js?v=20260817"></script>
+  <script src="js/admin-maqra.js?v=20260820"></script>
   <script src="js/admin-penilaian.js?v=20260817"></script>
   <style>
     /* Sistem Penilaian tab buttons */

@@ -10,6 +10,10 @@ const MAQRA_API_URL = () => window.MTQ_API_URL || '';
 let _maqraToken    = null;   // diambil dari sesi admin yang sudah login
 let _allMaqra      = [];
 let _allHasil      = [];
+// FIX #34 (poin 2/3): hasil YANG SEDANG TAMPIL di tabel Hasil Pengambilan
+// (setelah pencarian + filter cabang). Dipakai maqraDownloadAllBukti()
+// supaya unduhan borongan ikut filter yang aktif, bukan selalu semua data.
+let _filteredHasil = [];
 let _globalCfg     = null;
 // FIX: dipakai supaya grup cabang yang barusan ditambah/diganti maqra-nya
 // otomatis terbuka setelah maqraLoadData() me-render ulang — soalnya
@@ -46,7 +50,9 @@ function maqraInit() {
 
 // ── Populate select cabang ────────────────────────────────────
 function maqraPopulateCabangSelects() {
-  ['maqraCabang', 'maqraFilterCabang'].forEach(id => {
+  // FIX #34 (poin 2): maqraFilterHasilCabang ikut diisi otomatis dari
+  // sumber yang sama (MAQRA_KELOMPOK_LIST) — tab Hasil Pengambilan.
+  ['maqraCabang', 'maqraFilterCabang', 'maqraFilterHasilCabang'].forEach(id => {
     const sel = document.getElementById(id);
     if (!sel) return;
     // Hindari duplikat saat init ulang
@@ -88,7 +94,13 @@ async function maqraLoadData() {
     maqraUpdateStats(data.stats || {});
     maqraRenderMaqraTable(_allMaqra);
     maqraRenderGlobalConfigSection();
-    maqraRenderHasilTable(_allHasil);
+    // FIX #34 (poin 2/3): lewat maqraFilterHasil() (bukan langsung
+    // maqraRenderHasilTable(_allHasil)) supaya _filteredHasil ikut terisi
+    // sejak data pertama kali dimuat — kalau tidak, klik langsung
+    // "Download Semua Bukti" tanpa menyentuh pencarian/filter dulu akan
+    // dapat _filteredHasil kosong ([] dari deklarasi awal), padahal
+    // tabelnya sendiri menampilkan semua data.
+    maqraFilterHasil();
     maqraUpdateFilterCabang(_allMaqra);
   } catch (err) {
     maqraShowToast('Error', 'Gagal memuat data: ' + err.message, 'error');
@@ -497,14 +509,24 @@ function maqraRenderHasilTable(list) {
 }
 
 function maqraFilterHasil() {
-  const q = (document.getElementById('maqraSearchHasil')?.value || '').toLowerCase().trim();
-  if (!q) { maqraRenderHasilTable(_allHasil); return; }
-  maqraRenderHasilTable(_allHasil.filter(r =>
+  const q      = (document.getElementById('maqraSearchHasil')?.value || '').toLowerCase().trim();
+  // FIX #34 (poin 2): filter cabang, digabung dengan pencarian teks yang
+  // sudah ada. maqraKelompok() menyamakan "... Putra"/"... Putri" jadi 1
+  // kelompok — sama seperti tab Daftar Maqra, jadi hasil utk cabang yang
+  // sama tergabung juga di sini biarpun cabang_lomba tersimpan ber-gender.
+  const cabang = document.getElementById('maqraFilterHasilCabang')?.value || '';
+
+  let base = _allHasil;
+  if (cabang) base = base.filter(r => maqraKelompok(r.cabang_lomba) === cabang);
+
+  _filteredHasil = q ? base.filter(r =>
     (r.nama_lengkap||'').toLowerCase().includes(q) ||
     (r.nomor_pendaftaran||'').toLowerCase().includes(q) ||
     (r.maqra_teks||'').toLowerCase().includes(q) ||
     (r.kecamatan||'').toLowerCase().includes(q)
-  ));
+  ) : base;
+
+  maqraRenderHasilTable(_filteredHasil);
 }
 
 // ── Save Maqra ────────────────────────────────────────────────
@@ -691,6 +713,47 @@ function maqraExportHasil() {
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   URL.revokeObjectURL(url);
   maqraShowToast('Berhasil', 'File CSV berhasil diunduh', 'success');
+}
+
+// FIX #34 (poin 3): download semua "Bukti Maqra" dari data yang SEDANG
+// TAMPIL di tabel Hasil Pengambilan (ikut filter cabang + pencarian aktif
+// — lihat maqraFilterHasil()/_filteredHasil di atas), digabung jadi 1
+// file HTML. Tiap bukti otomatis di halaman cetak sendiri lewat
+// page-break-after (sudah diatur di BUKTI_MAQRA_STYLES, bukan diulang
+// di sini). Pakai buildBuktiMaqraCardHtml() yang SAMA dengan
+// downloadBukti() perorangan di cek-maqra.js (keduanya dari
+// js/kartu-bukti-shared.js) — jadi desain per-kartunya selalu identik,
+// termasuk kolom tanda tangan panitia & admin kecamatan.
+function maqraDownloadAllBukti() {
+  const rows = (_filteredHasil && _filteredHasil.length) ? _filteredHasil : _allHasil;
+  if (!rows.length) {
+    maqraShowToast('Kosong', 'Tidak ada hasil pengambilan maqra untuk diunduh (cek filter/pencarian).', 'warning');
+    return;
+  }
+  if (typeof buildBuktiMaqraCardHtml !== 'function' || typeof BUKTI_MAQRA_STYLES === 'undefined') {
+    maqraShowToast('Error', 'Komponen bukti maqra belum termuat — muat ulang halaman.', 'error');
+    return;
+  }
+
+  // Tiap baris "hasil" sudah gabungan data peserta + data maqra dalam 1
+  // objek datar (nama_lengkap, nomor_pendaftaran, cabang_lomba,
+  // kecamatan, maqra_teks, maqra_detail, nomor_maqra) — jadi bisa dikirim
+  // sebagai rec MAUPUN m sekaligus ke buildBuktiMaqraCardHtml().
+  const cards = rows.map(r => buildBuktiMaqraCardHtml(r, r, maqraEsc)).join('\n');
+  const html = `<!DOCTYPE html><html lang="id"><head><meta charset="UTF-8">
+<title>Bukti Maqra MTQ 2026 — ${rows.length} Peserta</title>
+<style>${BUKTI_MAQRA_STYLES}</style></head>
+<body>${cards}
+<script>window.print();<\/script>
+</body></html>`;
+
+  const a = Object.assign(document.createElement('a'), {
+    href    : URL.createObjectURL(new Blob([html], { type:'text/html;charset=utf-8' })),
+    download: `Bukti_Maqra_MTQ2026_Borongan_${rows.length}_${new Date().toISOString().slice(0,10)}.html`
+  });
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+
+  maqraShowToast('Berhasil', `${rows.length} bukti maqra diunduh dalam 1 file (siap cetak / simpan sebagai PDF).`, 'success');
 }
 
 // ── Session expired ───────────────────────────────────────────
