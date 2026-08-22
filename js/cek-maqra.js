@@ -1119,7 +1119,13 @@ async function downloadKartuPeserta() {
 /** Render satu kartu cocard ke canvas -- lihat renderKartuCanvas() di
  * js/kartu-bukti-shared.js (FIX #33: dipakai bersama admin-maqra.js utk
  * unduh kartu borongan, jadi definisinya dipindah ke sana). */
-async function loadDriveImageViaProxy(url) {
+// FIX #35: tambah 1x percobaan ulang sebelum menyerah — pelengkap fix di
+// backend (apiGetDriveImage_ sekarang kirim thumbnail kecil, bukan file
+// asli). Payload yang jauh lebih kecil seharusnya sudah menghilangkan
+// sebagian besar timeout, tapi jaringan tetap bisa transient gagal
+// sesekali — 1x retry dengan jeda singkat menangkap kasus itu tanpa
+// perlu peserta/admin mengunduh ulang secara manual dari awal.
+async function loadDriveImageViaProxy(url, _attempt = 1) {
   if (!url) return null;
   let id = null;
   let m = String(url).match(/[?&]id=([^&]+)/);
@@ -1129,14 +1135,20 @@ async function loadDriveImageViaProxy(url) {
 
   try {
     const data = await jsonpGet({ action: 'getDriveImage', id }, 20000);
-    if (!data || !data.success || !data.dataUrl) return null;
-    return await new Promise(resolve => {
-      const img = new Image();
-      img.onload  = () => resolve(img);
-      img.onerror = () => resolve(null);
-      img.src = data.dataUrl;
+    if (!data || !data.success || !data.dataUrl) {
+      if (_attempt < 2) { await sleep(500); return loadDriveImageViaProxy(url, _attempt + 1); }
+      return null;
+    }
+    const img = await new Promise(resolve => {
+      const im = new Image();
+      im.onload  = () => resolve(im);
+      im.onerror = () => resolve(null);
+      im.src = data.dataUrl;
     });
+    if (!img && _attempt < 2) { await sleep(500); return loadDriveImageViaProxy(url, _attempt + 1); }
+    return img;
   } catch (err) {
+    if (_attempt < 2) { await sleep(500); return loadDriveImageViaProxy(url, _attempt + 1); }
     return null;
   }
 }
