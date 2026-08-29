@@ -1202,7 +1202,7 @@
       <p id="confirmMsg">Yakin melakukan aksi ini?</p>
       <div class="field-group" id="catatanGroup" style="text-align:left;margin-bottom:16px">
         <label class="field-label">Catatan (opsional)</label>
-        <input type="text" class="field-input" id="catatanInput" placeholder="Alasan / catatan admin">
+        <input type="text" class="field-input" id="catatanInput" placeholder="Alasan / catatan admin" oninput="adm.confirmDraftText=this.value">
       </div>
       <div class="confirm-actions">
         <button class="btn btn-outline" onclick="closeModal('confirmModal')">Batal</button>
@@ -1255,6 +1255,13 @@
       pending     : null,
       editing     : null,
       cabangConfig: [],   // from getConfig — used for age requirement display
+      // FIX: draft catatan konfirmasi (Tolak/Nonaktifkan) — dipertahankan
+      // kalau confirmModal tertutup tidak sengaja lalu dibuka lagi utk
+      // target & aksi yang SAMA (lihat showConfirm()). confirmDraftKey
+      // beda (mis. beralih ke peserta lain) tetap mengosongkan field
+      // seperti biasa, supaya catatan peserta A tidak nyasar ke peserta B.
+      confirmDraftKey : null,
+      confirmDraftText: '',
     };
     
     
@@ -1832,7 +1839,22 @@
           KECAMATAN_LIST.map(k => `<option value="${esc(k)}"${k===current?' selected':''}>${esc(k)}</option>`).join('') +
           `</select>`;
       } else if (canEdit && fieldKey === 'tanggal_lahir') {
-        editControl = `<input type="text" class="field-input" id="${id}_input" value="${inputVal}" placeholder="YYYY-MM-DD" oninput="livePreviewUsia(this.value)">`;
+        // FIX: dulu text bebas format "YYYY-MM-DD" (rawan salah ketik,
+        // tidak ada bantuan visual) — sekarang type="date" native, sama
+        // seperti field tanggal lahir di form perbaikan cekstatus.html
+        // (em_dob_${idx} di cek-maqra.js). Browser modern tetap
+        // mengizinkan ketik langsung ke segmen hari/bulan/tahun, JADI
+        // TIDAK kehilangan opsi mengetik manual — cuma menambah kalender
+        // popup sebagai pilihan lain, plus otomatis menjaga formatnya
+        // selalu valid (tidak seperti input teks bebas sebelumnya).
+        editControl = `<input type="date" class="field-input" id="${id}_input" value="${inputVal}" oninput="livePreviewUsia(this.value)">`;
+      } else if (canEdit && fieldKey === 'nik') {
+        // FIX: NIK sudah bisa diedit sejak awal (ada di fieldMap saveEdit()/
+        // apiEditPesertaGet_) tapi kontrolnya generik (teks bebas, uppercase).
+        // Sekarang dibatasi angka & 16 digit saat mengetik (sanitizeNikInput,
+        // sejajar dgn toUpperInput di bawah) — validasi format & anti-
+        // duplikat yang MENGIKAT tetap di saveEdit()/server, ini cuma UX.
+        editControl = `<input type="text" class="field-input" id="${id}_input" value="${inputVal}" maxlength="16" inputmode="numeric" style="font-family:monospace" oninput="sanitizeNikInput(this)">`;
       } else if (canEdit) {
         editControl = `<input type="text" class="field-input" id="${id}_input" value="${inputVal}" style="text-transform:uppercase" oninput="toUpperInput(this)">`;
       }
@@ -1860,6 +1882,40 @@
       const s = el.selectionStart, e = el.selectionEnd;
       el.value = el.value.toUpperCase();
       try { el.setSelectionRange(s, e); } catch(_) {}
+    }
+
+    // Dipakai via oninput="sanitizeNikInput(this)" pada field NIK (ef()/
+    // efMember()) — hanya izinkan angka & maks 16 digit, sambil
+    // mempertahankan posisi kursor (pola sama seperti toUpperInput di atas).
+    function sanitizeNikInput(el) {
+      const s = el.selectionStart, e = el.selectionEnd;
+      el.value = el.value.replace(/\D/g, '').slice(0, 16);
+      try { el.setSelectionRange(s, e); } catch(_) {}
+    }
+
+    // FIX: cek NIK ganda di sisi klien SEBELUM kirim ke server — murni
+    // lokal (scan adm.allData yang sudah dimuat penuh di memori utk
+    // tabel admin), sama seperti validasi umur tanggal_lahir di atas yang
+    // juga tidak perlu request tambahan ke server. Ini HANYA feedback
+    // instan; penjagaan yang MENGIKAT tetap di server (apiEditPesertaGet_ /
+    // apiEditAnggotaGet_ → checkNIKDuplicate_ di helper.gs), supaya walau
+    // adm.allData di klien basi/dimanipulasi, server tetap menolak NIK
+    // yang bentrok. Mengecualikan status Nonaktif — konsisten dgn
+    // checkNIKDuplicate_. Mengembalikan baris (row) yang bentrok, atau
+    // null kalau NIK ini aman dipakai.
+    function findDuplicateNikLocal(nik, excludeNomor) {
+      const target = String(nik||'').trim();
+      if (!target) return null;
+      for (const row of (adm.allData||[])) {
+        if (String(row.nomor_pendaftaran||'').trim() === String(excludeNomor||'').trim()) continue;
+        if (String(row.status_verifikasi||'').trim().toLowerCase() === 'nonaktif') continue;
+        if (String(row.nik||'').trim() === target) return row;
+        try {
+          const ag = JSON.parse(row.anggota_json || '[]');
+          if (Array.isArray(ag) && ag.some(a => String(a?.nik||'').trim() === target)) return row;
+        } catch(_) {}
+      }
+      return null;
     }
 
     // FIX #28 (Bug 3): live preview umur SAAT admin mengetik/mengganti
@@ -1909,6 +1965,27 @@
       const input = document.getElementById(`ef_${fieldKey}_input`);
       const newVal = input?.value?.trim();
       if (newVal === undefined) return;
+
+      // FIX: NIK sudah bisa diedit sejak awal tapi tidak pernah dicek —
+      // 2 pendaftaran bisa berakhir dengan NIK yang identik. Sama seperti
+      // pola tanggal_lahir di bawah: FE (findDuplicateNikLocal, murni
+      // lokal dari adm.allData) kasih feedback instan; BE
+      // (apiEditPesertaGet_ → checkNIKDuplicate_) TETAP memvalidasi ulang
+      // — FE selalu bisa dilewati/dimanipulasi.
+      if (fieldKey === 'nik') {
+        if (!/^\d{16}$/.test(newVal)) {
+          toast('Format Tidak Valid', 'NIK harus berupa 16 digit angka', 'error');
+          input.classList.add('error');
+          return;
+        }
+        const dupRow = findDuplicateNikLocal(newVal, nomor);
+        if (dupRow) {
+          toast('NIK Sudah Terdaftar', `NIK ini sudah dipakai oleh ${esc(dupRow.nama_lengkap||'pendaftar lain')} (${esc(dupRow.nomor_pendaftaran||'-')})`, 'error');
+          input.classList.add('error');
+          return;
+        }
+        input.classList.remove('error');
+      }
 
       // FIX #26 (Bug 2): validasi umur di FE SEBELUM request dikirim ke
       // server — pola yang sama dengan validateMemberAge() di daftar.js
@@ -2003,9 +2080,16 @@
       const displayVal = displayOverride !== null ? esc(displayOverride) : esc(value || '—');
       const inputVal   = typeof value === 'string' ? esc(value.replace(/<[^>]*>/g, '')) : '';
 
+      // FIX: field NIK anggota tim juga dibatasi angka & 16 digit saat
+      // mengetik (sanitizeNikInput) — sejajar dengan perubahan yang sama
+      // di ef() untuk peserta individu/ketua.
       const editControl = fieldKey === 'tanggal_lahir'
-        ? `<input type="text" class="field-input" id="${id}_input" value="${inputVal}" placeholder="YYYY-MM-DD" oninput="livePreviewUsiaAnggota(this.value, ${anggotaIdx})">`
-        : `<input type="text" class="field-input" id="${id}_input" value="${inputVal}" style="text-transform:uppercase" oninput="toUpperInput(this)">`;
+        // FIX: sama seperti ef() di atas — type="date" native menggantikan
+        // text bebas format, sejajar dengan cekstatus.html.
+        ? `<input type="date" class="field-input" id="${id}_input" value="${inputVal}" oninput="livePreviewUsiaAnggota(this.value, ${anggotaIdx})">`
+        : fieldKey === 'nik'
+          ? `<input type="text" class="field-input" id="${id}_input" value="${inputVal}" maxlength="16" inputmode="numeric" style="font-family:monospace" oninput="sanitizeNikInput(this)">`
+          : `<input type="text" class="field-input" id="${id}_input" value="${inputVal}" style="text-transform:uppercase" oninput="toUpperInput(this)">`;
 
       return `<div class="detail-field${full?' full':''}">
         <div class="lbl">${label}</div>
@@ -2054,6 +2138,30 @@
       const input = document.getElementById(`${id}_input`);
       const newVal = input?.value?.trim();
       if (newVal === undefined) return;
+
+      // FIX: sama seperti saveEdit() — NIK anggota tim sudah bisa diedit
+      // tapi tidak pernah dicek. Dua lapis: (1) bentrok dgn anggota LAIN
+      // di tim YANG SAMA (adm.editingAnggota, murni lokal, tidak ada di
+      // findDuplicateNikLocal karena baris tim ini sendiri dikecualikan
+      // dari situ), (2) bentrok dgn pendaftaran LAIN (findDuplicateNikLocal).
+      // BE (apiEditAnggotaGet_ → checkNIKDuplicate_) tetap penjagaan akhir.
+      if (fieldKey === 'nik') {
+        if (!/^\d{16}$/.test(newVal)) {
+          toast('Format Tidak Valid', 'NIK harus berupa 16 digit angka', 'error');
+          input.classList.add('error'); return;
+        }
+        const siblingDup = (adm.editingAnggota||[]).some((a, si) => si !== anggotaIdx && String(a?.nik||'').trim() === newVal);
+        if (siblingDup) {
+          toast('NIK Sudah Terdaftar', 'NIK ini sudah dipakai anggota lain pada tim yang sama.', 'error');
+          input.classList.add('error'); return;
+        }
+        const dupRow = findDuplicateNikLocal(newVal, nomor);
+        if (dupRow) {
+          toast('NIK Sudah Terdaftar', `Anggota ${anggotaIdx+1}: NIK ini sudah dipakai oleh ${esc(dupRow.nama_lengkap||'pendaftar lain')} (${esc(dupRow.nomor_pendaftaran||'-')})`, 'error');
+          input.classList.add('error'); return;
+        }
+        input.classList.remove('error');
+      }
 
       if (fieldKey === 'tanggal_lahir') {
         if (!newVal) {
@@ -2120,6 +2228,70 @@
       });
     }
 
+    // ── FIX: Tambah / Hapus Anggota Tim ────────────────────────────
+    // Backend: action=addAnggota / action=removeAnggota (api.gs →
+    // apiAddAnggotaGet_ / apiRemoveAnggotaGet_) — batas sama dengan
+    // apiRegister_/apiPerbaikan_: tim 2-3 anggota. Fitur yang sama persis
+    // ada di sisi peserta (cek-maqra.js → tambahAnggotaTim()/
+    // hapusAnggotaTim()), tapi di sana perubahan baru tersimpan saat
+    // "Kirim Perbaikan" ditekan; di modal admin ini setiap aksi LANGSUNG
+    // tersimpan ke server begitu diklik (sejajar dengan saveEdit()/
+    // saveAnggotaEdit() di atas yang juga langsung menyimpan per field).
+    function tambahAnggotaAdmin(nomor) {
+      const btn = document.getElementById('tambahAnggotaBtn');
+      if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Menambahkan...'; }
+
+      jsonp(`${API_URL}?action=addAnggota&token=${encodeURIComponent(adm.token)}`+
+            `&nomor=${encodeURIComponent(nomor)}`, 'addAnggota', (data) => {
+        if (data && data.success) {
+          const row = adm.allData.find(r => r.nomor_pendaftaran === nomor);
+          if (row) row.anggota_json = JSON.stringify(data.anggota);
+          toast('Anggota Ditambahkan', data.message || 'Anggota baru ditambahkan', 'success');
+          renderTable(adm.filtered);
+          openDetail(nomor);   // render ulang modal dari adm.allData yang sudah diperbarui
+        } else if (data?.__jsonpError) {
+          toast('Gagal', 'Koneksi terputus — muat ulang halaman untuk memastikan status tersimpan.', 'error');
+          if (btn) { btn.disabled = false; btn.innerHTML = '➕ Tambah Anggota'; }
+        } else {
+          toast('Gagal', data?.message || 'Gagal menambah anggota', 'error');
+          if (btn) { btn.disabled = false; btn.innerHTML = '➕ Tambah Anggota'; }
+        }
+      });
+    }
+
+    // Menghapus anggota LANGSUNG tersimpan ke server begitu dikonfirmasi
+    // (beda dengan hapusAnggotaTim() di cek-maqra.js yang cuma menghapus
+    // kartu di layar sampai "Kirim Perbaikan" ditekan) — jadi dilewatkan
+    // showConfirm() dulu (dialog "Ya, Lanjutkan" yang sama dipakai utk
+    // Tolak/Nonaktifkan) supaya klik tidak sengaja tidak langsung
+    // menghapus data.
+    function hapusAnggotaAdmin(nomor, idx) {
+      showConfirm('🗑', 'Hapus Anggota Tim',
+        `Anggota <strong>${idx+1}</strong> akan dihapus dari tim <strong>${nomor}</strong> dan langsung tersimpan.`,
+        false, () => execHapusAnggotaAdmin(nomor, idx));
+    }
+
+    function execHapusAnggotaAdmin(nomor, idx) {
+      closeModal('confirmModal');
+      showLoading('Menghapus anggota...', `${nomor} — anggota ${idx+1}`);
+
+      jsonp(`${API_URL}?action=removeAnggota&token=${encodeURIComponent(adm.token)}`+
+            `&nomor=${encodeURIComponent(nomor)}&idx=${idx}`, 'removeAnggota', (data) => {
+        hideLoading();
+        if (data && data.success) {
+          const row = adm.allData.find(r => r.nomor_pendaftaran === nomor);
+          if (row) row.anggota_json = JSON.stringify(data.anggota);
+          toast('Anggota Dihapus', data.message || 'Anggota dihapus', 'success');
+          renderTable(adm.filtered);
+          openDetail(nomor);
+        } else if (data?.__jsonpError) {
+          toast('Gagal', 'Koneksi terputus — muat ulang halaman untuk memastikan status tersimpan.', 'error');
+        } else {
+          toast('Gagal', data?.message || 'Gagal menghapus anggota', 'error');
+        }
+      });
+    }
+
     // ── Verify / Reject ───────────────────────────────────────────
     function quickVerify(nomor, status) {
       showConfirm(
@@ -2127,13 +2299,17 @@
         status==='Terverifikasi'?'Verifikasi Peserta':'Tolak Peserta',
         `Ubah status <strong>${nomor}</strong> menjadi <strong>${status}</strong>?`,
         status==='Ditolak',
-        () => execVerify(nomor, status)
+        () => execVerify(nomor, status),
+        `${nomor}:${status}`
       );
     }
     function doVerify(nomor, status){ quickVerify(nomor, status); }
     
     function execVerify(nomor, status) {
       const catatan = document.getElementById('catatanInput').value.trim();
+      // FIX: draft catatan sudah "dipakai" begitu admin menekan Ya, Lanjutkan
+      // — reset supaya tidak nyangkut & tampil lagi di sesi konfirmasi lain.
+      adm.confirmDraftKey = null; adm.confirmDraftText = '';
       closeModal('confirmModal');
       adminLog.info('execVerify', nomor, status, catatan);
       showLoading('Mengubah status pendaftaran...', `${nomor} → ${status}`);
@@ -2159,12 +2335,13 @@
     function quickDeactivate(nomor) {
       showConfirm('🚫','Nonaktifkan Peserta',
         `Peserta <strong>${nomor}</strong> akan dinonaktifkan dan slot kuota-nya akan dibebaskan.<br><br>Tindakan ini dapat diubah kembali oleh admin.`,
-        true, ()=>execDeactivate(nomor));
+        true, ()=>execDeactivate(nomor), `${nomor}:Nonaktif`);
     }
     function doDeactivate(nomor){ quickDeactivate(nomor); }
     
     function execDeactivate(nomor) {
       const catatan = document.getElementById('catatanInput').value.trim();
+      adm.confirmDraftKey = null; adm.confirmDraftText = '';
       closeModal('confirmModal');
       adminLog.info('execDeactivate', nomor, catatan);
       showLoading('Menonaktifkan peserta...', nomor);
@@ -2308,14 +2485,32 @@
     }
 
     // ── Confirm dialog ────────────────────────────────────────────
-    function showConfirm(icon, title, msg, showCatatan, fn) {
+    // FIX: draftKey (opsional, biasanya "nomor:status") — dipakai supaya
+    // catatan yang sempat diketik admin tetap ada kalau modal ini dibuka
+    // ULANG untuk PESERTA & AKSI yang SAMA persis. Skenario: klik "Tolak",
+    // ketik alasan, TIDAK SENGAJA klik area gelap di luar kotak dialog
+    // (backdrop klik untuk confirmModal sendiri sekarang sudah diabaikan —
+    // lihat handler di bawah — tapi Escape/tombol "Batal" tetap bisa
+    // menutupnya), lalu klik "Tolak" lagi untuk peserta yang SAMA — dulu
+    // catatanInput SELALU dikosongkan di sini, jadi ketikan tadi hilang
+    // percuma. draftKey yang BERBEDA (mis. beralih ke peserta lain, atau
+    // ganti aksi) tetap mengosongkan field seperti semula — supaya catatan
+    // peserta A tidak nyasar terpasang ke peserta B.
+    function showConfirm(icon, title, msg, showCatatan, fn, draftKey) {
       document.getElementById('confirmIcon').textContent  = icon;
       document.getElementById('confirmTitle').textContent = title;
       document.getElementById('confirmMsg').innerHTML     = msg;
       document.getElementById('catatanGroup').style.display = showCatatan?'block':'none';
-      document.getElementById('catatanInput').value = '';
+      const catatanInput = document.getElementById('catatanInput');
+      if (showCatatan && draftKey && draftKey === adm.confirmDraftKey) {
+        catatanInput.value = adm.confirmDraftText || '';
+      } else {
+        catatanInput.value = '';
+      }
+      adm.confirmDraftKey = draftKey || null;
       adm.pending = fn;
       openModal('confirmModal');
+      if (showCatatan) catatanInput.focus();
     }
     function confirmAction(){ if(adm.pending){ adm.pending(); adm.pending=null; } }
     
@@ -2378,6 +2573,16 @@
       overlay.addEventListener('click', e => {
         if (e.target !== overlay) return;                          // ignore child clicks
         if (overlay.getAttribute('data-locked') === '1') return;  // locked — keep open
+        // FIX: confirmModal (dialog "Ya, Lanjutkan" utk Verifikasi/Tolak/
+        // Nonaktifkan) sengaja TIDAK ditutup lewat klik backdrop — dulu
+        // klik area gelap yang tidak sengaja (mis. sesaat setelah selesai
+        // mengetik alasan penolakan di catatanInput) langsung menutup
+        // modal ini, dan alasan yang sudah diketik hilang kalau modal
+        // dibuka lagi (showConfirm() dulu selalu mengosongkan catatanInput
+        // — sekarang draft-nya dipertahankan juga, lihat showConfirm()).
+        // Modal ini tetap bisa ditutup lewat tombol "Batal" atau Escape —
+        // hanya klik-di-luar yang tidak sengaja yang sekarang diabaikan.
+        if (overlay.id === 'confirmModal') return;
         overlay.classList.remove('show');
         // FIX #29 (Bug 1): jalur kedua yang bisa menutup detailModal — klik
         // backdrop LANGSUNG memanipulasi classList di sini, sama sekali
@@ -2614,6 +2819,11 @@
       const cards = anggota.map((a, i) => {
         const isKetua = i === 0;
         const role    = isKetua ? '👑 Ketua Tim' : `Anggota ${i+1}`;
+        // FIX: tombol hapus anggota — hanya utk non-ketua, dan hanya kalau
+        // tim masih di ATAS batas minimum (2), supaya tidak bisa
+        // menghapus sampai di bawah minimum tanpa sadar. Ketua sengaja
+        // tidak ditawarkan tombol ini (lihat apiRemoveAnggotaGet_).
+        const canRemove = !isKetua && anggota.length > 2;
         const fotoUrl = esc(a.link_foto       ||'');
         const ktpUrl  = esc(a.link_ktp        ||'');
         const sertUrl = esc(a.link_sertifikat ||'');
@@ -2629,6 +2839,7 @@
             <div class="member-mini-num" style="${isKetua?'background:var(--gold)':''}">${i+1}</div>
             <strong id="memberName_${i}">${nameEsc}</strong>
             <span style="font-size:10px;color:${isKetua?'var(--gold)':'var(--gray-400)'};margin-left:6px">${role}</span>
+            ${canRemove ? `<button type="button" onclick="hapusAnggotaAdmin('${nomor}', ${i})" style="margin-left:auto;font-size:11px;font-weight:600;color:#dc2626;background:#fef2f2;border:1px solid #fca5a5;border-radius:6px;padding:3px 9px;cursor:pointer;white-space:nowrap">🗑 Hapus</button>` : ``}
           </div>
           <div class="detail-grid" style="margin-top:10px">
             ${efMember('Nama Lengkap', a.nama_lengkap,  'nama_lengkap',  nomor, i)}
@@ -2655,9 +2866,20 @@
         </div>`;
       }).join('');
     
+      // FIX: tombol "Tambah Anggota" — hanya tampil kalau tim masih di
+      // BAWAH batas maksimum (3), sejajar dengan tambahAnggotaTim() di
+      // cek-maqra.js (fitur yang sama, sisi peserta). Anggota baru dibuat
+      // kosong di server (apiAddAnggotaGet_) lalu modal ini di-render
+      // ulang (tambahAnggotaAdmin()) supaya field-fieldnya langsung siap
+      // diisi lewat efMember() seperti anggota lainnya.
+      const tambahBtn = anggota.length < 3
+        ? `<button type="button" id="tambahAnggotaBtn" onclick="tambahAnggotaAdmin('${nomor}')" style="width:100%;justify-content:center;display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:#059669;background:rgba(5,150,105,.08);border:1.5px dashed rgba(5,150,105,.4);border-radius:8px;padding:10px;cursor:pointer;margin-top:8px">➕ Tambah Anggota</button>`
+        : '';
+
       return `<div class="modal-section">
         <div class="modal-section-title">👥 Data Semua Anggota Tim (${anggota.length} orang)</div>
         ${cards}
+        ${tambahBtn}
       </div>`;
     }
     

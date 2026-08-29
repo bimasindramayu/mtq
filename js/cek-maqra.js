@@ -4,7 +4,8 @@
 //
 //  Fixes:
 //  ✅ Tidak ada fetch() — semua pakai JSONP (GET & POST tunnel)
-//  ✅ NIK disabled di form edit, tidak dikirim ke server
+//  ✅ NIK bisa diubah di form edit (lihat FIX terbaru di bawah) — dulu
+//     selalu disabled & tidak dikirim ke server sama sekali
 //  ✅ Upload Sertifikat/Piagam di form perbaikan
 //  ✅ Setelah verify, langsung tampilkan maqra tanpa input NIK ulang
 //  ✅ Validasi umur form perbaikan memakai syarat cabang dari server
@@ -32,6 +33,13 @@
 //     timeout sudah reject() duluan, resolve() yang telat cuma jadi no-op
 //     aman, bukan "menghidupkan lagi" hasil .then() pemanggil — tapi
 //     setidaknya tidak lagi crash).
+//  ✅ FIX: NIK pada form perbaikan sekarang BISA diubah (dulu selalu
+//     dikunci total). Peserta individu bisa membetulkan NIK yang salah
+//     ketik; 1 anggota tim bisa diganti dengan peserta baru lewat tombol
+//     "🔁 Ganti dengan Peserta Baru" (gantiPeserta()/batalGantiPeserta()).
+//     Setiap perubahan NIK dicek real-time (checkNikAvailability()) &
+//     divalidasi ulang di server (apiPerbaikan_ → checkNIKDuplicate_ di
+//     helper.gs) supaya tidak ada NIK ganda antar-pendaftaran.
 // ============================================================
 
 // API_URL dibaca LAZILY saat dipakai (bukan saat file di-parse)
@@ -1199,6 +1207,16 @@ function showEditForm() {
          tanggal_lahir:rec.tanggal_lahir, jenis_kelamin:rec.jenis_kelamin,
          alamat:rec.alamat, no_hp:rec.no_hp }];
   _editFiles = {};
+  // FIX: NIK sekarang bisa diubah/diganti di form ini (lihat blok NIK &
+  // gantiPeserta() di bawah) — reset state validasi NIK dari sesi
+  // showEditForm() SEBELUMNYA (kalau ada) supaya tidak nyangkut dan
+  // keliru memblokir/meloloskan submit utk record yang BERBEDA.
+  resetNikValidationState();
+  // Snapshot data anggota ASLI dari server — dipakai gantiPeserta()/
+  // batalGantiPeserta() supaya tombol "↩ Batal" bisa mengembalikan slot
+  // anggota tim persis seperti semula (termasuk link_foto/link_ktp lama).
+  _originalMembers = {};
+  anggota.forEach((m, idx) => { _originalMembers[idx] = { ...m }; });
   // Simpan ageRule dari _record untuk dipakai saat validasi DOB
   // Field ini dikirim dari server bersama data peserta (umur_min, umur_max_*)
   const _ageRule = {
@@ -1227,64 +1245,14 @@ function showEditForm() {
     ? `maks. ${_ageRule.maxThn} thn ${_ageRule.maxBln} bln ${_ageRule.maxHri} hr (per ${fmtTglID(_ageRule.cutoff)})${_ageRule.min>0?`, min. ${_ageRule.min} thn`:''}`
     : (_ageRule.min > 0 ? `min. ${_ageRule.min} tahun` : 'tidak ada batas usia khusus untuk cabang ini');
 
-  let membersHtml = anggota.map((m, idx) => {
-    const isKetua = idx === 0;
-    const lbl = isTeam ? (isKetua ? '👑 Ketua Tim' : `👤 Anggota ${idx+1}`) : '👤 Data Peserta';
-    return `
-      <div class="edit-section">
-        <div class="edit-section-title">${lbl}</div>
-        <div class="two-col">
-          <div class="field-group">
-            <label class="field-label">Nama Lengkap <span class="req">*</span></label>
-            <input class="field-input" id="em_nama_${idx}" value="${esc(m.nama_lengkap||'')}">
-          </div>
-          <div class="field-group">
-            <label class="field-label">NIK</label>
-            <div style="position:relative">
-              <input class="field-input" value="${esc(m.nik||'')}" disabled
-                     style="padding-right:34px;font-family:monospace">
-              <span style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:13px" title="NIK tidak bisa diubah">🔒</span>
-            </div>
-            <div style="font-size:11px;color:var(--g400);margin-top:3px">NIK tidak dapat diubah</div>
-          </div>
-          <div class="field-group">
-            <label class="field-label">Tempat Lahir</label>
-            <input class="field-input" id="em_tl_${idx}" value="${esc(m.tempat_lahir||'')}">
-          </div>
-          <div class="field-group">
-            <label class="field-label">Tanggal Lahir</label>
-            <input class="field-input" type="date" id="em_dob_${idx}"
-                   value="${esc(m.tanggal_lahir||'')}"
-                   onchange="validateDOB(this, ${JSON.stringify(_ageRule)}, '${esc(idx.toString())}')">
-            <div class="age-rule-hint">📏 Syarat cabang: ${esc(_ageRuleLabel)}</div>
-            <div id="age_msg_${idx}" style="margin-top:5px;font-size:12px;font-weight:600;display:none"></div>
-          </div>
-          <div class="field-group">
-            <label class="field-label">Alamat</label>
-            <input class="field-input" id="em_alamat_${idx}" value="${esc(m.alamat||'')}">
-          </div>
-          <div class="field-group">
-            <label class="field-label">No. HP</label>
-            <input class="field-input" id="em_hp_${idx}" value="${esc(m.no_hp||'')}">
-          </div>
-        </div>
-        <div class="two-col" style="margin-top:10px">
-          <div class="field-group">
-            <label class="field-label">📸 Foto Terbaru</label>
-            ${uzMini('foto_'+idx,'Foto',m.link_foto)}
-          </div>
-          <div class="field-group">
-            <label class="field-label">🪪 KTP / Akte</label>
-            ${uzMini('ktp_'+idx,'KTP/Akte',m.link_ktp)}
-          </div>
-        </div>
-        <div class="field-group" style="margin-top:10px">
-          <label class="field-label">🏅 Sertifikat / Piagam (opsional)</label>
-          ${uzMini('sert_'+idx+'_1','Sertifikat / Piagam',m.link_sertifikat)}
-          <div style="font-size:11px;color:var(--g400);margin-top:4px">JPG/PNG/PDF — maks. 2 MB. Kosongkan jika tidak ingin menambah/mengganti.</div>
-        </div>
-      </div>`;
-  }).join('');
+  // FIX: dipakai tambahAnggotaTim() supaya bisa membangun kartu anggota
+  // baru dengan konteks (aturan umur, nomor pendaftaran) yang sama persis
+  // dengan render awal ini, walau dipanggil belakangan dari klik tombol
+  // (di luar closure showEditForm() ini).
+  _teamCtx = { isTeam, ageRule: _ageRule, ageRuleLabel: _ageRuleLabel, nomorPendaftaran: rec.nomor_pendaftaran || '' };
+  _originalMemberCount = anggota.length;
+
+  let membersHtml = anggota.map((m, idx) => buildMemberCardHtml(m, idx, isTeam, _ageRule, _ageRuleLabel, rec.nomor_pendaftaran)).join('');
 
   document.getElementById('editArea').innerHTML = `
     <div class="edit-card">
@@ -1296,7 +1264,11 @@ function showEditForm() {
         <div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:#dc2626">
           <strong>📋 Alasan Penolakan:</strong> ${esc(rec.catatan||'Tidak ada keterangan')}
         </div>
-        ${membersHtml}
+        <div id="membersContainer">${membersHtml}</div>
+        ${isTeam ? `
+        <div id="tambahAnggotaWrap" style="display:${anggota.length<3?'block':'none'};margin-bottom:16px">
+          <button type="button" onclick="tambahAnggotaTim()" style="width:100%;justify-content:center;display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:#059669;background:#ecfdf5;border:1.5px dashed #6ee7b7;border-radius:8px;padding:12px;cursor:pointer">➕ Tambah Anggota ke-3</button>
+        </div>` : ``}
         <div class="edit-section">
           <div class="edit-section-title">📋 Surat Rekomendasi <span class="req">*</span></div>
           ${uzMini('rekom','Surat Rekomendasi',rec.link_rekom)}
@@ -1308,7 +1280,7 @@ function showEditForm() {
         </label>
         <div style="display:flex;gap:10px;flex-wrap:wrap">
           <button class="btn btn-red" id="submitPerbBtn"
-            onclick="submitPerbaikan('${esc(rec.nomor_pendaftaran||'')}', ${anggota.length})">
+            onclick="submitPerbaikan('${esc(rec.nomor_pendaftaran||'')}')">
             ✨ Kirim Perbaikan
           </button>
           <button type="button" class="btn btn-outline" onclick="closeEditForm()">✕ Batal</button>
@@ -1416,6 +1388,340 @@ function allDOBValid(anggotaCount, ageRule) {
   return true;
 }
 
+// ════════════════════════════════════════════════════════════
+//  VALIDASI NIK PADA EDIT FORM
+// ════════════════════════════════════════════════════════════
+// FIX: NIK pada form perbaikan dulu SELALU dikunci (lihat komentar lama
+// "NIK tidak pernah diupdate dari body" yang sudah dihapus di apiPerbaikan_,
+// api.gs). Sekarang NIK boleh diubah — dipakai utk 2 skenario: (1) peserta
+// individu membetulkan NIK yang salah ketik, (2) mengganti satu anggota
+// tim dengan peserta yang sama sekali baru (lihat gantiPeserta() di bawah).
+// Supaya tidak menimbulkan NIK ganda, tiap perubahan NIK dicek instan ke
+// server (action=checkNIK) — TAPI ini cuma feedback cepat di UI. Penjagaan
+// yang MENGIKAT tetap di server: apiPerbaikan_ (api.gs) memanggil
+// checkNIKDuplicate_ (helper.gs) sebelum menyimpan apa pun, jadi walau
+// validasi di sini dilewati/dimanipulasi, server tetap menolak NIK bentrok.
+const _nikState       = {};   // idx -> 'ok' | 'dup' | 'invalid' | 'checking' | 'unknown'
+const _nikCheckTimers = {};   // idx -> id setTimeout (debounce 500ms)
+let   _originalMembers = {};  // idx -> snapshot asli anggota dari server (diisi showEditForm())
+// FIX: dipakai fitur "Tambah Anggota" / "Hapus Anggota" (lihat
+// buildMemberCardHtml/tambahAnggotaTim/hapusAnggotaTim di bawah) — kedua
+// tombol itu dipanggil dari klik user, DI LUAR closure showEditForm(),
+// jadi butuh state ini di level modul supaya tetap tahu konteks form
+// yang sedang terbuka (aturan umur, nomor pendaftaran, jumlah anggota
+// ASLI saat form pertama kali dibuka).
+let _teamCtx = { isTeam:false, ageRule:null, ageRuleLabel:'', nomorPendaftaran:'' };
+let _originalMemberCount = 0;
+
+// Dipanggil dari showEditForm() supaya state sesi form SEBELUMNYA (kalau
+// ada) tidak nyangkut ke record yang baru dibuka.
+function resetNikValidationState() {
+  Object.values(_nikCheckTimers).forEach(t => clearTimeout(t));
+  for (const k in _nikCheckTimers) delete _nikCheckTimers[k];
+  for (const k in _nikState) delete _nikState[k];
+}
+
+// Dipakai via oninput="sanitizeNikInput(this)" — hanya izinkan angka & maks
+// 16 digit, sambil mempertahankan posisi kursor (pola sama seperti
+// toUpperInput() di doyourmagic.html).
+function sanitizeNikInput(el) {
+  const s = el.selectionStart, e = el.selectionEnd;
+  el.value = el.value.replace(/\D/g, '').slice(0, 16);
+  try { el.setSelectionRange(s, e); } catch(_) {}
+}
+
+function checkNikAvailability(input, idx, nomorSelf, immediate) {
+  const idxKey   = String(idx);
+  const msgEl    = document.getElementById('nik_msg_' + idxKey);
+  const val      = input.value.trim();
+  const original = input.dataset.original || '';
+  const showMsg  = (color, text) => { if (msgEl) { msgEl.style.display='block'; msgEl.style.color=color; msgEl.textContent=text; } };
+  const setBorder = (ok) => {
+    input.style.borderColor = ok ? 'var(--em, #059669)' : 'var(--red, #dc2626)';
+    input.style.boxShadow   = ok ? '0 0 0 3px rgba(5,150,105,.1)' : '0 0 0 3px rgba(220,38,38,.1)';
+  };
+  const clearVisual = () => { input.style.borderColor = ''; input.style.boxShadow = ''; if (msgEl) msgEl.style.display = 'none'; };
+
+  clearTimeout(_nikCheckTimers[idxKey]);
+
+  if (!val) {
+    _nikState[idxKey] = 'invalid';
+    clearVisual();
+    return;
+  }
+  if (!/^\d{16}$/.test(val)) {
+    _nikState[idxKey] = 'invalid'; setBorder(false);
+    showMsg('var(--red, #dc2626)', '⚠️ NIK harus 16 digit angka');
+    return;
+  }
+  // Cek bentrok dengan NIK anggota LAIN di form yang sama ini dulu — murni
+  // lokal, tidak perlu ke server.
+  const others = document.querySelectorAll('[id^="em_nik_"]');
+  for (const other of others) {
+    if (other === input) continue;
+    if (other.value.trim() === val) {
+      _nikState[idxKey] = 'dup'; setBorder(false);
+      showMsg('var(--red, #dc2626)', '⚠️ NIK sama dengan anggota lain di form ini');
+      return;
+    }
+  }
+  if (val === original) {
+    _nikState[idxKey] = 'ok';
+    clearVisual();
+    return;
+  }
+
+  _nikState[idxKey] = 'checking';
+  showMsg('var(--g500, #6b7280)', '⏳ Memeriksa NIK...');
+
+  const run = async () => {
+    try {
+      const res = await jsonpGet({ action:'checkNIK', nik: val }, 12000);
+      if (input.value.trim() !== val) return;   // input sudah berubah lagi — abaikan hasil basi ini
+      const status  = String(res?.record?.status_verifikasi || '').trim().toLowerCase();
+      const isSelf  = res?.found && res.record && String(res.record.nomor_pendaftaran||'') === String(nomorSelf||'');
+      const isFreed = status === 'nonaktif';   // konsisten dgn checkNIKDuplicate_ di helper.gs
+      if (res?.found && !isSelf && !isFreed) {
+        _nikState[idxKey] = 'dup'; setBorder(false);
+        showMsg('var(--red, #dc2626)', '⚠️ NIK sudah terdaftar atas nama ' + (res.record?.nama_lengkap || '-'));
+      } else {
+        _nikState[idxKey] = 'ok'; setBorder(true);
+        showMsg('var(--em, #059669)', '✅ NIK tersedia');
+      }
+    } catch (e) {
+      _nikState[idxKey] = 'unknown';
+      clearVisual();
+      log.warn('[MTQ] checkNikAvailability gagal', e);
+    }
+  };
+
+  if (immediate) run();
+  else _nikCheckTimers[idxKey] = setTimeout(run, 500);
+}
+
+// Validasi semua NIK sebelum submit — TIDAK memicu request baru (biar
+// tidak menahan submit menunggu jaringan), cukup baca status hasil cek
+// terakhir. 'checking'/'unknown' tetap diizinkan lewat di sini karena
+// checkNIKDuplicate_ di server tetap jadi penjaga terakhir yang mengikat.
+function allNikValid(anggotaCount) {
+  for (let i = 0; i < anggotaCount; i++) {
+    const state = _nikState[String(i)];
+    if (state === 'dup' || state === 'invalid') return false;
+  }
+  return true;
+}
+
+// ── FIX: fitur "Ganti Peserta" untuk anggota TIM ───────────────────
+// Mengosongkan satu slot anggota supaya bisa diisi ulang dengan data
+// peserta yang SAMA SEKALI BARU (dipakai kalau satu anggota tim
+// mengundurkan diri / tidak memenuhi syarat dan perlu digantikan orang
+// lain). Semua field slot ini (nama, NIK, tempat/tanggal lahir, alamat,
+// no HP, foto, KTP, sertifikat) dikosongkan — foto/KTP WAJIB diunggah
+// ulang karena bukan orang yang sama. NIK slot yang baru ini tetap wajib
+// lolos checkNikAvailability()/checkNIKDuplicate_ seperti biasa sebelum
+// bisa disimpan. Bisa dibatalkan lewat tombol "↩ Batal" (batalGantiPeserta)
+// yang mengembalikan slot ini persis seperti data asli dari server.
+function gantiPeserta(idx) {
+  const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
+  setVal('em_nama_'+idx, ''); setVal('em_tl_'+idx, ''); setVal('em_dob_'+idx, '');
+  setVal('em_alamat_'+idx, ''); setVal('em_hp_'+idx, '');
+
+  const ageMsg = document.getElementById('age_msg_'+idx); if (ageMsg) ageMsg.style.display = 'none';
+
+  const nikEl = document.getElementById('em_nik_'+idx);
+  if (nikEl) {
+    nikEl.value = '';
+    nikEl.dataset.original = '\u0000GANTI\u0000';   // nilai yang mustahil sama dgn NIK asli — apa pun yg diisi nanti dianggap "berubah", wajib dicek ulang
+    nikEl.style.borderColor = ''; nikEl.style.boxShadow = '';
+  }
+  const nikMsg = document.getElementById('nik_msg_'+idx); if (nikMsg) nikMsg.style.display = 'none';
+  delete _nikState[String(idx)];
+
+  ['foto_'+idx, 'ktp_'+idx, 'sert_'+idx+'_1'].forEach(key => {
+    delete _editFiles[key];
+    const wrap = document.getElementById('uzwrap_'+key);
+    if (wrap) {
+      const label = key.startsWith('foto_') ? 'Foto' : key.startsWith('ktp_') ? 'KTP/Akte' : 'Sertifikat / Piagam';
+      wrap.outerHTML = uzMini(key, label, '');
+      bindUZ(key);
+    }
+  });
+
+  const labelEl = document.getElementById('anggotaLabel_'+idx);
+  if (labelEl) labelEl.innerHTML = `🆕 Peserta Baru <button type="button" onclick="batalGantiPeserta(${idx})" style="margin-left:8px;font-size:11px;font-weight:600;color:var(--g500,#6b7280);background:#fff;border:1px solid var(--g300,#d1d5db);border-radius:6px;padding:2px 8px;cursor:pointer">↩ Batal</button>`;
+  const gantiBtn = document.getElementById('gantiBtn_'+idx); if (gantiBtn) gantiBtn.style.display = 'none';
+
+  document.getElementById('em_nama_'+idx)?.focus();
+  showToast('Slot Dikosongkan', 'Isi data peserta baru untuk anggota ini, lalu unggah foto & KTP baru.', 'info');
+}
+
+function batalGantiPeserta(idx) {
+  const orig = _originalMembers[idx];
+  if (!orig) return;
+  const setVal = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
+  setVal('em_nama_'+idx, orig.nama_lengkap);
+  setVal('em_tl_'+idx, orig.tempat_lahir);
+  setVal('em_dob_'+idx, orig.tanggal_lahir);
+  setVal('em_alamat_'+idx, orig.alamat);
+  setVal('em_hp_'+idx, orig.no_hp);
+
+  const nikEl = document.getElementById('em_nik_'+idx);
+  if (nikEl) {
+    nikEl.value = orig.nik || '';
+    nikEl.dataset.original = orig.nik || '';
+    nikEl.style.borderColor = ''; nikEl.style.boxShadow = '';
+  }
+  const nikMsg = document.getElementById('nik_msg_'+idx); if (nikMsg) nikMsg.style.display = 'none';
+  const ageMsg = document.getElementById('age_msg_'+idx); if (ageMsg) ageMsg.style.display = 'none';
+  delete _nikState[String(idx)];
+
+  ['foto_'+idx, 'ktp_'+idx, 'sert_'+idx+'_1'].forEach(key => {
+    delete _editFiles[key];
+    const wrap = document.getElementById('uzwrap_'+key);
+    if (wrap) {
+      const label = key.startsWith('foto_') ? 'Foto' : key.startsWith('ktp_') ? 'KTP/Akte' : 'Sertifikat / Piagam';
+      const url   = key.startsWith('foto_') ? orig.link_foto : key.startsWith('ktp_') ? orig.link_ktp : orig.link_sertifikat;
+      wrap.outerHTML = uzMini(key, label, url || '');
+      bindUZ(key);
+    }
+  });
+
+  const isTeam  = (_record?.tipe_lomba||'').toLowerCase() === 'team';
+  const labelEl = document.getElementById('anggotaLabel_'+idx);
+  if (labelEl) labelEl.textContent = isTeam ? (idx===0 ? '👑 Ketua Tim' : `👤 Anggota ${idx+1}`) : '👤 Data Peserta';
+  const gantiBtn = document.getElementById('gantiBtn_'+idx); if (gantiBtn) gantiBtn.style.display = '';
+
+  showToast('Dibatalkan', 'Data anggota dikembalikan seperti semula.', 'info');
+}
+
+// ════════════════════════════════════════════════════════════
+//  TAMBAH / HAPUS ANGGOTA TIM (2-3 anggota per tim, sama seperti batas di
+//  apiRegister_ & apiPerbaikan_: cabang tim MTQ min. 2, maks. 3 anggota)
+// ════════════════════════════════════════════════════════════
+// Template kartu satu anggota — diekstrak dari showEditForm() supaya bisa
+// dipakai ulang oleh tambahAnggotaTim() saat menambah kartu baru secara
+// dinamis (dulu template ini cuma ada sekali, tertanam langsung di dalam
+// showEditForm(), jadi tidak bisa dipanggil ulang dari luar).
+function buildMemberCardHtml(m, idx, isTeam, ageRule, ageRuleLabel, nomorPendaftaran) {
+  const isKetua = idx === 0;
+  const lbl = isTeam ? (isKetua ? '👑 Ketua Tim' : `👤 Anggota ${idx+1}`) : '👤 Data Peserta';
+  // Hanya anggota ke-3 (idx===2, slot OPSIONAL) yang bisa dihapus — ketua
+  // & anggota ke-2 wajib ada di tim manapun (minimal 2 anggota), jadi
+  // sengaja tidak ditawarkan tombol hapus supaya tim tidak bisa turun di
+  // bawah minimum tanpa sadar.
+  const canRemove = isTeam && idx === 2;
+  // "Ganti Peserta" cuma masuk akal utk slot yang SUDAH ADA datanya sejak
+  // form ini dibuka (_originalMemberCount, diisi showEditForm()) — kartu
+  // yang baru saja ditambahkan lewat tambahAnggotaTim() sudah kosong
+  // (tidak ada yang perlu "diganti"), dan batalGantiPeserta() tidak
+  // punya snapshot _originalMembers[idx] utk slot semacam itu.
+  const showGantiBtn = isTeam && idx < _originalMemberCount;
+  return `
+    <div class="edit-section" id="memberCard_${idx}">
+      <div class="edit-section-title" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+        <span id="anggotaLabel_${idx}">${lbl}</span>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          ${showGantiBtn ? `<button type="button" id="gantiBtn_${idx}" onclick="gantiPeserta(${idx})" style="font-size:11px;font-weight:600;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:4px 10px;cursor:pointer;white-space:nowrap">🔁 Ganti dengan Peserta Baru</button>` : ``}
+          ${canRemove ? `<button type="button" onclick="hapusAnggotaTim(${idx})" style="font-size:11px;font-weight:600;color:#dc2626;background:#fef2f2;border:1px solid #fca5a5;border-radius:6px;padding:4px 10px;cursor:pointer;white-space:nowrap">🗑 Hapus Anggota Ini</button>` : ``}
+        </div>
+      </div>
+      <div class="two-col">
+        <div class="field-group">
+          <label class="field-label">Nama Lengkap <span class="req">*</span></label>
+          <input class="field-input" id="em_nama_${idx}" value="${esc(m.nama_lengkap||'')}">
+        </div>
+        <div class="field-group">
+          <label class="field-label">NIK <span class="req">*</span></label>
+          <input class="field-input" id="em_nik_${idx}" value="${esc(m.nik||'')}"
+                 data-original="${esc(m.nik||'')}" maxlength="16" inputmode="numeric"
+                 style="font-family:monospace"
+                 oninput="sanitizeNikInput(this); checkNikAvailability(this, ${idx}, '${esc(nomorPendaftaran||'')}')"
+                 onblur="checkNikAvailability(this, ${idx}, '${esc(nomorPendaftaran||'')}', true)">
+          <div style="font-size:11px;color:var(--g400);margin-top:3px">Bisa diperbaiki kalau salah ketik — pastikan belum terdaftar atas nama orang lain.</div>
+          <div id="nik_msg_${idx}" style="margin-top:5px;font-size:12px;font-weight:600;display:none"></div>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Tempat Lahir</label>
+          <input class="field-input" id="em_tl_${idx}" value="${esc(m.tempat_lahir||'')}">
+        </div>
+        <div class="field-group">
+          <label class="field-label">Tanggal Lahir</label>
+          <input class="field-input" type="date" id="em_dob_${idx}"
+                 value="${esc(m.tanggal_lahir||'')}"
+                 onchange="validateDOB(this, ${JSON.stringify(ageRule)}, '${esc(idx.toString())}')">
+          <div class="age-rule-hint">📏 Syarat cabang: ${esc(ageRuleLabel)}</div>
+          <div id="age_msg_${idx}" style="margin-top:5px;font-size:12px;font-weight:600;display:none"></div>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Alamat</label>
+          <input class="field-input" id="em_alamat_${idx}" value="${esc(m.alamat||'')}">
+        </div>
+        <div class="field-group">
+          <label class="field-label">No. HP</label>
+          <input class="field-input" id="em_hp_${idx}" value="${esc(m.no_hp||'')}">
+        </div>
+      </div>
+      <div class="two-col" style="margin-top:10px">
+        <div class="field-group">
+          <label class="field-label">📸 Foto Terbaru</label>
+          ${uzMini('foto_'+idx,'Foto',m.link_foto)}
+        </div>
+        <div class="field-group">
+          <label class="field-label">🪪 KTP / Akte</label>
+          ${uzMini('ktp_'+idx,'KTP/Akte',m.link_ktp)}
+        </div>
+      </div>
+      <div class="field-group" style="margin-top:10px">
+        <label class="field-label">🏅 Sertifikat / Piagam (opsional)</label>
+        ${uzMini('sert_'+idx+'_1','Sertifikat / Piagam',m.link_sertifikat)}
+        <div style="font-size:11px;color:var(--g400);margin-top:4px">JPG/PNG/PDF — maks. 2 MB. Kosongkan jika tidak ingin menambah/mengganti.</div>
+      </div>
+    </div>`;
+}
+
+// Tombol "➕ Tambah Anggota ke-3" — hanya tampil kalau tim baru punya 2
+// anggota (lihat display:none/block pada #tambahAnggotaWrap di
+// showEditForm()). Menambahkan SATU kartu anggota kosong di index
+// berikutnya (selalu idx 2, karena maksimal tim = 3).
+function tambahAnggotaTim() {
+  const container = document.getElementById('membersContainer');
+  if (!container) return;
+  const count = container.querySelectorAll('[id^="memberCard_"]').length;
+  if (count >= 3) return;   // defensif — tombol seharusnya sudah disembunyikan di titik ini
+  const idx = count;
+  const html = buildMemberCardHtml({}, idx, true, _teamCtx.ageRule, _teamCtx.ageRuleLabel, _teamCtx.nomorPendaftaran);
+  container.insertAdjacentHTML('beforeend', html);
+  bindUZ('foto_'+idx); bindUZ('ktp_'+idx); bindUZ('sert_'+idx+'_1');
+
+  const wrap = document.getElementById('tambahAnggotaWrap');
+  if (wrap) wrap.style.display = 'none';
+
+  const namaEl = document.getElementById('em_nama_'+idx);
+  namaEl?.scrollIntoView({ behavior:'smooth', block:'center' });
+  namaEl?.focus();
+  showToast('Anggota Ditambahkan', 'Isi data anggota ke-3, lalu unggah foto & KTP.', 'info');
+}
+
+// Menghapus kartu anggota ke-3 (satu-satunya slot yang boleh dihapus —
+// lihat canRemove di buildMemberCardHtml). Membersihkan seluruh state
+// terkait (berkas terupload, status validasi NIK/umur, snapshot asli)
+// supaya tidak nyangkut & keliru ikut divalidasi/dikirim saat submit.
+function hapusAnggotaTim(idx) {
+  const card = document.getElementById('memberCard_'+idx);
+  if (card) card.remove();
+
+  ['foto_'+idx, 'ktp_'+idx, 'sert_'+idx+'_1'].forEach(key => delete _editFiles[key]);
+  clearTimeout(_nikCheckTimers[String(idx)]);
+  delete _nikCheckTimers[String(idx)];
+  delete _nikState[String(idx)];
+  delete _originalMembers[idx];
+
+  const wrap = document.getElementById('tambahAnggotaWrap');
+  if (wrap) wrap.style.display = 'block';
+
+  showToast('Anggota Dihapus', 'Anggota ke-3 sudah dihapus dari tim.', 'info');
+}
+
 // FIX (v2 — UI/UX diminta disederhanakan lagi): sebelumnya kartu info
 // "dokumen tersimpan" + 2 tombol terpisah (Lihat/Ganti) masih bikin
 // bingung. Sekarang dokumen existing tampil sebagai THUMBNAIL ASLI —
@@ -1510,7 +1816,14 @@ async function handleFile(key, file) {
   if (undoBtn) undoBtn.style.display = 'inline-block';
 }
 
-async function submitPerbaikan(nomor, memberCount) {
+async function submitPerbaikan(nomor) {
+  // FIX: memberCount dulu dikirim sebagai argumen TETAP dari HTML
+  // (di-bake saat showEditForm() pertama kali render) — jadi kalau
+  // anggota ditambah/dihapus lewat tambahAnggotaTim()/hapusAnggotaTim()
+  // sesudahnya, angka ini jadi basi. Sekarang selalu dihitung ULANG dari
+  // jumlah kartu anggota yang benar-benar ada di DOM saat submit ditekan.
+  const memberCount = document.querySelectorAll('#membersContainer [id^="memberCard_"]').length;
+
   if (!document.getElementById('editAgree').checked) {
     showToast('Peringatan','Centang persetujuan terlebih dahulu','warning'); return;
   }
@@ -1540,6 +1853,40 @@ async function submitPerbaikan(nomor, memberCount) {
     if (firstErr) firstErr.scrollIntoView({ behavior:'smooth', block:'center' });
     return;
   }
+  // FIX: NIK sekarang bisa diubah — cek status hasil checkNikAvailability()
+  // terakhir sebelum submit (lihat fungsi itu & allNikValid() di atas).
+  // Ini feedback cepat di UI; penjagaan yang MENGIKAT tetap di server
+  // (apiPerbaikan_ → checkNIKDuplicate_).
+  if (!allNikValid(memberCount)) {
+    showToast('Data Tidak Valid', 'Periksa kembali NIK yang belum valid atau sudah terdaftar', 'error');
+    for (let i = 0; i < memberCount; i++) {
+      const st = _nikState[String(i)];
+      if (st === 'dup' || st === 'invalid') {
+        document.getElementById('em_nik_'+i)?.scrollIntoView({ behavior:'smooth', block:'center' });
+        break;
+      }
+    }
+    return;
+  }
+  // FIX: foto & KTP WAJIB diunggah baru utk (a) slot yang sedang dalam mode
+  // "🔁 Ganti dengan Peserta Baru" (gantiPeserta() menandai dataset.original
+  // dgn sentinel khusus), MAUPUN (b) anggota ke-3 yang baru ditambahkan lewat
+  // "➕ Tambah Anggota ke-3" (tambahAnggotaTim() — idx-nya berada di luar
+  // _originalMemberCount, artinya slot ini memang belum pernah ada sebelum
+  // form ini dibuka, jadi tidak punya berkas lama utk dipertahankan). Tanpa
+  // cek ini, server akan diam-diam mempertahankan foto/KTP milik peserta
+  // LAMA (skenario a) atau menyimpan anggota baru TANPA foto/KTP sama
+  // sekali (skenario b) — lihat apiPerbaikan_.
+  for (let i = 0; i < memberCount; i++) {
+    const nikInput    = document.getElementById('em_nik_'+i);
+    const isReplacing = nikInput?.dataset.original === '\u0000GANTI\u0000';
+    const isNewSlot   = i >= _originalMemberCount;
+    if ((isReplacing || isNewSlot) && (!_editFiles['foto_'+i] || !_editFiles['ktp_'+i])) {
+      showToast('Peringatan', `Anggota ${i+1} adalah peserta baru — foto & KTP/Akte wajib diunggah.`, 'warning');
+      document.getElementById('uzwrap_foto_'+i)?.scrollIntoView({ behavior:'smooth', block:'center' });
+      return;
+    }
+  }
   showLoading(true,'Mengirim perbaikan...');
   const btn = document.getElementById('submitPerbBtn');
   if (btn) btn.disabled = true;
@@ -1550,7 +1897,11 @@ async function submitPerbaikan(nomor, memberCount) {
       const serts = [_editFiles['sert_'+i+'_1']].filter(Boolean);
       return {
         nama_lengkap  : (document.getElementById('em_nama_'+i)?.value||'').trim(),
-        nik           : (srcAnggota[i]?.nik||'').trim(),  // ← NIK dari data asli, bukan form
+        // FIX: NIK sekarang dibaca dari FORM (boleh diubah oleh peserta
+        // individu, atau diisi baru lewat gantiPeserta() utk anggota tim) —
+        // fallback ke data asli hanya kalau input-nya entah kenapa tidak
+        // ada di DOM. Dulu selalu dipaksa memakai srcAnggota[i]?.nik saja.
+        nik           : (document.getElementById('em_nik_'+i)?.value || srcAnggota[i]?.nik || '').trim(),
         tempat_lahir  : (document.getElementById('em_tl_'+i)?.value||'').trim(),
         tanggal_lahir : (document.getElementById('em_dob_'+i)?.value||'').trim(),
         alamat        : (document.getElementById('em_alamat_'+i)?.value||'').trim(),
