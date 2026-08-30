@@ -21,6 +21,15 @@ let _globalCfg     = null;
 // maqraRenderMaqraTable), jadi tanpa ini user harus klik manual buat
 // lihat hasil yang baru saja disimpan.
 let _maqraAutoExpandCabang = null;
+// FIX: dulu maqraLoadData() (network) dipanggil ULANG setiap kali tab
+// "Manajemen Maqra" dibuka (lihat monkey-patch showPage() di
+// doyourmagic.html yang memanggil maqraInit() tiap page==='maqra') —
+// jadi pindah ke tab lain lalu balik lagi selalu memuat ulang dari
+// server. Flag ini dipakai maqraInit() supaya load pertama itu SATU-
+// SATUNYA load otomatis per sesi halaman; sesudahnya user bebas
+// berpindah tab tanpa memicu request baru. Muat ulang manual → tombol
+// "🔄 Refresh" di halaman Maqra (maqraRefresh(), lihat di bawah).
+let _maqraLoaded = false;
 
 // Cabang list: SATU SUMBER di js/config.js → MTQ_CONFIG.CABANG_LIST
 // (jangan hardcode array cabang lagi di sini — edit config.js saja)
@@ -45,6 +54,16 @@ function maqraInit() {
   // Ambil token dari sesi admin.js yang sudah login
   _maqraToken = sessionStorage.getItem('mtq_admin_token') || null;
   maqraPopulateCabangSelects();
+  // FIX: lihat catatan _maqraLoaded di atas — hanya memuat dari server
+  // kalau BELUM PERNAH berhasil dimuat di sesi halaman ini.
+  if (_maqraLoaded) return;
+  maqraLoadData();
+}
+
+// Dipanggil dari tombol "🔄 Refresh" di halaman Manajemen Maqra —
+// satu-satunya cara memuat ulang data dari server setelah load pertama
+// (lihat _maqraLoaded).
+function maqraRefresh() {
   maqraLoadData();
 }
 
@@ -90,6 +109,10 @@ async function maqraLoadData() {
     _allMaqra  = data.maqraList || [];
     _allHasil  = data.results   || [];
     _globalCfg = (data.config || []).find(c => c.cabang_lomba === 'GLOBAL') || null;
+    // FIX: ditandai "sudah dimuat" HANYA setelah berhasil — kalau load
+    // pertama gagal (mis. error jaringan), tab Maqra akan tetap mencoba
+    // lagi di kunjungan berikutnya, bukan diam2 dianggap "sudah pernah".
+    _maqraLoaded = true;
 
     maqraUpdateStats(data.stats || {});
     maqraRenderMaqraTable(_allMaqra);

@@ -617,46 +617,17 @@
             <div class="page-title">📊 Statistik Pendaftaran</div>
             <div class="page-sub">Ringkasan data peserta MTQ 2026</div>
           </div>
-          <button class="btn btn-outline" style="font-size:13px" onclick="refreshData()">🔄 Refresh</button>
+          <div style="display:flex;gap:8px">
+            <!-- FIX: kartu statistik sekarang bisa dikustomisasi (dulu 6
+                 kartu tetap) — lihat STATS_CARD_DEFS/renderStats() di
+                 script utama, dan modal #statsConfigModal di bawah. -->
+            <button class="btn btn-outline" style="font-size:13px" onclick="openStatsConfig()">⚙️ Kustomisasi</button>
+            <button class="btn btn-outline" style="font-size:13px" onclick="refreshData()">🔄 Refresh</button>
+          </div>
         </div>
 
         <div class="admin-stats" id="statsGrid">
-          <div class="stat-card"><span class="stat-icon">👥</span>
-            <div>
-              <div class="stat-label">Total Peserta</div>
-              <div class="stat-num" id="st-total">–</div>
-            </div>
-          </div>
-          <div class="stat-card"><span class="stat-icon">✅</span>
-            <div>
-              <div class="stat-label">Terverifikasi</div>
-              <div class="stat-num" id="st-verified">–</div>
-            </div>
-          </div>
-          <div class="stat-card warn"><span class="stat-icon">⏳</span>
-            <div>
-              <div class="stat-label">Menunggu</div>
-              <div class="stat-num" id="st-pending">–</div>
-            </div>
-          </div>
-          <div class="stat-card error"><span class="stat-icon">❌</span>
-            <div>
-              <div class="stat-label">Ditolak</div>
-              <div class="stat-num" id="st-rejected">–</div>
-            </div>
-          </div>
-          <div class="stat-card"><span class="stat-icon">🏆</span>
-            <div>
-              <div class="stat-label">Cabang Aktif</div>
-              <div class="stat-num" id="st-cabangs">–</div>
-            </div>
-          </div>
-          <div class="stat-card"><span class="stat-icon">🗺️</span>
-            <div>
-              <div class="stat-label">Kecamatan</div>
-              <div class="stat-num" id="st-kecs">–</div>
-            </div>
-          </div>
+          <!-- Diisi renderStats() berdasarkan kartu yang dipilih admin -->
         </div>
 
         <!-- Per-cabang breakdown -->
@@ -694,6 +665,13 @@
           <div>
             <div class="page-title">📖 Manajemen Maqra</div>
             <div class="page-sub">Kelola daftar maqra dan jadwal pengambilan</div>
+          </div>
+          <div style="display:flex;gap:8px">
+            <!-- FIX: data Maqra sekarang cuma dimuat SEKALI per sesi
+                 halaman (lihat maqraInit()/_maqraLoaded di admin-maqra.js)
+                 — tombol ini satu-satunya cara memuat ulang dari server
+                 setelah itu. -->
+            <button class="btn btn-outline" style="font-size:13px" onclick="maqraRefresh()">🔄 Refresh</button>
           </div>
         </div>
 
@@ -1117,11 +1095,10 @@
                   </select>
                 </div>
                 <div>
-                  <label class="field-label">Tambah Peserta Manual <span style="font-weight:400;color:var(--gray-400);font-size:11px">(override darurat)</span></label>
-                  <div style="display:flex;gap:8px">
-                    <input type="text" class="field-input" id="pnPesertaNamaBaru" placeholder="Nama peserta">
-                    <button class="btn btn-emerald" style="font-size:13px" onclick="pnTambahPeserta()">+ Tambah</button>
-                  </div>
+                  <label class="field-label">Filter Kecamatan</label>
+                  <select class="field-select" id="pnPesertaKecamatanFilter" onchange="pnLoadPesertaTable()">
+                    <option value="">-- Semua Kecamatan --</option>
+                  </select>
                 </div>
               </div>
               <div class="table-scroll-hint">👉 Geser tabel untuk melihat kolom lainnya</div>
@@ -1207,6 +1184,32 @@
       <div class="confirm-actions">
         <button class="btn btn-outline" onclick="closeModal('confirmModal')">Batal</button>
         <button class="btn" id="confirmOkBtn" onclick="confirmAction()">Ya, Lanjutkan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ MODAL: KUSTOMISASI KARTU STATISTIK ═══════════════════ -->
+  <!-- FIX: admin memilih sendiri kartu mana yang tampil di halaman
+       Statistik Pendaftaran (dulu 6 kartu tetap/hardcode). Pilihan
+       tersimpan di localStorage browser ini (mtq-stats-cards) — lihat
+       STATS_CARD_DEFS/getStatsCardPrefs()/toggleStatsCard() di script
+       utama. Toggle langsung tersimpan & preview instan, tidak perlu
+       tombol "Simpan" terpisah. -->
+  <div class="modal-overlay" id="statsConfigModal">
+    <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="statsConfigTitle" style="max-width:440px">
+      <div class="modal-head">
+        <div><h3 id="statsConfigTitle">⚙️ Kustomisasi Statistik</h3></div>
+        <span class="modal-x" tabindex="0" role="button" aria-label="Tutup" onclick="closeModal('statsConfigModal')">✕</span>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:13px;color:var(--gray-500);margin:0 0 14px 0">Pilih kartu yang ingin ditampilkan. Perubahan langsung tersimpan di browser ini.</p>
+        <div id="statsConfigList" style="display:flex;flex-direction:column;gap:2px">
+          <!-- Diisi renderStatsConfigList() -->
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-outline" onclick="statsConfigSelectDefault()">↩ Bawaan</button>
+        <button class="btn btn-emerald" style="margin-left:auto" onclick="closeModal('statsConfigModal')">✓ Selesai</button>
       </div>
     </div>
   </div>
@@ -2365,18 +2368,75 @@
     }
     
     // ── Stats ─────────────────────────────────────────────────────
+    // FIX: kartu statistik sekarang bisa dikustomisasi — dulu 6 kartu
+    // (Total/Terverifikasi/Menunggu/Ditolak/Cabang Aktif/Kecamatan) selalu
+    // tetap & hardcode di HTML. STATS_CARD_DEFS di bawah adalah daftar
+    // SEMUA kartu yang tersedia; admin memilih kombinasinya lewat modal
+    // #statsConfigModal (⚙️ Kustomisasi di header halaman Statistik),
+    // tersimpan di localStorage (mtq-stats-cards) per-browser — pola yang
+    // sama dengan initDarkMode() di bawah yang juga pakai localStorage
+    // utk preferensi tampilan per-admin.
+    const STATS_CARD_DEFS = [
+      { id:'total',    icon:'👥',  label:'Total Pendaftaran',        cls:'',      calc:d => d.length },
+      { id:'verified', icon:'✅',  label:'Terverifikasi',            cls:'',      calc:d => _statsByStatus(d,'terverifikasi') },
+      { id:'pending',  icon:'⏳',  label:'Menunggu',                  cls:'warn',  calc:d => _statsByStatus(d,'menunggu') },
+      { id:'rejected', icon:'❌',  label:'Ditolak',                   cls:'error', calc:d => _statsByStatus(d,'ditolak') },
+      { id:'nonaktif', icon:'🚫',  label:'Nonaktif',                  cls:'',      calc:d => _statsByStatus(d,'nonaktif') },
+      { id:'cabangs',  icon:'🏆',  label:'Cabang Aktif',              cls:'',      calc:d => new Set(d.map(r=>r.cabang_lomba).filter(Boolean)).size },
+      { id:'kecs',     icon:'🗺️', label:'Kecamatan',                  cls:'',      calc:d => new Set(d.map(r=>r.kecamatan).filter(Boolean)).size },
+      { id:'individu', icon:'🧍',  label:'Pendaftaran Individu',      cls:'',      calc:d => d.filter(r=>String(r.tipe_lomba||'').toLowerCase()==='individu').length },
+      { id:'tim',      icon:'🧑‍🤝‍🧑', label:'Pendaftaran Tim',        cls:'',      calc:d => d.filter(r=>String(r.tipe_lomba||'').toLowerCase()==='team').length },
+      { id:'putra',    icon:'👦',  label:'Peserta Putra',             cls:'',      calc:d => d.filter(r=>String(r.gender_cabang||'').toUpperCase()==='L').length },
+      { id:'putri',    icon:'👧',  label:'Peserta Putri',             cls:'',      calc:d => d.filter(r=>String(r.gender_cabang||'').toUpperCase()==='P').length },
+      { id:'headcount',icon:'🙋',  label:'Total Perorangan (+anggota tim)', cls:'', calc:d => _statsHeadcount(d) },
+    ];
+    const STATS_DEFAULT_CARDS = ['total','verified','pending','rejected','cabangs','kecs'];
+
+    function _statsByStatus(d, status) {
+      return d.filter(r => String(r.status_verifikasi||'').toLowerCase() === status).length;
+    }
+    // Ketua/individu (baris utama, 1 per pendaftaran) + anggota tim lain
+    // di anggota_json (anggota[0] = ketua, sudah terhitung di baris utama).
+    function _statsHeadcount(d) {
+      let n = 0;
+      d.forEach(r => {
+        n += 1;
+        try {
+          const ag = JSON.parse(r.anggota_json || '[]');
+          if (Array.isArray(ag) && ag.length > 1) n += (ag.length - 1);
+        } catch(_) {}
+      });
+      return n;
+    }
+    function getStatsCardPrefs() {
+      try {
+        const saved = JSON.parse(localStorage.getItem('mtq-stats-cards') || 'null');
+        if (Array.isArray(saved) && saved.length) return saved.filter(id => STATS_CARD_DEFS.some(c => c.id === id));
+      } catch(_) {}
+      return STATS_DEFAULT_CARDS.slice();
+    }
+    function setStatsCardPrefs(ids) {
+      localStorage.setItem('mtq-stats-cards', JSON.stringify(ids));
+    }
+
     function renderStats() {
       const d = adm.allData;
-      const byS = (s) => d.filter(r=>String(r.status_verifikasi||'').toLowerCase()===s.toLowerCase()).length;
-      document.getElementById('st-total').textContent    = d.length;
-      document.getElementById('st-verified').textContent = byS('terverifikasi');
-      document.getElementById('st-pending').textContent  = byS('menunggu');
-      document.getElementById('st-rejected').textContent = byS('ditolak');
-      const cabs=[...new Set(d.map(r=>r.cabang_lomba).filter(Boolean))];
-      const kecs=[...new Set(d.map(r=>r.kecamatan).filter(Boolean))];
-      document.getElementById('st-cabangs').textContent = cabs.length;
-      document.getElementById('st-kecs').textContent    = kecs.length;
-    
+      const active = getStatsCardPrefs();
+      const grid = document.getElementById('statsGrid');
+      if (grid) {
+        const cards = STATS_CARD_DEFS.filter(def => active.includes(def.id));
+        grid.innerHTML = cards.length
+          ? cards.map(def => `<div class="stat-card ${def.cls}"><span class="stat-icon">${def.icon}</span>
+              <div>
+                <div class="stat-label">${esc(def.label)}</div>
+                <div class="stat-num">${def.calc(d)}</div>
+              </div>
+            </div>`).join('')
+          : `<div style="grid-column:1/-1;text-align:center;padding:24px;color:var(--gray-400);font-size:13px">
+              Belum ada kartu dipilih. Klik <strong>⚙️ Kustomisasi</strong> di atas untuk memilih.
+            </div>`;
+      }
+
       const cabMap = {};
       d.forEach(r=>{
         const k=r.cabang_lomba||'—';
@@ -2400,6 +2460,40 @@
             <td style="color:var(--gray-400)">${v.nonaktif}</td>
           </tr>`).join('')
         : '<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--gray-400)">Belum ada data</td></tr>';
+    }
+
+    // ── Modal kustomisasi kartu statistik ───────────────────────────
+    function openStatsConfig() {
+      renderStatsConfigList();
+      openModal('statsConfigModal');
+    }
+    function renderStatsConfigList() {
+      const active = getStatsCardPrefs();
+      const listEl = document.getElementById('statsConfigList');
+      if (!listEl) return;
+      listEl.innerHTML = STATS_CARD_DEFS.map(def => {
+        const checked = active.includes(def.id);
+        return `<label style="display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;cursor:pointer">
+          <input type="checkbox" ${checked?'checked':''} onchange="toggleStatsCard('${def.id}', this.checked)"
+                 style="width:16px;height:16px;accent-color:var(--emerald);flex-shrink:0;cursor:pointer">
+          <span style="font-size:15px">${def.icon}</span>
+          <span style="font-size:13px;color:var(--gray-700);font-weight:500">${esc(def.label)}</span>
+        </label>`;
+      }).join('');
+    }
+    // Toggle langsung tersimpan & preview instan di grid — tidak perlu
+    // tombol "Simpan" terpisah, modal ini cukup ditutup kapan saja.
+    function toggleStatsCard(id, isOn) {
+      let active = getStatsCardPrefs();
+      if (isOn && !active.includes(id)) active.push(id);
+      if (!isOn) active = active.filter(x => x !== id);
+      setStatsCardPrefs(active);
+      renderStats();
+    }
+    function statsConfigSelectDefault() {
+      setStatsCardPrefs(STATS_DEFAULT_CARDS.slice());
+      renderStatsConfigList();
+      renderStats();
     }
     
     // ── Export CSV ────────────────────────────────────────────────

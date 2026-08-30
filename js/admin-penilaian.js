@@ -146,6 +146,7 @@ function pnRefreshCurrentTab() {
 // ════════════════════════════════════════════════════════════════
 function initPenilaianPage() {
   pnPopulateCabangDropdowns();
+  pnPopulateKecamatanDropdown();
   pnLoadHasilPublikStatus();
   pnAdminTab('hakim');   // show first tab + load hakim list
 }
@@ -162,6 +163,23 @@ function pnPopulateCabangDropdowns() {
     });
     el.value = cur;
   });
+}
+
+// FIX: dropdown filter kecamatan (Tab Peserta) — KECAMATAN_LIST dideklarasikan
+// di script utama doyourmagic.html (dipakai jua utk field kecamatan yang
+// bisa diedit di modal Detail Peserta); dibaca langsung dari sini karena
+// satu dokumen HTML berbagi scope top-level yang sama antar tag <script>,
+// sama seperti PN_CABANG_LIST/MTQ_CONFIG yang sudah dipakai lintas file.
+function pnPopulateKecamatanDropdown() {
+  const el = document.getElementById('pnPesertaKecamatanFilter');
+  if (!el || typeof KECAMATAN_LIST === 'undefined') return;
+  const cur = el.value;
+  el.innerHTML = '<option value="">-- Semua Kecamatan --</option>';
+  KECAMATAN_LIST.forEach(k => {
+    const o = document.createElement('option');
+    o.value = k; o.textContent = k; el.appendChild(o);
+  });
+  el.value = cur;
 }
 
 // ── Tab switching ───────────────────────────────────────────
@@ -683,11 +701,22 @@ async function pnEditParamForCabang(cabang) {
 // ════════════════════════════════════════════════════════════════
 //  PESERTA
 // ════════════════════════════════════════════════════════════════
-async function pnLoadPesertaTable(forceRefresh) {
-  var cabang  = (document.getElementById('pnPesertaCabangFilter')?.value) || '';
-  var wrap    = document.getElementById('pnPesertaTableWrap');
+// FIX: state sorting tabel Peserta — dipisah dari cache (pnGetCache)
+// supaya klik header kolom cukup mengurutkan ULANG data yang SUDAH ada
+// di memori (_pnPesertaCurrentList), tanpa fetch/filter dari awal.
+// Direset tiap kali pnLoadPesertaTable() dipanggil (filter cabang/
+// kecamatan berubah, atau tombol 🔄 Refresh) supaya tidak membingungkan
+// (mis. masih "terurut nama" padahal baru ganti ke cabang lain).
+let _pnPesertaSortField   = null;   // null = urutan asli dari server
+let _pnPesertaSortDir     = 'asc';  // 'asc' | 'desc'
+let _pnPesertaCurrentList = [];     // hasil filter (cabang+kecamatan) yang sedang tampil
 
-  adminLog.group('[PN] pnLoadPesertaTable cabang="' + cabang + '" force=' + !!forceRefresh);
+async function pnLoadPesertaTable(forceRefresh) {
+  var cabang     = (document.getElementById('pnPesertaCabangFilter')?.value) || '';
+  var kecamatan  = (document.getElementById('pnPesertaKecamatanFilter')?.value) || '';
+  var wrap       = document.getElementById('pnPesertaTableWrap');
+
+  adminLog.group('[PN] pnLoadPesertaTable cabang="' + cabang + '" kecamatan="' + kecamatan + '" force=' + !!forceRefresh);
   adminLog.debug('[PN] wrap element:', wrap ? 'found' : 'NULL — berhenti');
   if (!wrap) { adminLog.end(); return; }
 
@@ -728,11 +757,20 @@ async function pnLoadPesertaTable(forceRefresh) {
     } else {
       list = Array.isArray(allData) ? allData : Object.values(allData).flat();
     }
-    adminLog.debug('[PN] peserta list.length:', list.length, '(cabang filter: "' + cabang + '")');
+    // FIX: filter kecamatan (baru) — diterapkan di sisi klien setelah
+    // filter cabang, jadi tidak perlu request terpisah ke server tiap
+    // ganti kecamatan (data per-cabang biasanya sudah cukup kecil).
+    if (kecamatan) {
+      list = list.filter(function(p) { return (p.kecamatan || '') === kecamatan; });
+    }
+    adminLog.debug('[PN] peserta list.length:', list.length, '(cabang="' + cabang + '" kecamatan="' + kecamatan + '")');
 
     if (!list.length) {
-      var note = cabang
-        ? 'Tidak ada peserta untuk cabang "' + cabang + '".'
+      var noteParts = [];
+      if (cabang)    noteParts.push('cabang "' + cabang + '"');
+      if (kecamatan) noteParts.push('kecamatan "' + kecamatan + '"');
+      var note = noteParts.length
+        ? 'Tidak ada peserta untuk ' + noteParts.join(' & ') + '.'
         : 'Tidak ada data peserta. Pastikan ada pendaftar & GAS sudah di-deploy ulang dengan kode terbaru.';
       wrap.innerHTML = '<div style="text-align:center;padding:40px;color:var(--gray-500)">'
         + '<div style="font-size:32px">🧑</div>'
@@ -743,32 +781,13 @@ async function pnLoadPesertaTable(forceRefresh) {
       adminLog.end(); return;
     }
 
-    // FIX: sebelumnya style="width:100%" mengunci tabel selalu sama
-    // lebar dengan container (.table-wrap), jadi overflow-x:auto tidak
-    // pernah punya apa pun untuk di-scroll — kolom malah dipaksa
-    // menyempit di layar sempit. Dihapus supaya tabel boleh melebar
-    // mengikuti konten lalu discroll, konsisten dengan .data-table di
-    // admin.html (lihat komentar FIX di sana).
-    wrap.innerHTML = '<table class="data-table">'
-      + '<thead><tr><th style="width:40px">#</th><th>Nama / Tim</th><th>Kecamatan</th><th>Cabang</th><th>No. Pendaftaran</th><th>Status</th></tr></thead>'
-      + '<tbody>'
-      + list.map(function(p, idx) {
-          var cabangVal  = p.cabang || cabang || '—';
-          var isVerif    = p.status === 'Terverifikasi';
-          var statusChip = isVerif
-            ? '<span style="font-size:11px;background:#d1fae5;color:#065f46;padding:2px 8px;border-radius:999px;font-weight:600">✅ Terverifikasi</span>'
-            : '<span style="font-size:11px;background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:999px;font-weight:600">' + (p.status || 'Menunggu') + '</span>';
-          return '<tr>'
-            + '<td style="font-weight:700;color:var(--emerald)">' + (p.nomor_urut || idx+1) + '</td>'
-            + '<td style="font-weight:600;color:var(--gray-900)">' + (p.nama || '—') + '</td>'
-            + '<td style="color:var(--gray-600)">' + (p.kecamatan || '—') + '</td>'
-            + '<td style="font-size:12px;color:var(--gray-600)">' + cabangVal + '</td>'
-            + '<td style="font-family:monospace;font-size:12px;color:var(--gray-500)">' + (p.nomor_pendaftaran || p.id || '—') + '</td>'
-            + '<td>' + statusChip + '</td>'
-            + '</tr>';
-        }).join('')
-      + '</tbody></table>'
-      + '<div style="padding:10px 14px;font-size:12px;color:var(--gray-400);border-top:1px solid var(--gray-100)">👥 ' + list.length + ' peserta' + (cabang ? ' — ' + cabang : '') + '</div>';
+    // FIX: reset sorting tiap kali data/filter di atas berubah, lalu
+    // simpan list HASIL FILTER ini supaya pnSortPeserta() bisa
+    // mengurutkan ulang tanpa mengulang fetch/filter di atas.
+    _pnPesertaSortField   = null;
+    _pnPesertaSortDir     = 'asc';
+    _pnPesertaCurrentList = list;
+    pnRenderPesertaTable(list, cabang, kecamatan);
 
     adminLog.debug('[PN] tabel peserta berhasil dirender, rows:', list.length);
 
@@ -780,20 +799,87 @@ async function pnLoadPesertaTable(forceRefresh) {
   adminLog.end();
 }
 
-async function pnTambahPeserta() {
-  const cabang = document.getElementById('pnPesertaCabangFilter').value;
-  const nama   = document.getElementById('pnPesertaNamaBaru').value.trim();
-  if (!cabang) { toast('', 'Pilih cabang dahulu', 'warning'); return; }
-  if (!nama)   { toast('', 'Nama peserta wajib diisi', 'warning'); return; }
-  const peserta = { id: 'p_'+Date.now(), nama, cabang, createdAt: new Date().toISOString() };
-  showLoading('Menambah peserta...');
-  const res = await pnPost('savePeserta', { cabang, peserta });
-  hideLoading();
-  if (res && res.success) {
-    document.getElementById('pnPesertaNamaBaru').value = '';
-    toast('Ditambahkan', nama, 'success');
-    pnLoadPesertaTable();
-  } else toast('Gagal', (res && res.error) || 'Error', 'error');
+// FIX: tabel Peserta sekarang bisa diurutkan — dipisah dari
+// pnLoadPesertaTable() supaya klik header kolom (pnSortPeserta) bisa
+// merender ulang TANPA fetch/filter dari server lagi, cukup mengurutkan
+// _pnPesertaCurrentList yang sudah ada di memori.
+function pnRenderPesertaTable(list, cabang, kecamatan) {
+  var wrap = document.getElementById('pnPesertaTableWrap');
+  if (!wrap) return;
+
+  var sorted = list.slice();
+  if (_pnPesertaSortField) {
+    var field = _pnPesertaSortField;
+    var dir   = _pnPesertaSortDir === 'asc' ? 1 : -1;
+    sorted.sort(function(a, b) {
+      var av = String((a && a[field]) || '').toLowerCase();
+      var bv = String((b && b[field]) || '').toLowerCase();
+      if (av < bv) return -1 * dir;
+      if (av > bv) return  1 * dir;
+      return 0;
+    });
+  }
+
+  function sortIcon(key) {
+    if (_pnPesertaSortField !== key) return '<span style="opacity:.3">↕</span>';
+    return '<span style="color:var(--emerald)">' + (_pnPesertaSortDir === 'asc' ? '▲' : '▼') + '</span>';
+  }
+  function th(key, label, extraStyle) {
+    return '<th style="cursor:pointer;user-select:none;white-space:nowrap;' + (extraStyle || '') + '" '
+      + 'onclick="pnSortPeserta(\'' + key + '\')" title="Urutkan berdasarkan ' + label + '">'
+      + label + ' <span style="font-size:10px">' + sortIcon(key) + '</span></th>';
+  }
+
+  // FIX: sebelumnya style="width:100%" mengunci tabel selalu sama
+  // lebar dengan container (.table-wrap), jadi overflow-x:auto tidak
+  // pernah punya apa pun untuk di-scroll — kolom malah dipaksa
+  // menyempit di layar sempit. Dihapus supaya tabel boleh melebar
+  // mengikuti konten lalu discroll, konsisten dengan .data-table di
+  // admin.html (lihat komentar FIX di sana).
+  wrap.innerHTML = '<table class="data-table">'
+    + '<thead><tr>'
+    +   '<th style="width:40px">#</th>'
+    +   th('nama', 'Nama / Tim')
+    +   th('kecamatan', 'Kecamatan')
+    +   th('cabang', 'Cabang')
+    +   th('nomor_pendaftaran', 'No. Pendaftaran')
+    +   th('status', 'Status')
+    + '</tr></thead>'
+    + '<tbody>'
+    + sorted.map(function(p, idx) {
+        var cabangVal  = p.cabang || cabang || '—';
+        var isVerif    = p.status === 'Terverifikasi';
+        var statusChip = isVerif
+          ? '<span style="font-size:11px;background:#d1fae5;color:#065f46;padding:2px 8px;border-radius:999px;font-weight:600">✅ Terverifikasi</span>'
+          : '<span style="font-size:11px;background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:999px;font-weight:600">' + (p.status || 'Menunggu') + '</span>';
+        return '<tr>'
+          // FIX: # sekarang selalu urutan TAMPILAN saat ini (idx+1), bukan
+          // p.nomor_urut asli — supaya tetap masuk akal 1,2,3,... setelah
+          // diurutkan ulang lewat kolom lain (nomor_urut asli akan
+          // membingungkan begitu urutan barisnya berubah).
+          + '<td style="font-weight:700;color:var(--emerald)">' + (idx+1) + '</td>'
+          + '<td style="font-weight:600;color:var(--gray-900)">' + (p.nama || '—') + '</td>'
+          + '<td style="color:var(--gray-600)">' + (p.kecamatan || '—') + '</td>'
+          + '<td style="font-size:12px;color:var(--gray-600)">' + cabangVal + '</td>'
+          + '<td style="font-family:monospace;font-size:12px;color:var(--gray-500)">' + (p.nomor_pendaftaran || p.id || '—') + '</td>'
+          + '<td>' + statusChip + '</td>'
+          + '</tr>';
+      }).join('')
+    + '</tbody></table>'
+    + '<div style="padding:10px 14px;font-size:12px;color:var(--gray-400);border-top:1px solid var(--gray-100)">👥 ' + sorted.length + ' peserta'
+    + (cabang ? ' — ' + cabang : '') + (kecamatan ? ' — Kec. ' + kecamatan : '') + '</div>';
+}
+
+function pnSortPeserta(field) {
+  if (_pnPesertaSortField === field) {
+    _pnPesertaSortDir = _pnPesertaSortDir === 'asc' ? 'desc' : 'asc';
+  } else {
+    _pnPesertaSortField = field;
+    _pnPesertaSortDir   = 'asc';
+  }
+  var cabang    = (document.getElementById('pnPesertaCabangFilter')?.value) || '';
+  var kecamatan = (document.getElementById('pnPesertaKecamatanFilter')?.value) || '';
+  pnRenderPesertaTable(_pnPesertaCurrentList, cabang, kecamatan);
 }
 
 async function pnImportPeserta() {
