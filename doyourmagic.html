@@ -622,6 +622,11 @@
                  kartu tetap) — lihat STATS_CARD_DEFS/renderStats() di
                  script utama, dan modal #statsConfigModal di bawah. -->
             <button class="btn btn-outline" style="font-size:13px" onclick="openStatsConfig()">⚙️ Kustomisasi</button>
+            <!-- FIX: unduh kartu + tabel yang SEDANG tampil sbg 1 halaman
+                 PDF — lihat downloadStatsPdf()/_renderStatsPdfCanvas() di
+                 script utama (teknik sama dgn kartu peserta: gambar ke
+                 <canvas>, lalu ditempel ke jsPDF sbg gambar). -->
+            <button class="btn btn-outline" id="btnDownloadStatsPdf" style="font-size:13px" onclick="downloadStatsPdf()">📄 Download PDF</button>
             <button class="btn btn-outline" style="font-size:13px" onclick="refreshData()">🔄 Refresh</button>
           </div>
         </div>
@@ -633,25 +638,22 @@
         <!-- Per-cabang breakdown -->
         <div class="admin-card">
           <div class="admin-card-header">
-            <h2>📋 Rekap Per Cabang Lomba</h2>
+            <h2>📋 Rekap</h2>
           </div>
           <div class="table-scroll-hint">👉 Geser tabel untuk melihat kolom lainnya</div>
           <div class="table-wrap">
             <table class="data-table" id="cabangTable">
               <thead>
-                <tr>
-                  <th>Cabang Lomba</th>
-                  <th>Gender</th>
-                  <th>Terdaftar</th>
-                  <th>Terverifikasi</th>
-                  <th>Menunggu</th>
-                  <th>Ditolak</th>
-                  <th>Nonaktif</th>
-                </tr>
+                <!-- FIX: baris & kolom tabel ini sekarang bisa dikustomisasi
+                     (dulu selalu "per Cabang Lomba" + 6 kolom tetap) — diisi
+                     renderStats() berdasarkan pilihan admin (⚙️ Kustomisasi).
+                     Lihat STATS_TABLE_GROUPBY_DEFS/STATS_TABLE_COLUMN_DEFS
+                     di script utama. -->
+                <tr id="cabangTheadRow"></tr>
               </thead>
               <tbody id="cabangTbody">
                 <tr>
-                  <td colspan="7" style="text-align:center;padding:32px;color:var(--gray-400)">Memuat...</td>
+                  <td style="text-align:center;padding:32px;color:var(--gray-400)">Memuat...</td>
                 </tr>
               </tbody>
             </table>
@@ -1196,15 +1198,56 @@
        utama. Toggle langsung tersimpan & preview instan, tidak perlu
        tombol "Simpan" terpisah. -->
   <div class="modal-overlay" id="statsConfigModal">
-    <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="statsConfigTitle" style="max-width:440px">
+    <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="statsConfigTitle" style="max-width:480px">
       <div class="modal-head">
         <div><h3 id="statsConfigTitle">⚙️ Kustomisasi Statistik</h3></div>
         <span class="modal-x" tabindex="0" role="button" aria-label="Tutup" onclick="closeModal('statsConfigModal')">✕</span>
       </div>
-      <div class="modal-body">
-        <p style="font-size:13px;color:var(--gray-500);margin:0 0 14px 0">Pilih kartu yang ingin ditampilkan. Perubahan langsung tersimpan di browser ini.</p>
-        <div id="statsConfigList" style="display:flex;flex-direction:column;gap:2px">
+      <div class="modal-body" style="max-height:65vh;overflow-y:auto">
+        <div style="font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">📇 Kartu Ringkasan</div>
+        <p style="font-size:12px;color:var(--gray-500);margin:0 0 10px 0">Pilih kartu yang ingin ditampilkan di atas.</p>
+        <div id="statsConfigList" style="display:flex;flex-direction:column;gap:2px;margin-bottom:22px">
           <!-- Diisi renderStatsConfigList() -->
+        </div>
+
+        <div style="font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">📋 Tabel Rekap</div>
+        <div class="field-group" style="margin-bottom:10px">
+          <label class="field-label">Baris dikelompokkan berdasarkan</label>
+          <select class="field-select" id="statsTableGroupBy" onchange="setStatsTableGroupBy(this.value)">
+            <!-- Diisi renderStatsTableGroupBySelect() -->
+          </select>
+        </div>
+        <!-- FIX: toggle ini cuma relevan kalau baris = Cabang Lomba (nama
+             cabang sudah mengandung Putra/Putri) — disembunyikan otomatis
+             utk pengelompokan lain lewat renderStatsRowGenderUI(). -->
+        <label id="statsRowGenderSplitWrap" style="display:none;align-items:center;gap:10px;padding:8px 10px;margin-bottom:14px;cursor:pointer;background:var(--gray-50);border-radius:8px">
+          <input type="checkbox" id="statsRowGenderSplitChk" onchange="setStatsTableRowGenderSplit(this.checked)"
+                 style="width:16px;height:16px;accent-color:var(--emerald);flex-shrink:0;cursor:pointer">
+          <span style="font-size:13px;color:var(--gray-700);font-weight:500">Pisahkan Putra / Putri (baris terpisah)</span>
+        </label>
+
+        <div class="field-group" style="margin-bottom:10px">
+          <label class="field-label">Kolom</label>
+          <select class="field-select" id="statsTableColMode" onchange="setStatsTableColMode(this.value)">
+            <option value="metrik">Metrik (angka ringkasan)</option>
+            <option value="cabang">Cabang Lomba (semua cabang jadi kolom)</option>
+          </select>
+        </div>
+        <!-- FIX: cuma relevan kalau Kolom = "Cabang Lomba" — semua cabang
+             SELALU ditampilkan (tidak bisa dipilih sebagian), toggle ini
+             cuma mengatur digabung atau dipisah per gender. -->
+        <label id="statsColGenderSplitWrap" style="display:none;align-items:center;gap:10px;padding:8px 10px;margin-bottom:12px;cursor:pointer;background:var(--gray-50);border-radius:8px">
+          <input type="checkbox" id="statsColGenderSplitChk" onchange="setStatsTableColGenderSplit(this.checked)"
+                 style="width:16px;height:16px;accent-color:var(--emerald);flex-shrink:0;cursor:pointer">
+          <span style="font-size:13px;color:var(--gray-700);font-weight:500">Pisahkan Putra / Putri (kolom terpisah)</span>
+        </label>
+        <p id="statsColCabangNote" style="display:none;font-size:12px;color:var(--gray-500);margin:0 0 10px 0">Semua cabang lomba ditampilkan sebagai kolom (tidak bisa dipilih sebagian).</p>
+
+        <div id="statsColMetrikWrap">
+          <p style="font-size:12px;color:var(--gray-500);margin:0 0 10px 0">Pilih kolom angka yang ingin ditampilkan.</p>
+          <div id="statsTableColList" style="display:flex;flex-direction:column;gap:2px">
+            <!-- Diisi renderStatsTableColList() -->
+          </div>
         </div>
       </div>
       <div class="modal-actions">
@@ -2392,22 +2435,9 @@
     ];
     const STATS_DEFAULT_CARDS = ['total','verified','pending','rejected','cabangs','kecs'];
 
-    function _statsByStatus(d, status) {
-      return d.filter(r => String(r.status_verifikasi||'').toLowerCase() === status).length;
-    }
-    // Ketua/individu (baris utama, 1 per pendaftaran) + anggota tim lain
-    // di anggota_json (anggota[0] = ketua, sudah terhitung di baris utama).
-    function _statsHeadcount(d) {
-      let n = 0;
-      d.forEach(r => {
-        n += 1;
-        try {
-          const ag = JSON.parse(r.anggota_json || '[]');
-          if (Array.isArray(ag) && ag.length > 1) n += (ag.length - 1);
-        } catch(_) {}
-      });
-      return n;
-    }
+    // _statsByStatus() & _statsHeadcount() didefinisikan sekali di dekat
+    // STATS_TABLE_COLUMN_DEFS di bawah — dipakai kartu (STATS_CARD_DEFS di
+    // atas) MAUPUN tabel rekap, jadi cukup satu definisi bersama.
     function getStatsCardPrefs() {
       try {
         const saved = JSON.parse(localStorage.getItem('mtq-stats-cards') || 'null');
@@ -2437,34 +2467,220 @@
             </div>`;
       }
 
-      const cabMap = {};
-      d.forEach(r=>{
-        const k=r.cabang_lomba||'—';
-        if(!cabMap[k]) cabMap[k]={gender:r.gender_cabang||'—',total:0,ok:0,tunggu:0,tolak:0,nonaktif:0};
-        cabMap[k].total++;
-        const s=String(r.status_verifikasi||'').toLowerCase();
-        if(s==='terverifikasi')cabMap[k].ok++;
-        else if(s==='ditolak')cabMap[k].tolak++;
-        else if(s==='nonaktif')cabMap[k].nonaktif++;
-        else cabMap[k].tunggu++;
-      });
-      const rows = Object.entries(cabMap).sort((a,b)=>a[0].localeCompare(b[0]));
-      document.getElementById('cabangTbody').innerHTML = rows.length
-        ? rows.map(([cab,v])=>`<tr>
-            <td style="font-weight:600">${esc(cab)}</td>
-            <td>${v.gender==='L'?'👦 Putra':v.gender==='P'?'👧 Putri':'—'}</td>
-            <td style="font-weight:700;color:var(--emerald)">${v.total}</td>
-            <td style="color:var(--emerald)">${v.ok}</td>
-            <td style="color:var(--gold)">${v.tunggu}</td>
-            <td style="color:#dc2626">${v.tolak}</td>
-            <td style="color:var(--gray-400)">${v.nonaktif}</td>
-          </tr>`).join('')
-        : '<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--gray-400)">Belum ada data</td></tr>';
+      // ── Tabel Rekap (baris & kolom dikustomisasi) ──────────────────
+      // FIX: dulu SELALU dikelompokkan per Cabang Lomba dengan 6 kolom
+      // tetap. Sekarang admin memilih baris dikelompokkan berdasarkan apa
+      // (STATS_TABLE_GROUPBY_DEFS, + opsi gabung/pisah Putra-Putri kalau
+      // dikelompokkan per Cabang Lomba) DAN kolomnya berupa metrik pilihan
+      // (STATS_TABLE_COLUMN_DEFS) ATAU seluruh cabang lomba jadi kolom
+      // (mode 'cabang' — lihat _getCabangColumnList/_countByCabangColumn).
+      const { headers, rows: bodyRows, groupLabel } = _buildStatsTableView(d);
+
+      const theadRow = document.getElementById('cabangTheadRow');
+      if (theadRow) theadRow.innerHTML = headers.map((h,i) => `<th${i>0?' style="text-align:center"':''}>${esc(h)}</th>`).join('');
+
+      const tbodyEl = document.getElementById('cabangTbody');
+      if (tbodyEl) {
+        const colCount = headers.length;
+        tbodyEl.innerHTML = bodyRows.length
+          ? bodyRows.map(row => `<tr>
+              <td style="font-weight:600;white-space:nowrap">${esc(row.label)}</td>
+              ${row.cells.map(c => `<td style="text-align:center;${c.color?`color:${c.color};`:''}${c.bold?'font-weight:700;':''}">${c.value}</td>`).join('')}
+            </tr>`).join('')
+          : `<tr><td colspan="${colCount}" style="text-align:center;padding:32px;color:var(--gray-400)">${headers.length>1 ? 'Belum ada data' : 'Belum ada kolom dipilih — klik ⚙️ Kustomisasi.'}</td></tr>`;
+      }
     }
 
-    // ── Modal kustomisasi kartu statistik ───────────────────────────
+    // FIX: definisi pengelompokan baris & kolom tabel Rekap — dipisah dari
+    // STATS_CARD_DEFS (kartu ringkasan) karena tabel bekerja per-KELOMPOK
+    // (subset baris data), bukan per-seluruh dataset sekaligus. calc(rows)
+    // menerima subset baris milik satu kelompok saja.
+    const STATS_TABLE_GROUPBY_DEFS = [
+      { id:'cabang_lomba',      label:'Cabang Lomba' },
+      { id:'kecamatan',         label:'Kecamatan' },
+      { id:'tipe_lomba',        label:'Tipe (Individu/Tim)' },
+      { id:'gender_cabang',     label:'Gender (Putra/Putri)' },
+      { id:'status_verifikasi', label:'Status Verifikasi' },
+    ];
+    const STATS_TABLE_COLUMN_DEFS = [
+      { id:'total',         label:'Total',          color:'var(--emerald)', bold:true, calc: rows => rows.length },
+      { id:'terverifikasi', label:'Terverifikasi',  color:'var(--emerald)',            calc: rows => _statsByStatus(rows,'terverifikasi') },
+      { id:'menunggu',      label:'Menunggu',       color:'var(--gold)',               calc: rows => _statsByStatus(rows,'menunggu') },
+      { id:'ditolak',       label:'Ditolak',        color:'#dc2626',                   calc: rows => _statsByStatus(rows,'ditolak') },
+      { id:'nonaktif',      label:'Nonaktif',       color:'var(--gray-400)',           calc: rows => _statsByStatus(rows,'nonaktif') },
+      { id:'individu',      label:'Individu',                                          calc: rows => rows.filter(r=>String(r.tipe_lomba||'').toLowerCase()==='individu').length },
+      { id:'tim',           label:'Tim',                                               calc: rows => rows.filter(r=>String(r.tipe_lomba||'').toLowerCase()==='team').length },
+      { id:'putra',         label:'Putra',                                             calc: rows => rows.filter(r=>String(r.gender_cabang||'').toUpperCase()==='L').length },
+      { id:'putri',         label:'Putri',                                             calc: rows => rows.filter(r=>String(r.gender_cabang||'').toUpperCase()==='P').length },
+      { id:'jml_cabang',    label:'Jml. Cabang',                                       calc: rows => new Set(rows.map(r=>r.cabang_lomba).filter(Boolean)).size },
+      { id:'jml_kecamatan', label:'Jml. Kecamatan',                                    calc: rows => new Set(rows.map(r=>r.kecamatan).filter(Boolean)).size },
+    ];
+    const STATS_TABLE_DEFAULT_GROUPBY = 'cabang_lomba';
+    const STATS_TABLE_DEFAULT_COLUMNS = ['total','terverifikasi','menunggu','ditolak','nonaktif'];
+
+    // Cabang lomba di sistem ini SELALU diakhiri " Putra"/" Putri" (lihat
+    // DEFAULT_CONFIG_DATA di config.gs) — dipakai utk mode "gabung gender"
+    // baik di baris (groupby=cabang_lomba) maupun kolom (mode=cabang).
+    function _cabangBaseName(fullName) {
+      const s = String(fullName || '').trim();
+      const stripped = s.replace(/\s+(Putra|Putri)\s*$/i, '').trim();
+      return stripped || s || '—';
+    }
+    // FIX: "perlu di-note semua cabang ditampilkan pada kolom" — daftar
+    // KOMPLIT diambil dari MTQ_CONFIG.CABANG_LIST (satu-satunya sumber
+    // daftar cabang utk seluruh sistem, js/config.js), BUKAN cuma cabang
+    // yang kebetulan sudah ada pendaftarnya — supaya kecamatan yang belum
+    // punya pendaftar di cabang tertentu tetap kelihatan kolomnya (isi 0),
+    // bukan kolomnya hilang sama sekali.
+    function _getCabangColumnList(splitGender) {
+      const all = (typeof MTQ_CONFIG !== 'undefined' && Array.isArray(MTQ_CONFIG.CABANG_LIST)) ? MTQ_CONFIG.CABANG_LIST : [];
+      if (splitGender) return all.slice();
+      const seen = [];
+      all.forEach(name => { const base = _cabangBaseName(name); if (!seen.includes(base)) seen.push(base); });
+      return seen;
+    }
+    function _countByCabangColumn(rows, colName, splitGender) {
+      return splitGender
+        ? rows.filter(r => r.cabang_lomba === colName).length
+        : rows.filter(r => _cabangBaseName(r.cabang_lomba) === colName).length;
+    }
+    function _statsByStatus(rows, status) {
+      return rows.filter(r => String(r.status_verifikasi||'').toLowerCase() === status).length;
+    }
+    // Ketua/individu (baris utama, 1 per pendaftaran) + anggota tim lain
+    // di anggota_json (anggota[0] = ketua, sudah terhitung di baris utama).
+    function _statsHeadcount(d) {
+      let n = 0;
+      d.forEach(r => {
+        n += 1;
+        try {
+          const ag = JSON.parse(r.anggota_json || '[]');
+          if (Array.isArray(ag) && ag.length > 1) n += (ag.length - 1);
+        } catch(_) {}
+      });
+      return n;
+    }
+
+    // FIX: pengelompokan BARIS diekstrak jadi fungsi bersama — dipakai
+    // renderStats() (tampilan di layar) MAUPUN downloadStatsPdf() (ekspor),
+    // supaya angka di PDF DIJAMIN sama persis dengan yang sedang tampil di
+    // layar admin (satu sumber kebenaran, tidak ada logika yang didobel).
+    function _buildStatsGroups(d, groupByField, rowGenderSplit) {
+      const groups = {};
+      d.forEach(r => {
+        let key;
+        if (groupByField === 'cabang_lomba') {
+          key = rowGenderSplit ? (r.cabang_lomba || '—') : _cabangBaseName(r.cabang_lomba);
+        } else if (groupByField === 'tipe_lomba') {
+          key = String(r.tipe_lomba||'').toLowerCase()==='team' ? 'Tim' : 'Individu';
+        } else if (groupByField === 'gender_cabang') {
+          key = String(r.gender_cabang||'').toUpperCase()==='L' ? 'Putra' : String(r.gender_cabang||'').toUpperCase()==='P' ? 'Putri' : '—';
+        } else {
+          key = r[groupByField] || '—';
+        }
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(r);
+      });
+      return groups;
+    }
+    // Bangun {headers, rows, groupLabel} lengkap dari preferensi yang
+    // TERSIMPAN saat ini — dipakai renderStats() & downloadStatsPdf().
+    function _buildStatsTableView(d) {
+      const groupByField   = getStatsTableGroupBy();
+      const rowGenderSplit = getStatsTableRowGenderSplit();
+      const groupDef  = STATS_TABLE_GROUPBY_DEFS.find(g => g.id === groupByField) || STATS_TABLE_GROUPBY_DEFS[0];
+      const groups       = _buildStatsGroups(d, groupByField, rowGenderSplit);
+      const groupEntries = Object.entries(groups).sort((a,b)=>a[0].localeCompare(b[0]));
+
+      const colMode = getStatsTableColMode();
+      if (colMode === 'cabang') {
+        const colGenderSplit = getStatsTableColGenderSplit();
+        const cabangCols = _getCabangColumnList(colGenderSplit);
+        return {
+          groupLabel: groupDef.label,
+          headers: [groupDef.label, ...cabangCols],
+          rows: groupEntries.map(([label, groupRows]) => ({
+            label,
+            cells: cabangCols.map(c => {
+              const n = _countByCabangColumn(groupRows, c, colGenderSplit);
+              return { value:String(n), color: n>0?'var(--emerald)':'var(--gray-300)', bold: n>0 };
+            })
+          }))
+        };
+      }
+      const activeColIds = getStatsTableColumns();
+      const activeCols   = STATS_TABLE_COLUMN_DEFS.filter(c => activeColIds.includes(c.id));
+      return {
+        groupLabel: groupDef.label,
+        headers: [groupDef.label, ...activeCols.map(c=>c.label)],
+        rows: activeCols.length ? groupEntries.map(([label, groupRows]) => ({
+          label,
+          cells: activeCols.map(c => ({ value:String(c.calc(groupRows)), color:c.color, bold:c.bold }))
+        })) : []
+      };
+    }
+
+    function getStatsTableGroupBy() {
+      const saved = localStorage.getItem('mtq-stats-table-groupby');
+      return STATS_TABLE_GROUPBY_DEFS.some(g => g.id === saved) ? saved : STATS_TABLE_DEFAULT_GROUPBY;
+    }
+    function setStatsTableGroupBy(id) {
+      localStorage.setItem('mtq-stats-table-groupby', id);
+      renderStatsRowGenderUI();
+      renderStats();
+    }
+    // Default: TRUE (dipisah) — persis perilaku lama, cabang_lomba memang
+    // sudah mengandung Putra/Putri sebagai entri terpisah sejak awal.
+    function getStatsTableRowGenderSplit() {
+      return localStorage.getItem('mtq-stats-table-row-gender-split') !== '0';
+    }
+    function setStatsTableRowGenderSplit(on) {
+      localStorage.setItem('mtq-stats-table-row-gender-split', on ? '1' : '0');
+      renderStats();
+    }
+    function getStatsTableColumns() {
+      try {
+        const saved = JSON.parse(localStorage.getItem('mtq-stats-table-cols') || 'null');
+        if (Array.isArray(saved) && saved.length) return saved.filter(id => STATS_TABLE_COLUMN_DEFS.some(c => c.id === id));
+      } catch(_) {}
+      return STATS_TABLE_DEFAULT_COLUMNS.slice();
+    }
+    function setStatsTableColumns(ids) {
+      localStorage.setItem('mtq-stats-table-cols', JSON.stringify(ids));
+    }
+    function toggleStatsTableColumn(id, isOn) {
+      let active = getStatsTableColumns();
+      if (isOn && !active.includes(id)) active.push(id);
+      if (!isOn) active = active.filter(x => x !== id);
+      setStatsTableColumns(active);
+      renderStats();
+    }
+    // 'metrik' (bawaan, checklist STATS_TABLE_COLUMN_DEFS) | 'cabang'
+    // (SEMUA cabang lomba jadi kolom — lihat _getCabangColumnList).
+    function getStatsTableColMode() {
+      return localStorage.getItem('mtq-stats-table-colmode') === 'cabang' ? 'cabang' : 'metrik';
+    }
+    function setStatsTableColMode(mode) {
+      localStorage.setItem('mtq-stats-table-colmode', mode);
+      renderStatsTableColModeUI();
+      renderStats();
+    }
+    // Default: TRUE (dipisah) — paling detail, sejalan dgn default baris.
+    function getStatsTableColGenderSplit() {
+      return localStorage.getItem('mtq-stats-table-col-gender-split') !== '0';
+    }
+    function setStatsTableColGenderSplit(on) {
+      localStorage.setItem('mtq-stats-table-col-gender-split', on ? '1' : '0');
+      renderStats();
+    }
+
+    // ── Modal kustomisasi (kartu ringkasan + tabel rekap) ───────────
     function openStatsConfig() {
       renderStatsConfigList();
+      renderStatsTableGroupBySelect();
+      renderStatsRowGenderUI();
+      renderStatsTableColModeUI();
+      renderStatsTableColList();
       openModal('statsConfigModal');
     }
     function renderStatsConfigList() {
@@ -2481,7 +2697,51 @@
         </label>`;
       }).join('');
     }
-    // Toggle langsung tersimpan & preview instan di grid — tidak perlu
+    function renderStatsTableGroupBySelect() {
+      const el = document.getElementById('statsTableGroupBy');
+      if (!el) return;
+      const current = getStatsTableGroupBy();
+      el.innerHTML = STATS_TABLE_GROUPBY_DEFS.map(g =>
+        `<option value="${g.id}"${g.id===current?' selected':''}>${esc(g.label)}</option>`).join('');
+    }
+    // Toggle "Pisahkan Putra/Putri" (baris) cuma relevan/tampil kalau
+    // baris dikelompokkan per Cabang Lomba.
+    function renderStatsRowGenderUI() {
+      const wrap = document.getElementById('statsRowGenderSplitWrap');
+      const show = getStatsTableGroupBy() === 'cabang_lomba';
+      if (wrap) wrap.style.display = show ? 'flex' : 'none';
+      const chk = document.getElementById('statsRowGenderSplitChk');
+      if (chk) chk.checked = getStatsTableRowGenderSplit();
+    }
+    // Tampilkan checklist metrik ATAU toggle+catatan cabang, tergantung
+    // mode kolom yang dipilih.
+    function renderStatsTableColModeUI() {
+      const mode = getStatsTableColMode();
+      const modeSelect = document.getElementById('statsTableColMode');
+      if (modeSelect) modeSelect.value = mode;
+      const metrikWrap = document.getElementById('statsColMetrikWrap');
+      const genderWrap = document.getElementById('statsColGenderSplitWrap');
+      const cabangNote = document.getElementById('statsColCabangNote');
+      if (metrikWrap) metrikWrap.style.display = mode === 'metrik' ? '' : 'none';
+      if (genderWrap) genderWrap.style.display = mode === 'cabang' ? 'flex' : 'none';
+      if (cabangNote) cabangNote.style.display = mode === 'cabang' ? 'block' : 'none';
+      const chk = document.getElementById('statsColGenderSplitChk');
+      if (chk) chk.checked = getStatsTableColGenderSplit();
+    }
+    function renderStatsTableColList() {
+      const active = getStatsTableColumns();
+      const listEl = document.getElementById('statsTableColList');
+      if (!listEl) return;
+      listEl.innerHTML = STATS_TABLE_COLUMN_DEFS.map(def => {
+        const checked = active.includes(def.id);
+        return `<label style="display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:8px;cursor:pointer">
+          <input type="checkbox" ${checked?'checked':''} onchange="toggleStatsTableColumn('${def.id}', this.checked)"
+                 style="width:16px;height:16px;accent-color:var(--emerald);flex-shrink:0;cursor:pointer">
+          <span style="font-size:13px;color:var(--gray-700);font-weight:500">${esc(def.label)}</span>
+        </label>`;
+      }).join('');
+    }
+    // Toggle/pilihan langsung tersimpan & preview instan — tidak perlu
     // tombol "Simpan" terpisah, modal ini cukup ditutup kapan saja.
     function toggleStatsCard(id, isOn) {
       let active = getStatsCardPrefs();
@@ -2492,10 +2752,286 @@
     }
     function statsConfigSelectDefault() {
       setStatsCardPrefs(STATS_DEFAULT_CARDS.slice());
+      localStorage.setItem('mtq-stats-table-groupby', STATS_TABLE_DEFAULT_GROUPBY);
+      localStorage.setItem('mtq-stats-table-row-gender-split', '1');
+      localStorage.setItem('mtq-stats-table-colmode', 'metrik');
+      localStorage.setItem('mtq-stats-table-col-gender-split', '1');
+      setStatsTableColumns(STATS_TABLE_DEFAULT_COLUMNS.slice());
       renderStatsConfigList();
+      renderStatsTableGroupBySelect();
+      renderStatsRowGenderUI();
+      renderStatsTableColModeUI();
+      renderStatsTableColList();
       renderStats();
     }
-    
+
+    // ── Download Statistik sebagai 1 halaman PDF ────────────────────
+    // FIX: kartu ringkasan + tabel rekap yang SEDANG tampil (mengikuti
+    // kustomisasi aktif — kartu apa saja, baris & kolom apa saja) bisa
+    // diunduh sebagai satu file PDF. Teknik SAMA PERSIS dengan
+    // _runDownloadAllKartu() di atas (fitur "Download Semua Kartu
+    // Peserta"): gambar seluruh konten ke <canvas> dulu, baru ditempel ke
+    // jsPDF sebagai satu gambar — bukan lewat jsPDF.html() (butuh
+    // html2canvas yang tidak dimuat di halaman ini, dan hasilnya kurang
+    // terkendali utk layout tabel lebar). Ukuran halaman PDF mengikuti
+    // ukuran KONTEN persis (bukan dipaksa A4) — sama seperti kartu
+    // peserta yang formatnya [CARD_W_MM, CARD_H_MM], bukan ukuran baku —
+    // supaya SELALU 1 halaman penuh, tabel selebar/sebanyak apa pun
+    // kolomnya (mis. mode "semua Cabang Lomba jadi kolom").
+    async function downloadStatsPdf() {
+      const btn = document.getElementById('btnDownloadStatsPdf');
+      const origHtml = btn ? btn.innerHTML : '';
+      if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Membuat PDF...'; }
+
+      try {
+        const d = adm.allData || [];
+        if (!d.length) { toast('Kosong', 'Belum ada data untuk dicetak.', 'warning'); return; }
+
+        const activeCardIds = getStatsCardPrefs();
+        const cards = STATS_CARD_DEFS.filter(def => activeCardIds.includes(def.id))
+          .map(def => ({ icon: def.icon, label: def.label, value: String(def.calc(d)), cls: def.cls }));
+
+        const view = _buildStatsTableView(d);   // { headers, rows, groupLabel } — SUMBER SAMA dgn tabel di layar
+        const colMode = getStatsTableColMode();
+        let tableCaption = `Rekap per ${view.groupLabel}`;
+        if (colMode === 'cabang') tableCaption += ' — kolom: semua Cabang Lomba' + (getStatsTableColGenderSplit() ? ' (Putra/Putri terpisah)' : ' (Putra+Putri digabung)');
+
+        const canvas = _renderStatsPdfCanvas(cards, view, tableCaption, colMode === 'cabang');
+
+        const { jsPDF } = window.jspdf;
+        const PX_PER_MM = (96 / 25.4);   // SCALE sudah baked-in ke canvas.width/height, jadi cukup bagi 96dpi biasa
+        const pageWmm = canvas.width  / PX_PER_MM / _STATS_PDF_SCALE;
+        const pageHmm = canvas.height / PX_PER_MM / _STATS_PDF_SCALE;
+        const pdf = new jsPDF({ orientation: pageWmm >= pageHmm ? 'landscape' : 'portrait', unit:'mm', format:[pageWmm, pageHmm] });
+        pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, pageWmm, pageHmm);
+
+        const stamp = new Date().toISOString().slice(0,10);
+        pdf.save(`Statistik_Pendaftaran_MTQ2026_${stamp}.pdf`);
+        toast('Berhasil', 'PDF statistik berhasil diunduh.', 'success');
+      } catch (err) {
+        adminLog.error('[downloadStatsPdf]', err);
+        toast('Gagal', 'Gagal membuat PDF: ' + (err && err.message ? err.message : String(err)), 'error');
+      } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = origHtml; }
+      }
+    }
+
+    const _STATS_PDF_SCALE = 2;   // faktor render supaya PDF tajam saat di-zoom/print
+
+    // Gambar seluruh halaman (header, kartu, judul tabel, tabel) ke satu
+    // <canvas>, lalu dikembalikan utuh — caller (downloadStatsPdf) yang
+    // menempelkannya ke jsPDF. Semua ukuran di bawah ini dalam "unit
+    // layar" (CSS-px-like); ctx.scale(_STATS_PDF_SCALE,...) di awal
+    // membuat SISA kode tidak perlu mengalikan SCALE berulang-ulang.
+    function _renderStatsPdfCanvas(cards, view, tableCaption, wideTable) {
+      const S = _STATS_PDF_SCALE;
+      const PAD = 30;
+      const COLOR = {
+        emerald: '#065f46', emeraldLight: '#10b981', emeraldXs: '#ecfdf5',
+        gold: '#b45309', red: '#dc2626',
+        g50: '#f9fafb', g100: '#f3f4f6', g200: '#e5e7eb', g300: '#d1d5db',
+        g400: '#9ca3af', g500: '#6b7280', g600: '#4b5563', g700: '#374151', g900: '#111827',
+        white: '#ffffff',
+      };
+      const cardClsColor = (cls) => cls === 'warn' ? COLOR.gold : cls === 'error' ? COLOR.red : COLOR.emerald;
+
+      // ── Ukuran kartu & grid-nya ──────────────────────────────────
+      const CARD_W = 172, CARD_H = 76, CARD_GAP = 14;
+      const cardCols = cards.length === 0 ? 0 : cards.length <= 3 ? cards.length : cards.length <= 8 ? 4 : 6;
+      const cardRows = cardCols ? Math.ceil(cards.length / cardCols) : 0;
+      const cardsRowW = cardCols * CARD_W + Math.max(0, cardCols - 1) * CARD_GAP;
+
+      // ── Ukuran tabel: kolom label lebih lebar drpd kolom data;
+      //    header dirotasi kalau mode "cabang" (banyak kolom sempit &
+      //    nama panjang) supaya tetap terbaca tanpa memotong berlebihan.
+      const LABEL_COL_W = 176;
+      const DATA_COL_W  = wideTable ? 46 : 118;
+      const dataColCount = Math.max(0, view.headers.length - 1);
+      const tableW = LABEL_COL_W + dataColCount * DATA_COL_W;
+
+      const contentW = Math.max(cardsRowW, tableW, 640);
+      const HEADER_H = 108;
+      const CARD_SECTION_H = cardRows ? (cardRows * CARD_H + Math.max(0,cardRows-1) * CARD_GAP + 46) : 0;
+      const TABLE_TITLE_H = 40;
+      const ROW_H = 27;
+      const TABLE_HEAD_H = wideTable ? 132 : 34;   // header lebih tinggi kalau teks kolom dirotasi
+      const TABLE_H = view.rows.length ? (TABLE_HEAD_H + view.rows.length * ROW_H) : (TABLE_HEAD_H + ROW_H);
+      const FOOTER_H = 34;
+
+      const contentH = HEADER_H + CARD_SECTION_H + TABLE_TITLE_H + TABLE_H + FOOTER_H;
+      const W = contentW + PAD * 2;
+      const H = contentH + PAD * 2;
+
+      const canvas = document.createElement('canvas');
+      canvas.width  = Math.round(W * S);
+      canvas.height = Math.round(H * S);
+      const ctx = canvas.getContext('2d');
+      ctx.scale(S, S);
+      ctx.textBaseline = 'alphabetic';
+
+      // ── Background ──
+      ctx.fillStyle = COLOR.white;
+      ctx.fillRect(0, 0, W, H);
+
+      let y = 0;
+
+      // ── Header band ──
+      ctx.fillStyle = COLOR.emerald;
+      ctx.fillRect(0, 0, W, HEADER_H);
+      ctx.fillStyle = COLOR.white;
+      ctx.font = '700 24px Arial, sans-serif';
+      const eventTitle = (typeof MTQ_CONFIG !== 'undefined' && MTQ_CONFIG.EVENT_TITLE) ? MTQ_CONFIG.EVENT_TITLE : 'MTQ 2026';
+      ctx.fillText(eventTitle, PAD, 44);
+      ctx.font = '400 15px Arial, sans-serif';
+      ctx.globalAlpha = .88;
+      ctx.fillText('Statistik Pendaftaran — Admin', PAD, 68);
+      ctx.globalAlpha = 1;
+      const now = new Date();
+      const tstamp = now.toLocaleDateString('id-ID', { day:'numeric', month:'long', year:'numeric' }) +
+        ', ' + now.toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit' }) + ' WIB';
+      ctx.font = '400 12px Arial, sans-serif';
+      ctx.globalAlpha = .75;
+      ctx.fillText('Dicetak ' + tstamp, PAD, 90);
+      ctx.globalAlpha = 1;
+      y = HEADER_H + 30;
+
+      // ── Kartu ringkasan ──
+      if (cardCols) {
+        const startX = PAD + Math.max(0, (contentW - cardsRowW) / 2);
+        cards.forEach((c, i) => {
+          const col = i % cardCols, row = Math.floor(i / cardCols);
+          const cx = startX + col * (CARD_W + CARD_GAP);
+          const cy = y + row * (CARD_H + CARD_GAP);
+          const accent = cardClsColor(c.cls);
+          _roundRect(ctx, cx, cy, CARD_W, CARD_H, 10);
+          ctx.fillStyle = COLOR.g50; ctx.fill();
+          ctx.lineWidth = 1; ctx.strokeStyle = COLOR.g200; ctx.stroke();
+          ctx.fillStyle = accent; ctx.fillRect(cx, cy, 4, CARD_H);
+          ctx.font = '20px Arial, sans-serif';
+          ctx.fillStyle = COLOR.g700;
+          ctx.fillText(c.icon, cx + 16, cy + 32);
+          ctx.font = '400 11px Arial, sans-serif';
+          ctx.fillStyle = COLOR.g500;
+          _fillTextClipped(ctx, c.label, cx + 16, cy + 52, CARD_W - 28);
+          ctx.font = '700 26px Arial, sans-serif';
+          ctx.fillStyle = COLOR.g900;
+          ctx.fillText(c.value, cx + 16, cy + 66);
+        });
+        y += CARD_SECTION_H;
+      }
+
+      // ── Judul tabel ──
+      ctx.font = '700 15px Arial, sans-serif';
+      ctx.fillStyle = COLOR.g900;
+      ctx.fillText(tableCaption, PAD, y + 22);
+      y += TABLE_TITLE_H;
+
+      // ── Tabel ──
+      const tableX = PAD;
+      const tableTop = y;
+      const headers = view.headers;
+      const colX = [tableX];
+      colX.push(tableX + LABEL_COL_W);
+      for (let i = 1; i < dataColCount; i++) colX.push(colX[colX.length-1] + DATA_COL_W);
+      const tableRight = dataColCount ? colX[colX.length-1] + DATA_COL_W : tableX + LABEL_COL_W;
+
+      // Header row
+      ctx.fillStyle = COLOR.emerald;
+      ctx.fillRect(tableX, tableTop, tableRight - tableX, TABLE_HEAD_H);
+      ctx.fillStyle = COLOR.white;
+      ctx.font = '700 12px Arial, sans-serif';
+      _fillTextClipped(ctx, headers[0] || '', tableX + 10, tableTop + TABLE_HEAD_H - (wideTable?10:12), LABEL_COL_W - 18);
+      for (let i = 0; i < dataColCount; i++) {
+        const colLeft = colX[i+1];
+        const label = headers[i+1] || '';
+        ctx.font = '700 11px Arial, sans-serif';
+        if (wideTable) {
+          ctx.save();
+          ctx.translate(colLeft + DATA_COL_W/2, tableTop + TABLE_HEAD_H - 8);
+          ctx.rotate(-50 * Math.PI/180);
+          ctx.textAlign = 'left';
+          _fillTextClipped(ctx, label, 0, 0, TABLE_HEAD_H - 16);
+          ctx.restore();
+        } else {
+          ctx.textAlign = 'center';
+          _fillTextClipped(ctx, label, colLeft + DATA_COL_W/2, tableTop + TABLE_HEAD_H/2 + 4, DATA_COL_W - 10, true);
+        }
+      }
+      ctx.textAlign = 'left';
+
+      // Body rows
+      let ry = tableTop + TABLE_HEAD_H;
+      if (!view.rows.length) {
+        ctx.fillStyle = COLOR.g50; ctx.fillRect(tableX, ry, tableRight - tableX, ROW_H);
+        ctx.strokeStyle = COLOR.g200; ctx.strokeRect(tableX, ry, tableRight - tableX, ROW_H);
+        ctx.fillStyle = COLOR.g400; ctx.font = '400 12px Arial, sans-serif'; ctx.textAlign = 'center';
+        ctx.fillText('Belum ada data', (tableX+tableRight)/2, ry + ROW_H/2 + 4);
+        ctx.textAlign = 'left';
+        ry += ROW_H;
+      } else {
+        view.rows.forEach((row, ri) => {
+          ctx.fillStyle = ri % 2 === 0 ? COLOR.white : COLOR.g50;
+          ctx.fillRect(tableX, ry, tableRight - tableX, ROW_H);
+
+          ctx.fillStyle = COLOR.g900;
+          ctx.font = '600 12px Arial, sans-serif';
+          _fillTextClipped(ctx, row.label, tableX + 10, ry + ROW_H/2 + 4, LABEL_COL_W - 18);
+
+          row.cells.forEach((cell, ci) => {
+            const colLeft = colX[ci+1];
+            ctx.fillStyle = cell.color ? _resolveCssVarColor(cell.color, COLOR) : COLOR.g700;
+            ctx.font = (cell.bold ? '700 ' : '400 ') + '12px Arial, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(String(cell.value), colLeft + DATA_COL_W/2, ry + ROW_H/2 + 4);
+            ctx.textAlign = 'left';
+          });
+          ry += ROW_H;
+        });
+      }
+      // Border luar tabel
+      ctx.strokeStyle = COLOR.g300; ctx.lineWidth = 1;
+      ctx.strokeRect(tableX, tableTop, tableRight - tableX, TABLE_HEAD_H + Math.max(ROW_H, ry - (tableTop+TABLE_HEAD_H)));
+      // Garis vertikal antar kolom
+      for (let i = 0; i <= dataColCount; i++) {
+        const lx = i === 0 ? tableX + LABEL_COL_W : colX[i] + DATA_COL_W;
+        ctx.beginPath(); ctx.moveTo(lx, tableTop); ctx.lineTo(lx, ry); ctx.stroke();
+      }
+
+      // ── Footer ──
+      ctx.font = '400 10px Arial, sans-serif';
+      ctx.fillStyle = COLOR.g400;
+      ctx.fillText('Dibuat otomatis oleh Sistem MTQ 2026 — Halaman Admin', PAD, H - PAD + 16);
+
+      return canvas;
+    }
+
+    // Helper: potong teks dengan "…" kalau melebihi maxWidth. Kalau
+    // centered=true, ctx.textAlign diasumsikan sudah 'center' oleh caller.
+    function _fillTextClipped(ctx, text, x, y, maxWidth, centered) {
+      let s = String(text == null ? '' : text);
+      if (ctx.measureText(s).width <= maxWidth) { ctx.fillText(s, x, y); return; }
+      while (s.length > 1 && ctx.measureText(s + '…').width > maxWidth) s = s.slice(0, -1);
+      ctx.fillText(s + '…', x, y);
+    }
+    function _roundRect(ctx, x, y, w, h, r) {
+      ctx.beginPath();
+      ctx.moveTo(x+r, y);
+      ctx.arcTo(x+w, y,   x+w, y+h, r);
+      ctx.arcTo(x+w, y+h, x,   y+h, r);
+      ctx.arcTo(x,   y+h, x,   y,   r);
+      ctx.arcTo(x,   y,   x+w, y,   r);
+      ctx.closePath();
+    }
+    // STATS_TABLE_COLUMN_DEFS pakai warna bergaya var(--xxx) (dipakai
+    // langsung sbg CSS di tabel HTML) — canvas butuh nilai hex asli.
+    function _resolveCssVarColor(cssColor, COLOR) {
+      const map = {
+        'var(--emerald)': COLOR.emerald, 'var(--gold)': COLOR.gold,
+        'var(--gray-300)': COLOR.g300, 'var(--gray-400)': COLOR.g400,
+      };
+      return map[cssColor] || (cssColor.startsWith('#') ? cssColor : COLOR.g700);
+    }
+
     // ── Export CSV ────────────────────────────────────────────────
     function exportCSV() {
       const rows = adm.filtered.length ? adm.filtered : adm.allData;
