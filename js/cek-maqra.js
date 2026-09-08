@@ -481,9 +481,24 @@ function renderStatusCard(rec) {
   // perubahan CSS .action-row di cekstatus.html.
   let actionHtml = '';
   if (status === 'Ditolak') {
-    actionHtml = `
-      <button class="btn btn-red" onclick="showEditForm()" style="width:100%;justify-content:center;font-size:15px;padding:13px">✏️ Perbaiki Data</button>
-      <div class="secondary-links"><a href="index.html">🏠 Beranda</a></div>`;
+    // FIX: peserta Ditolak sekarang TIDAK BISA lagi mengajukan perbaikan
+    // data setelah masa pendaftaran ditutup — dulu tombol "Perbaiki Data"
+    // selalu tampil tanpa syarat, dan baru gagal belakangan (kalau sama
+    // sekali gagal, karena backend juga belum mengecek ini) setelah user
+    // mengisi ulang seluruh form. Dicek di sini pakai getRegStatus()
+    // (config.js, sudah dimuat di cekstatus.html) — TANPA request
+    // tambahan ke server, murni cek jadwal lokal. Ini cuma feedback cepat
+    // di UI; penjagaan yang MENGIKAT tetap di server (apiPerbaikan_ →
+    // isRegistrationOpen_ di helper.gs), satu sumber kebenaran yang sama
+    // dipakai jendela waktu pendaftaran baru MAUPUN perbaikan data.
+    const regClosed = typeof getRegStatus === 'function' && getRegStatus() !== 'buka';
+    actionHtml = regClosed
+      ? `
+        ${banner('info-lock','🔒','Perbaikan Data Tidak Tersedia','Masa pendaftaran sudah berakhir, sehingga perbaikan data tidak dapat dilakukan lagi. Silakan hubungi panitia jika memerlukan bantuan lebih lanjut.')}
+        <div class="secondary-links"><a href="index.html">🏠 Beranda</a></div>`
+      : `
+        <button class="btn btn-red" onclick="showEditForm()" style="width:100%;justify-content:center;font-size:15px;padding:13px">✏️ Perbaiki Data</button>
+        <div class="secondary-links"><a href="index.html">🏠 Beranda</a></div>`;
   } else if (status === 'Terverifikasi') {
     actionHtml = `
       <button class="btn btn-emerald" onclick="goToMaqraStep()" style="width:100%;justify-content:center;font-size:15px;padding:13px;background:linear-gradient(135deg,#065f46,#059669);box-shadow:0 2px 8px rgba(5,150,105,.35)">➡️ Lanjut: Ambil Maqra</button>
