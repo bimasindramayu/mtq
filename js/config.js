@@ -17,7 +17,7 @@
 const MTQ_CONFIG = {
 
   // ── Google Apps Script Web App URL — SATU-SATUNYA tempat edit ──
-  API_URL: 'https://script.google.com/macros/s/AKfycbw61Wn6-bYB1vWGrD3_zUE3N96JBCEdzlh-Y20FUcejgXLL1NZCFr9vUrCl0q9fI6aC/exec',
+  API_URL: 'https://script.google.com/macros/s/AKfycbyKjBSbRaCCdDuUsPS7ioqvW3EkpvNKfEPjKhMpI9xfjH54TS3DtLaXZ9TiTXwffWjM/exec',
 
   // ── Tanggal pendaftaran & cutoff umur ────────────────────────
   // Fallback bila API tidak terjangkau — akan ditimpa nilai live
@@ -25,7 +25,7 @@ const MTQ_CONFIG = {
   // Sesuai Juknis MTQ ke-56 Kab. Indramayu: pendaftaran online 5 s.d. 15 Agustus 2026,
   // usia dihitung per 1 November 2026.
   PENDAFTARAN_BUKA : '2026-08-05T00:00:00',
-  PENDAFTARAN_TUTUP: '2026-09-08T23:59:59',
+  PENDAFTARAN_TUTUP: '2026-09-10T20:59:59',
   AGE_CUTOFF_DATE  : '2026-11-01',
 
   // ── Info Event ───────────────────────────────────────────────
