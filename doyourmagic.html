@@ -2504,6 +2504,7 @@
     ];
     const STATS_TABLE_COLUMN_DEFS = [
       { id:'total',         label:'Total',          color:'var(--emerald)', bold:true, calc: rows => rows.length },
+      { id:'headcount',     label:'Jumlah Orang',   color:'var(--emerald-light)',      calc: rows => _statsHeadcount(rows) },
       { id:'terverifikasi', label:'Terverifikasi',  color:'var(--emerald)',            calc: rows => _statsByStatus(rows,'terverifikasi') },
       { id:'menunggu',      label:'Menunggu',       color:'var(--gold)',               calc: rows => _statsByStatus(rows,'menunggu') },
       { id:'ditolak',       label:'Ditolak',        color:'#dc2626',                   calc: rows => _statsByStatus(rows,'ditolak') },
