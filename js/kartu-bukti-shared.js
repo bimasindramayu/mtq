@@ -345,7 +345,7 @@ function drawKartuRow(ctx, px, cardMargin, cardW, y, accentColor, _icon, label, 
   // Label
   ctx.textAlign = 'left';
   ctx.font      = `500 ${px(2.6)}px 'Segoe UI',sans-serif`;
-  ctx.fillStyle = '#9ca3af';
+  ctx.fillStyle = '#1f2937';
   ctx.fillText(truncateText(ctx, label, maxTextW), textX, y + px(3.2));
 
   // Value — coba kecilkan ukuran font dulu agar teks panjang (mis. nama
