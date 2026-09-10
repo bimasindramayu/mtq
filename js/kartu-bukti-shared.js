@@ -277,7 +277,7 @@ async function renderKartuCanvas(member, rec, memberIdx, isTeam, CW, CH, imageLo
 
   // ── Rows info ──────────────────────────────────────────────
   const rowStart = divY + px(5);
-  const ROW_H    = px(10);
+  const ROW_H    = px(12);
 
   drawKartuRow(ctx, px, cardMargin, cardW, rowStart,        GOLD,      '🏆', 'CABANG LOMBA', cabang);
   drawKartuRow(ctx, px, cardMargin, cardW, rowStart + ROW_H, '#059669', '📍', 'KECAMATAN',  kec);
@@ -317,7 +317,7 @@ async function renderKartuCanvas(member, rec, memberIdx, isTeam, CW, CH, imageLo
 
 /** Gambar satu baris info (label + value) di dalam kartu putih — anti-overflow */
 function drawKartuRow(ctx, px, cardMargin, cardW, y, accentColor, _icon, label, value) {
-  const rowH   = px(9);
+  const rowH   = px(11);
   const padL   = px(4);
   const x      = cardMargin;
   const boxX   = x + px(2);
@@ -344,16 +344,29 @@ function drawKartuRow(ctx, px, cardMargin, cardW, y, accentColor, _icon, label, 
 
   // Label
   ctx.textAlign = 'left';
-  ctx.font      = `500 ${px(2.6)}px 'Segoe UI',sans-serif`;
+  ctx.font = `500 ${px(2.6)}px 'Segoe UI',sans-serif`;
   ctx.fillStyle = '#1f2937';
-  ctx.fillText(truncateText(ctx, label, maxTextW), textX, y + px(3.2));
+  ctx.fillText(
+    truncateText(ctx, label, maxTextW),
+    textX,
+    y + px(3.0)
+  );
 
   // Value — coba kecilkan ukuran font dulu agar teks panjang (mis. nama
   // cabang lomba) tetap terbaca utuh; hanya dipotong jika benar-benar
   // tidak muat bahkan di ukuran font terkecil.
-  const fitted = fitTextSize(ctx, String(value), maxTextW, 3.8, 2.5, 'bold', "'Segoe UI',sans-serif", px);
+  const fitted = fitTextSize(
+    ctx,
+    String(value),
+    maxTextW,
+    4.8,
+    2.7,
+    'bold',
+    "'Segoe UI',sans-serif",
+    px
+  );
   ctx.fillStyle = '#1f2937';
-  ctx.fillText(fitted.text, textX, y + px(7.2));
+  ctx.fillText(fitted.text, textX, y + px(8.2));
 
   ctx.restore();
 }
