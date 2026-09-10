@@ -125,6 +125,15 @@ async function maqraLoadData() {
     // tabelnya sendiri menampilkan semua data.
     maqraFilterHasil();
     maqraUpdateFilterCabang(_allMaqra);
+    // FIX: tab "🎯 Ambil Maqra Peserta" — re-render juga di sini (bukan
+    // cuma saat tab-nya sendiri diklik, lihat maqraAmbilInit() di bawah)
+    // supaya kalau admin kebetulan sudah berada di tab itu ketika
+    // maqraLoadData() ini dipanggil ulang (mis. lewat tombol Refresh di
+    // tab lain), datanya ikut tersinkron tanpa perlu pindah tab bolak-
+    // balik. typeof-check karena fungsinya didefinisikan di bagian bawah
+    // file ini (setelah maqraLoadData) — pola sama dgn pengecekan
+    // showPage di doyourmagic.html.
+    if (typeof maqraAmbilFilter === 'function') maqraAmbilFilter();
   } catch (err) {
     maqraShowToast('Error', 'Gagal memuat data: ' + err.message, 'error');
   } finally {
@@ -909,4 +918,526 @@ function maqraShowToast(title, msg, type = 'info', duration = 4000) {
   // dkk. — signature-nya sudah sama persis: title, msg, type, duration).
   if (typeof toast === 'function') { toast(title, msg, type, duration); return; }
   adminLog.warn(`[Maqra Toast] ${type}: ${title} — ${msg}`);
+}
+// ════════════════════════════════════════════════════════════
+//  TAB: 🎯 Ambil Maqra Peserta — admin mengambilkan maqra ATAS
+//  NAMA peserta (bukan peserta sendiri yang menekan tombol).
+//  ────────────────────────────────────────────────────────────
+//  • Sumber daftar peserta: adm.allData (state peserta yang sama
+//    dipakai tab "👥 Daftar Peserta", dimuat via loadAll() di inline
+//    script doyourmagic.html) — BUKAN endpoint baru, supaya tetap
+//    SATU SUMBER data peserta untuk seluruh halaman admin.
+//  • Backend: action POST 'ambilMaqraAdmin' (maqra.gs, apiAmbilMaqraAdmin_).
+//    Sama persis dengan 'ambilMaqra' (peserta) — pilih acak dari maqra
+//    tersedia utk cabang peserta, kunci hasil, idempoten (tidak bisa
+//    ditarik ulang) — TAPI mengabaikan jadwal buka/tutup di tab
+//    ⚙️ Jadwal Pengambilan, sesuai kebutuhan admin override.
+//  • Animasi lantern-strip (teaser spin → panggil API sambil tetap
+//    berputar pelan → deselerasi mendarat tepat di hasil → reveal +
+//    partikel/confetti) mereplikasi startSpin() di cek-maqra.js
+//    (dipakai cekstatus.html, sisi peserta) — mekanisme step-by-step-
+//    nya SAMA PERSIS, cuma target elemen DOM & prefix nama fungsi beda
+//    ("maqraAmbil...") karena beda dokumen/scope sepenuhnya.
+// ════════════════════════════════════════════════════════════
+
+let _maqraAmbilPage       = 1;
+const MAQRA_AMBIL_PER_PAGE = 10;
+let _maqraAmbilFiltered   = [];
+let _maqraAmbilTarget     = null;   // peserta (row adm.allData) yang sedang diproses di modal
+let _maqraAmbilSpinning   = false;
+let _maqraAmbilLastResult = null;   // { peserta, maqra } — utk tombol "Download Bukti" di modal
+
+// ── Init: dipanggil tiap kali tab "Ambil Maqra Peserta" dibuka ──
+// (bukan cuma sekali per sesi halaman seperti maqraInit() —  tabel
+// peserta di sini perlu selalu mencerminkan status verifikasi/hasil
+// pengambilan TERBARU tiap kali admin membuka tab ini).
+function maqraAmbilInit() {
+  if (typeof adm === 'undefined') {
+    maqraSetTbodyMsg_('maqraAmbilTbody', 6, 'Gagal memuat: state admin tidak ditemukan.');
+    return;
+  }
+  // Data peserta (adm.allData) mungkin belum pernah dimuat kalau admin
+  // langsung membuka Manajemen Maqra tanpa pernah membuka tab Daftar
+  // Peserta lebih dulu — muat dulu kalau masih kosong.
+  if (!adm.allData || !adm.allData.length) {
+    maqraSetTbodyMsg_('maqraAmbilTbody', 6, '⏳ Memuat data peserta...');
+    if (typeof loadAll === 'function') {
+      loadAll(() => { maqraAmbilPopulateFilters(); maqraAmbilFilter(); });
+    }
+    return;
+  }
+  maqraAmbilPopulateFilters();
+  maqraAmbilFilter();
+}
+
+// Tombol "🔄 Refresh" di tab ini — muat ulang peserta (loadAll) DAN
+// data maqra (maqraLoadData, utk status tersedia/diambil paling baru),
+// baru render ulang. maqraLoadData() sudah membawa loading overlay-nya
+// sendiri (lihat maqraShowLoading di dalamnya), jadi tidak perlu
+// dibungkus loading terpisah di sini.
+async function maqraAmbilRefresh() {
+  await new Promise(res => {
+    if (typeof loadAll === 'function') loadAll(() => res());
+    else res();
+  });
+  maqraAmbilPopulateFilters();
+  await maqraLoadData();   // hook di maqraLoadData() akan memanggil maqraAmbilFilter() lagi di akhir
+}
+
+function maqraSetTbodyMsg_(id, colspan, msg) {
+  const el = document.getElementById(id);
+  if (el) el.innerHTML = `<tr><td colspan="${colspan}" style="text-align:center;padding:24px;color:var(--gray-400)">${msg}</td></tr>`;
+}
+
+// ── Filter dropdowns ────────────────────────────────────────
+// Kecamatan: unik dari adm.allData (SAMA seperti populateFilterDropdowns()
+// di tab Daftar Peserta — tidak menyalin daftar kecamatan secara terpisah).
+// Cabang: SATU SUMBER yang sama dgn tab lain di halaman Maqra ini
+// (MAQRA_KELOMPOK_LIST — 14 kelompok, tanpa akhiran Putra/Putri).
+function maqraAmbilPopulateFilters() {
+  const kecs = [...new Set((adm.allData || []).map(r => r.kecamatan).filter(Boolean))].sort();
+  const kecSel = document.getElementById('maqraAmbilFilterKec');
+  if (kecSel) {
+    const sv = kecSel.value;
+    kecSel.innerHTML = '<option value="">Semua Kecamatan</option>' + kecs.map(k => `<option>${maqraEsc(k)}</option>`).join('');
+    kecSel.value = sv;
+  }
+  const cabSel = document.getElementById('maqraAmbilFilterCabang');
+  if (cabSel) {
+    const sv = cabSel.value;
+    while (cabSel.options.length > 1) cabSel.remove(1);
+    MAQRA_KELOMPOK_LIST.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c; opt.textContent = c;
+      cabSel.appendChild(opt);
+    });
+    cabSel.value = sv;
+  }
+}
+
+// Sumber kebenaran "sudah ambil maqra?" SAMA dengan tab "Hasil
+// Pengambilan" (_allHasil) — bukan dihitung ulang dengan cara lain,
+// supaya kedua tab selalu konsisten satu sama lain.
+function maqraAmbilSudahAmbil_(nomor) {
+  return _allHasil.find(r => r.nomor_pendaftaran === nomor) || null;
+}
+
+// ── Filter + render ─────────────────────────────────────────
+function maqraAmbilFilter() {
+  if (typeof adm === 'undefined') return;
+
+  const q      = (document.getElementById('maqraAmbilSearch')?.value || '').toLowerCase().trim();
+  const kec    = document.getElementById('maqraAmbilFilterKec')?.value || '';
+  const cabang = document.getElementById('maqraAmbilFilterCabang')?.value || '';
+  const status = document.getElementById('maqraAmbilFilterStatus')?.value || '';
+
+  // Hanya peserta Terverifikasi — sama seperti gerbang di FE peserta
+  // (cek-maqra.js hanya menampilkan langkah "Ambil Maqra" utk status
+  // ini, lihat goToMaqraStep()/renderStatusArea() di sana).
+  const base = (adm.allData || []).filter(r => String(r.status_verifikasi || '').trim() === 'Terverifikasi');
+
+  // Statistik SELALU dari base (peserta Terverifikasi) — tidak ikut
+  // menyempit oleh pencarian/filter tabel di bawah, sama seperti kartu
+  // statistik di tab "📋 Daftar Maqra" yang juga selalu menunjukkan
+  // total keseluruhan, bukan hasil filter tabel saat itu.
+  const sudahCount = base.filter(r => !!maqraAmbilSudahAmbil_(r.nomor_pendaftaran)).length;
+  maqraSetEl('maqraAmbilStatTotal', base.length);
+  maqraSetEl('maqraAmbilStatSudah', sudahCount);
+  maqraSetEl('maqraAmbilStatBelum', base.length - sudahCount);
+
+  let rows = base;
+  if (q) rows = rows.filter(r =>
+    String(r.nama_lengkap || '').toLowerCase().includes(q) ||
+    String(r.nomor_pendaftaran || '').toLowerCase().includes(q)
+  );
+  if (kec)    rows = rows.filter(r => r.kecamatan === kec);
+  if (cabang) rows = rows.filter(r => maqraKelompok(r.cabang_lomba) === cabang);
+  if (status === 'sudah') rows = rows.filter(r =>  !!maqraAmbilSudahAmbil_(r.nomor_pendaftaran));
+  if (status === 'belum') rows = rows.filter(r =>  !maqraAmbilSudahAmbil_(r.nomor_pendaftaran));
+
+  _maqraAmbilFiltered = rows;
+  _maqraAmbilPage = 1;
+  maqraAmbilRenderList();
+}
+
+function maqraAmbilRenderList() {
+  const tbody = document.getElementById('maqraAmbilTbody');
+  if (!tbody) return;
+  const rows = _maqraAmbilFiltered;
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="ei">📭</div><div>Tidak ada peserta Terverifikasi yang cocok dengan filter ini</div></div></td></tr>`;
+    const bar = document.getElementById('maqraAmbilPagination');
+    if (bar) bar.innerHTML = '';
+    return;
+  }
+
+  const start = (_maqraAmbilPage - 1) * MAQRA_AMBIL_PER_PAGE;
+  const slice = rows.slice(start, start + MAQRA_AMBIL_PER_PAGE);
+
+  tbody.innerHTML = slice.map(r => {
+    const hasil    = maqraAmbilSudahAmbil_(r.nomor_pendaftaran);
+    const kelompok = maqraKelompok(r.cabang_lomba);
+    const tersedia = _allMaqra.filter(m => maqraKelompok(m.cabang_lomba) === kelompok && !m.sudah_diambil).length;
+    const n        = maqraEsc(r.nomor_pendaftaran);
+
+    let statusCell, actionCell;
+    if (hasil) {
+      statusCell = `<span class="status-badge maqra-sudah">✅ Sudah Ambil</span>
+        <div style="font-size:11px;color:var(--gray-400);margin-top:3px;max-width:210px;white-space:normal">${maqraEsc(hasil.maqra_teks || '')}</div>`;
+      actionCell = `<span style="color:var(--gray-300);font-size:12px">🔒 Terkunci</span>`;
+    } else if (!tersedia) {
+      statusCell = `<span class="status-badge maqra-habis">⚠️ Belum Ambil</span>`;
+      actionCell = `<span style="color:#dc2626;font-size:11px;font-weight:600">Maqra habis</span>`;
+    } else {
+      statusCell = `<span class="status-badge maqra-belum">⏳ Belum Ambil</span>`;
+      actionCell = `<button class="action-btn verify" onclick="maqraAmbilOpenModal('${n}')">🎯 Ambilkan Maqra</button>`;
+    }
+
+    return `<tr>
+      <td class="col-num">${n}</td>
+      <td class="col-name">${maqraEsc(r.nama_lengkap || '—')}</td>
+      <td class="col-kec">${maqraEsc(r.kecamatan || '—')}</td>
+      <td class="col-cabang" style="font-size:12px">${maqraEsc(r.cabang_lomba || '—')}</td>
+      <td>${statusCell}</td>
+      <td class="col-act">${actionCell}</td>
+    </tr>`;
+  }).join('');
+
+  maqraAmbilRenderPagination(rows.length);
+}
+
+function maqraAmbilRenderPagination(total) {
+  const bar = document.getElementById('maqraAmbilPagination');
+  if (!bar) return;
+  const totalPages = Math.ceil(total / MAQRA_AMBIL_PER_PAGE);
+  if (totalPages <= 1) { bar.innerHTML = `<span class="page-info">Total: ${total} peserta</span>`; return; }
+  let html = `<button class="page-btn" ${_maqraAmbilPage===1?'disabled':''} onclick="maqraAmbilGoPage(${_maqraAmbilPage-1})">‹</button>`;
+  for (let p = Math.max(1,_maqraAmbilPage-2); p <= Math.min(totalPages,_maqraAmbilPage+2); p++) {
+    html += `<button class="page-btn ${p===_maqraAmbilPage?'active':''}" onclick="maqraAmbilGoPage(${p})">${p}</button>`;
+  }
+  html += `<button class="page-btn" ${_maqraAmbilPage===totalPages?'disabled':''} onclick="maqraAmbilGoPage(${_maqraAmbilPage+1})">›</button>`;
+  html += `<span class="page-info">Total: ${total} peserta</span>`;
+  bar.innerHTML = html;
+}
+function maqraAmbilGoPage(p) { _maqraAmbilPage = p; maqraAmbilRenderList(); }
+
+// ── Modal: buka ─────────────────────────────────────────────
+function maqraAmbilOpenModal(nomor) {
+  const peserta = (adm.allData || []).find(r => r.nomor_pendaftaran === nomor);
+  if (!peserta) { maqraShowToast('Gagal', 'Data peserta tidak ditemukan — refresh dan coba lagi.', 'error'); return; }
+  if (maqraAmbilSudahAmbil_(nomor)) {
+    maqraShowToast('Info', 'Peserta ini sudah mengambil maqra sebelumnya.', 'info');
+    maqraAmbilFilter();
+    return;
+  }
+
+  const kelompok  = maqraKelompok(peserta.cabang_lomba);
+  const available = _allMaqra.filter(m => maqraKelompok(m.cabang_lomba) === kelompok && !m.sudah_diambil);
+  if (!available.length) {
+    maqraShowToast('Maqra Habis', `Semua maqra untuk "${kelompok}" sudah diambil. Tambahkan maqra baru di tab 📋 Daftar Maqra.`, 'warning', 6000);
+    return;
+  }
+
+  _maqraAmbilTarget = peserta;
+
+  document.getElementById('ambilMaqraNomor').textContent  = peserta.nomor_pendaftaran;
+  document.getElementById('ambilMaqraNama').textContent   = peserta.nama_lengkap || '—';
+  document.getElementById('ambilMaqraKec').textContent    = peserta.kecamatan || '—';
+  document.getElementById('ambilMaqraCabang').textContent = peserta.cabang_lomba || '—';
+
+  // Reset tampilan ke kondisi awal (siap, belum spin) — penting kalau
+  // modal ini sebelumnya sudah dipakai utk peserta lain.
+  const reveal = document.getElementById('admResultReveal');
+  reveal.classList.remove('show');
+  reveal.style.display = 'none';
+  document.getElementById('admSpinStatus').textContent = 'Siap mengambil maqra...';
+  document.getElementById('ambilMaqraActionsIdle').style.display = 'flex';
+  document.getElementById('ambilMaqraActionsDone').style.display = 'none';
+  document.getElementById('ambilMaqraWarnNote').style.display = 'block';
+  const btn = document.getElementById('admSpinBtn');
+  if (btn) btn.disabled = false;
+
+  maqraAmbilBuildStars();
+  maqraAmbilBuildLanternStrip(available);
+
+  document.getElementById('ambilMaqraModal').removeAttribute('data-locked');
+  openModal('ambilMaqraModal');
+}
+
+// Wrapper close — menolak menutup selagi proses pengambilan berjalan
+// (data-locked juga menjaga klik-backdrop, lihat handler generik di
+// inline script doyourmagic.html; ini menjaga tombol ✕/Batal/Escape).
+function maqraAmbilCloseModal() {
+  if (_maqraAmbilSpinning) return;
+  closeModal('ambilMaqraModal');
+  maqraAmbilFilter();   // sinkronkan tabel kalau ada reveal yang barusan terjadi
+}
+
+function maqraAmbilBuildStars() {
+  const sf = document.getElementById('admStarField');
+  if (!sf) return;
+  sf.innerHTML = '';
+  for (let i = 0; i < 14; i++) {
+    const s = document.createElement('div');
+    s.className = 'star';
+    const sz = Math.random()*3+1;
+    s.style.cssText = `width:${sz}px;height:${sz}px;left:${Math.random()*100}%;top:${Math.random()*100}%;--s-dur:${(Math.random()*2+1.5).toFixed(1)}s;--s-delay:${(Math.random()*3).toFixed(1)}s`;
+    sf.appendChild(s);
+  }
+}
+
+function maqraAmbilBuildLanternStrip(list) {
+  const strip = document.getElementById('admLanternStrip');
+  if (!strip) return;
+  strip.innerHTML = '';
+  // 6x repeat agar zona aman cukup panjang — sama seperti buildLanternStrip() di cek-maqra.js
+  [...list,...list,...list,...list,...list,...list].forEach(item => {
+    const div = document.createElement('div');
+    div.className   = 'lantern-item';
+    div.textContent = item.maqra_teks || '—';
+    strip.appendChild(div);
+  });
+}
+
+// ── Modal: mulai pengambilan (spin) ────────────────────────
+// Logika step-by-step mereplikasi startSpin() di cek-maqra.js — lihat
+// komentar di sana utk penjelasan lengkap tiap fase. Beda di sini:
+// action backend 'ambilMaqraAdmin' (bukan 'ambilMaqra'), dan pemulihan
+// tambahan lewat maqraLoadData() kalau respons jaringan tidak jelas.
+async function maqraAmbilStartDraw() {
+  if (_maqraAmbilSpinning || !_maqraAmbilTarget) return;
+  _maqraAmbilSpinning = true;
+
+  const overlay = document.getElementById('ambilMaqraModal');
+  overlay.setAttribute('data-locked', '1');   // cegah tutup lewat klik backdrop selama proses (pola sama dgn confirmModal)
+
+  const btn    = document.getElementById('admSpinBtn');
+  const status = document.getElementById('admSpinStatus');
+  const strip  = document.getElementById('admLanternStrip');
+  const reveal = document.getElementById('admResultReveal');
+
+  if (btn) btn.disabled = true;
+  reveal.classList.remove('show');
+  status.textContent = '🌟 Mengambil maqra...';
+
+  const itemH      = 50;
+  const totalItems = strip.childElementCount;
+  const safeMax    = Math.floor(totalItems * 0.55) * itemH;
+  const wrapPos    = Math.floor(totalItems / 6) * itemH;
+
+  let offset = wrapPos;
+  strip.style.transition = 'none';
+  strip.style.transform  = `translateY(-${offset}px)`;
+  void strip.offsetHeight;
+
+  function stepSpin(durMs) {
+    offset += itemH;
+    if (offset >= safeMax) {
+      offset = wrapPos;
+      strip.style.transition = 'none';
+      strip.style.transform  = `translateY(-${offset}px)`;
+      void strip.offsetHeight;
+    } else {
+      strip.style.transition = `transform ${durMs}ms ease-in-out`;
+      strip.style.transform  = `translateY(-${offset}px)`;
+    }
+  }
+
+  function finishWithError_(msg) {
+    maqraShowToast('Gagal', msg, 'error', 6000);
+    status.textContent = 'Gagal. Silakan coba lagi.';
+    if (btn) btn.disabled = false;
+    overlay.removeAttribute('data-locked');
+    _maqraAmbilSpinning = false;
+  }
+
+  // Phase 1: teaser spin — akselerasi bertahap
+  const phases = [ { dur:320, count:5 }, { dur:220, count:8 }, { dur:175, count:10 }, { dur:150, count:10 } ];
+  for (const ph of phases) {
+    for (let i = 0; i < ph.count; i++) { stepSpin(ph.dur); await maqraSleep_(ph.dur + 8); }
+  }
+
+  // Phase 2: panggil backend sambil tetap berputar pelan (supaya tidak
+  // terlihat freeze selama menunggu server, yang bisa makan beberapa detik)
+  status.textContent = '🔐 Mengunci pilihan...';
+  let keepSpinning = true;
+  (async () => { while (keepSpinning) { stepSpin(260); await maqraSleep_(268); } })();
+
+  let chosen = null, wasAlready = false;
+  try {
+    const data = await maqraPostJSON({ action:'ambilMaqraAdmin', token:_maqraToken, nomor_pendaftaran:_maqraAmbilTarget.nomor_pendaftaran });
+    keepSpinning = false;
+
+    if (!data.success) {
+      if (data.message === 'Sesi tidak valid') {
+        overlay.removeAttribute('data-locked');
+        _maqraAmbilSpinning = false;
+        maqraHandleSessionExpired();
+        return;
+      }
+      finishWithError_(data.message || 'Terjadi kesalahan. Coba lagi.');
+      return;
+    }
+    chosen     = data.maqra;
+    wasAlready = !!data.sudahAmbil;
+    if (wasAlready) maqraShowToast('Info', data.message || 'Peserta ini sudah mengambil maqra sebelumnya.', 'info', 5000);
+  } catch (err) {
+    keepSpinning = false;
+    // FIX: respons gagal sampai BUKAN berarti operasinya gagal di server
+    // — bisa saja sudah tersimpan, cuma balasannya yang tidak sampai ke
+    // browser (pola sama dgn reconcileAfterWriteError_ di inline script
+    // utama doyourmagic.html). Cek ulang lewat maqraLoadData(), baru
+    // putuskan gagal/berhasil yang sebenarnya — bukan langsung diasumsikan
+    // gagal begitu saja.
+    status.textContent = '🔎 Memeriksa status ke server...';
+    maqraShowToast('Memeriksa…', 'Respons tidak jelas — memeriksa ulang ke server', 'info', 3000);
+    try {
+      await maqraLoadData();
+      const recheck = maqraAmbilSudahAmbil_(_maqraAmbilTarget.nomor_pendaftaran);
+      if (recheck) {
+        chosen     = { maqra_teks:recheck.maqra_teks, maqra_detail:recheck.maqra_detail, nomor_maqra:recheck.nomor_maqra };
+        wasAlready = true;
+        maqraShowToast('Sudah tersimpan', 'Ternyata berhasil di server — respons-nya saja yang sempat gagal sampai.', 'success', 5000);
+      } else {
+        finishWithError_(err.message + ' — silakan coba lagi.');
+        return;
+      }
+    } catch (err2) {
+      finishWithError_('Tidak bisa memastikan status — silakan refresh manual.');
+      return;
+    }
+  }
+
+  // Phase 3: deselerasi mendarat tepat di maqra terpilih. Kalau
+  // wasAlready (hasil lama, atau hasil dari pemeriksaan ulang di atas),
+  // langsung lompat ke reveal — tidak ada "penarikan baru" yang perlu
+  // dianimasikan mendarat.
+  if (!wasAlready) {
+    status.textContent = '✨ Maqra ditemukan!';
+    const items    = Array.from(strip.children);
+    const refTxt   = (chosen.maqra_teks || '').trim();
+    const curIdx   = offset / itemH;
+    const minAhead = 15;
+    let targetIdx = -1;
+    for (let i = Math.ceil(curIdx) + minAhead; i < items.length - 5; i++) {
+      if ((items[i].textContent || '').trim() === refTxt) { targetIdx = i; break; }
+    }
+    if (targetIdx === -1) {
+      for (let i = Math.ceil(curIdx) + 1; i < items.length; i++) {
+        if ((items[i].textContent || '').trim() === refTxt) { targetIdx = i; break; }
+      }
+    }
+    if (targetIdx === -1) targetIdx = items.length - 1;
+
+    const lanternBox    = document.getElementById('admLanternBox');
+    const windowH       = lanternBox ? lanternBox.clientHeight : 190;
+    const windowCenterY = windowH / 2;
+    const targetY       = targetIdx * itemH - windowCenterY + itemH / 2;
+
+    strip.style.transition = 'transform 2s cubic-bezier(0.16,1,0.3,1)';
+    strip.style.transform  = `translateY(-${targetY}px)`;
+    await maqraSleep_(2100);
+
+    items.forEach(it => it.classList.remove('highlight'));
+    if (items[targetIdx]) {
+      items[targetIdx].classList.add('highlight');
+      if (lanternBox) {
+        const containerRect = lanternBox.getBoundingClientRect();
+        const itemRect      = items[targetIdx].getBoundingClientRect();
+        const diff = (itemRect.top + itemRect.height/2) - (containerRect.top + containerRect.height/2);
+        if (Math.abs(diff) > 1) {
+          const cur = parseFloat(strip.style.transform.replace('translateY(','').replace('px)','')) || 0;
+          strip.style.transition = 'transform 0.3s ease-out';
+          strip.style.transform  = `translateY(-${Math.abs(cur)+diff}px)`;
+          await maqraSleep_(320);
+        }
+      }
+    }
+    await maqraSleep_(120);
+  }
+
+  // Phase 4: reveal
+  document.getElementById('admResultAyat').textContent  = chosen.maqra_teks   || '—';
+  document.getElementById('admResultSurah').textContent = chosen.maqra_detail || '—';
+  document.getElementById('admResultNomor').textContent = `Nomor Undian: ${chosen.nomor_maqra || '—'}`;
+  reveal.style.display = 'block';
+  reveal.classList.add('show');
+  if (!wasAlready) { maqraAmbilSpawnParticles(); maqraAmbilLaunchConfetti(); }
+
+  document.getElementById('ambilMaqraActionsIdle').style.display = 'none';
+  document.getElementById('ambilMaqraActionsDone').style.display = 'flex';
+  document.getElementById('ambilMaqraWarnNote').style.display    = 'none';
+  status.textContent = wasAlready ? 'ℹ️ Maqra peserta ini (sudah diambil sebelumnya)' : '🎉 Maqra berhasil diambilkan!';
+
+  _maqraAmbilLastResult = { peserta:_maqraAmbilTarget, maqra:chosen };
+
+  overlay.removeAttribute('data-locked');
+  _maqraAmbilSpinning = false;
+
+  // Sinkronkan _allMaqra/_allHasil (dipakai tab Daftar Maqra & Hasil
+  // Pengambilan) + tabel di tab ini sendiri. SAMA seperti mutasi lain
+  // di file ini (maqraSaveMaqra/maqraDelete/maqraSaveConfig dst SELALU
+  // maqraLoadData() ulang setelah sukses, bukan menambal array lokal
+  // secara manual) — supaya semua tab tetap konsisten dgn server, dan
+  // tidak salah tandai kalau ada 2 maqra berteks identik dalam satu
+  // cabang (lihat catatan anti-duplikat di maqraSaveMaqra).
+  if (!wasAlready) maqraLoadData(); else maqraAmbilFilter();
+}
+
+function maqraSleep_(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ── Download Bukti (hasil pengambilan barusan di modal) ────
+// Pakai buildBuktiMaqraCardHtml()/BUKTI_MAQRA_STYLES yang SAMA dgn
+// downloadBukti() di cek-maqra.js (peserta) dan maqraDownloadAllBukti()
+// di file ini (borongan, tab Hasil Pengambilan) — satu sumber desain
+// kartu bukti utk ketiganya (lihat js/kartu-bukti-shared.js).
+function maqraAmbilDownloadBukti() {
+  if (!_maqraAmbilLastResult) return;
+  const { peserta, maqra } = _maqraAmbilLastResult;
+  if (typeof buildBuktiMaqraCardHtml !== 'function' || typeof BUKTI_MAQRA_STYLES === 'undefined') {
+    maqraShowToast('Error', 'Komponen bukti maqra belum termuat — muat ulang halaman.', 'error');
+    return;
+  }
+  const html = `<!DOCTYPE html><html lang="id"><head><meta charset="UTF-8">
+<title>Bukti Maqra MTQ 2026</title>
+<style>${BUKTI_MAQRA_STYLES}</style></head>
+<body>${buildBuktiMaqraCardHtml(peserta, maqra, maqraEsc)}</body></html>`;
+  const a = Object.assign(document.createElement('a'), {
+    href    : URL.createObjectURL(new Blob([html], { type:'text/html;charset=utf-8' })),
+    download: `Bukti_Maqra_${(peserta.nomor_pendaftaran||'MTQ').replace(/[^A-Za-z0-9]/g,'_')}.html`
+  });
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+
+// ── Partikel & confetti (efek reveal) ──────────────────────
+// Direplikasi dari spawnParticles()/launchConfetti() di cek-maqra.js —
+// mekanisme SAMA persis, target elemen saja yang beda (#admParticles,
+// #maqraAmbilConfetti — lihat markup modal & konten div confetti-
+// container di doyourmagic.html).
+function maqraAmbilSpawnParticles() {
+  const c = document.getElementById('admParticles');
+  if (!c) return;
+  c.innerHTML = '';
+  const cols = ['#fbbf24','#a7f3d0','#fff','#fde68a','#6ee7b7'];
+  for (let i = 0; i < 24; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    const sz = Math.random()*8+4, ang = Math.random()*360*(Math.PI/180), d = Math.random()*80+30;
+    p.style.cssText = `width:${sz}px;height:${sz}px;background:${cols[Math.floor(Math.random()*cols.length)]};left:${40+Math.random()*20}%;top:${40+Math.random()*20}%;--px:${(Math.cos(ang)*d).toFixed(0)}px;--py:${(Math.sin(ang)*d).toFixed(0)}px;--p-dur:${(Math.random()*.6+.6).toFixed(2)}s;--p-delay:${(Math.random()*.2).toFixed(2)}s;border-radius:${Math.random()>.5?'50%':'4px'}`;
+    c.appendChild(p);
+  }
+}
+
+function maqraAmbilLaunchConfetti() {
+  const cc = document.getElementById('maqraAmbilConfetti');
+  if (!cc) return;
+  cc.innerHTML = '';
+  const cols = ['#059669','#fbbf24','#3b82f6','#ec4899','#a855f7','#f97316','#10b981'];
+  for (let i = 0; i < 70; i++) {
+    const p = document.createElement('div');
+    p.className = 'conf-piece';
+    p.style.cssText = `left:${Math.random()*100}%;background:${cols[Math.floor(Math.random()*cols.length)]};width:${Math.random()*8+5}px;height:${Math.random()*8+5}px;border-radius:${Math.random()>.5?'50%':'2px'};--c-dx:${(Math.random()*200-100).toFixed(0)}px;--c-dur:${(Math.random()*2+2).toFixed(1)}s;--c-delay:${(Math.random()*.5).toFixed(2)}s`;
+    cc.appendChild(p);
+  }
+  setTimeout(() => { cc.innerHTML = ''; }, 5500);
 }

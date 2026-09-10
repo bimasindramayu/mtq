@@ -688,6 +688,9 @@
           <button class="maqra-tab-btn" id="mtab-hasil" onclick="switchMaqraTab('tabMaqraHasil')" style="padding:10px 16px;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;flex:1;text-align:center;transition:all .2s;background:transparent;color:var(--gray-500)">
             📊 Hasil Pengambilan
           </button>
+          <button class="maqra-tab-btn" id="mtab-ambil" onclick="switchMaqraTab('tabMaqraAmbil'); maqraAmbilInit()" style="padding:10px 16px;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;flex:1;text-align:center;transition:all .2s;background:transparent;color:var(--gray-500)">
+            🎯 Ambil Maqra Peserta
+          </button>
         </div>
 
         <!-- SUB TAB 1: Daftar Maqra -->
@@ -921,7 +924,84 @@
           </div>
         </div>
 
+        <!-- SUB TAB 4: Ambil Maqra Peserta (admin mengambilkan atas nama peserta) -->
+        <div class="maqra-tab-pane" id="tabMaqraAmbil" style="display:none">
+
+          <div style="background:var(--emerald-xs);border:1px solid var(--emerald-light);border-radius:8px;padding:12px 14px;margin-bottom:20px;font-size:13px;color:#065f46">
+            <strong>🎯 Ambilkan maqra atas nama peserta</strong><br>
+            Admin tetap bisa mengambilkan maqra di sini walau jadwal di tab ⚙️ Jadwal Pengambilan sedang <strong>ditutup</strong>. Hanya menampilkan peserta berstatus <strong>Terverifikasi</strong> — dan seperti pengambilan mandiri oleh peserta, hasil yang sudah diperoleh <strong>tidak dapat diubah kembali</strong>.
+          </div>
+
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px">
+            <div style="background:var(--white);border:1px solid var(--gray-200);border-radius:12px;padding:16px 18px;display:flex;align-items:center;gap:12px;box-shadow:var(--shadow-sm)">
+              <span style="font-size:26px">👥</span>
+              <div>
+                <div style="font-size:24px;font-weight:800;color:var(--emerald);line-height:1" id="maqraAmbilStatTotal">—</div>
+                <div style="font-size:11px;color:var(--gray-400);margin-top:2px;text-transform:uppercase;letter-spacing:.5px">Peserta Terverifikasi</div>
+              </div>
+            </div>
+            <div style="background:var(--white);border:1px solid var(--gray-200);border-radius:12px;padding:16px 18px;display:flex;align-items:center;gap:12px;box-shadow:var(--shadow-sm)">
+              <span style="font-size:26px">✅</span>
+              <div>
+                <div style="font-size:24px;font-weight:800;color:var(--gold);line-height:1" id="maqraAmbilStatSudah">—</div>
+                <div style="font-size:11px;color:var(--gray-400);margin-top:2px;text-transform:uppercase;letter-spacing:.5px">Sudah Ambil</div>
+              </div>
+            </div>
+            <div style="background:var(--white);border:1px solid var(--gray-200);border-radius:12px;padding:16px 18px;display:flex;align-items:center;gap:12px;box-shadow:var(--shadow-sm)">
+              <span style="font-size:26px">⏳</span>
+              <div>
+                <div style="font-size:24px;font-weight:800;color:var(--emerald);line-height:1" id="maqraAmbilStatBelum">—</div>
+                <div style="font-size:11px;color:var(--gray-400);margin-top:2px;text-transform:uppercase;letter-spacing:.5px">Belum Ambil</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="admin-card">
+            <div class="admin-card-header">
+              <h2>👥 Daftar Peserta</h2>
+              <button class="btn btn-outline" style="font-size:12px;padding:5px 10px" onclick="maqraAmbilRefresh()">🔄 Refresh</button>
+            </div>
+            <div style="padding:16px 20px;display:flex;gap:8px;flex-wrap:wrap">
+              <div style="position:relative;flex:1;min-width:200px">
+                <span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--gray-400)">🔍</span>
+                <input class="field-input" id="maqraAmbilSearch" placeholder="Cari nama / nomor daftar..." style="padding-left:34px;width:100%;box-sizing:border-box" oninput="maqraAmbilFilter()">
+              </div>
+              <select class="field-select" id="maqraAmbilFilterKec" onchange="maqraAmbilFilter()" style="min-width:170px">
+                <option value="">Semua Kecamatan</option>
+              </select>
+              <select class="field-select" id="maqraAmbilFilterCabang" onchange="maqraAmbilFilter()" style="min-width:200px">
+                <option value="">Semua Cabang</option>
+              </select>
+              <select class="field-select" id="maqraAmbilFilterStatus" onchange="maqraAmbilFilter()" style="min-width:170px">
+                <option value="">Sudah &amp; Belum Ambil</option>
+                <option value="belum">⏳ Belum Ambil</option>
+                <option value="sudah">✅ Sudah Ambil</option>
+              </select>
+            </div>
+            <div class="table-scroll-hint">👉 Geser tabel untuk melihat kolom lainnya</div>
+            <div class="table-wrap">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>No. Daftar</th>
+                    <th>Nama</th>
+                    <th>Kecamatan</th>
+                    <th>Cabang</th>
+                    <th>Status Maqra</th>
+                    <th>Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="maqraAmbilTbody">
+                  <tr><td colspan="6" style="text-align:center;padding:24px;color:var(--gray-400)"><span class="spin"></span> Memuat data peserta...</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="pagination" id="maqraAmbilPagination"></div>
+          </div>
+        </div>
+
       </section>
+
 
       <!-- ══ PAGE: SISTEM PENILAIAN ══════════════════════════════ -->
       <section class="admin-page-section" id="page-penilaian">
@@ -1257,8 +1337,68 @@
     </div>
   </div>
 
+  <!-- ══ Modal: Ambil Maqra Peserta (admin) ══
+       Isi & animasi lantern-strip mereplikasi panel Ambil Maqra di
+       cekstatus.html/cek-maqra.js (sisi peserta) — lihat komentar di
+       admin-maqra.js (maqraAmbilStartDraw dst) utk penjelasan lengkap.
+       data-locked dipakai selama proses berjalan supaya klik-backdrop
+       tidak menutup modal ini di tengah pengambilan — handler generiknya
+       sudah ada di listener .modal-overlay klik di bawah (lihat FIX
+       terkait confirmModal). -->
+  <div class="modal-overlay" id="ambilMaqraModal">
+    <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="ambilMaqraTitle" style="max-width:440px">
+      <div class="modal-head">
+        <div>
+          <h3 id="ambilMaqraTitle">🎯 Ambil Maqra Peserta</h3>
+          <span class="reg-tag" id="ambilMaqraNomor">—</span>
+        </div>
+        <span class="modal-x" tabindex="0" role="button" aria-label="Tutup" onclick="maqraAmbilCloseModal()">✕</span>
+      </div>
+      <div class="modal-body" style="padding:20px">
+        <div style="background:var(--gray-50);border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:13px;line-height:1.7">
+          <div style="font-weight:700;color:var(--gray-800)" id="ambilMaqraNama">—</div>
+          <div style="color:var(--gray-500)">📍 <span id="ambilMaqraKec">—</span> · 📖 <span id="ambilMaqraCabang">—</span></div>
+        </div>
+
+        <div class="spin-stage" id="admSpinStage">
+          <div class="glow-ring"></div>
+          <div class="lantern-container" id="admLanternBox">
+            <div class="lantern-strip" id="admLanternStrip"></div>
+            <div class="lantern-window"><div class="lantern-window-border"></div></div>
+            <div class="star-field" id="admStarField"></div>
+          </div>
+          <div class="spin-status" id="admSpinStatus">Siap mengambil maqra...</div>
+
+          <div class="result-reveal" id="admResultReveal">
+            <div class="maqra-result-card">
+              <div class="particles" id="admParticles"></div>
+              <div class="mrc-label">📖 Maqra Terpilih</div>
+              <div class="mrc-ayat" id="admResultAyat">—</div>
+              <div class="mrc-surah" id="admResultSurah">—</div>
+              <div class="mrc-nomor" id="admResultNomor">—</div>
+            </div>
+          </div>
+        </div>
+
+        <p style="font-size:11.5px;color:var(--gray-400);text-align:center;margin-top:4px" id="ambilMaqraWarnNote">
+          ⚠️ Maqra yang sudah diperoleh tidak dapat diubah kembali
+        </p>
+      </div>
+      <div class="modal-actions" id="ambilMaqraActionsIdle">
+        <button class="btn btn-emerald" style="flex:1;justify-content:center" id="admSpinBtn" onclick="maqraAmbilStartDraw()">🎯 Mulai Pengambilan Maqra</button>
+        <button class="btn btn-outline" onclick="maqraAmbilCloseModal()">Batal</button>
+      </div>
+      <div class="modal-actions" id="ambilMaqraActionsDone" style="display:none">
+        <button class="btn btn-emerald" style="flex:1;justify-content:center" onclick="maqraAmbilDownloadBukti()">🖨️ Download Bukti</button>
+        <button class="btn btn-outline" onclick="maqraAmbilCloseModal()">Tutup</button>
+      </div>
+    </div>
+  </div>
+  <div class="confetti-container" id="maqraAmbilConfetti"></div>
+
   <!-- TOAST -->
   <div class="toast-container" id="toastContainer"></div>
+
 
   <!-- Document Previewer Modal (injected by DocumentPreviewer.mount()) -->
   <div id="dp-modal-root"></div>
@@ -3192,6 +3332,12 @@
       if (e.key === 'Escape') {
         if (document.getElementById('confirmModal')?.classList.contains('show')) { closeModal('confirmModal'); return; }
         if (document.getElementById('detailModal')?.classList.contains('show')) { closeModal('detailModal'); return; }
+        // FIX: maqraAmbilCloseModal() (bukan closeModal() langsung) — wrapper
+        // ini menolak menutup selagi _maqraAmbilSpinning (proses pengambilan
+        // sedang berjalan), sama seperti penjagaan data-locked pada klik
+        // backdrop. Didefinisikan di admin-maqra.js (dimuat sebelum keypress
+        // pertama mungkin terjadi), jadi aman dipanggil dari sini.
+        if (document.getElementById('ambilMaqraModal')?.classList.contains('show')) { maqraAmbilCloseModal(); return; }
       }
       if ((e.key === 'Enter' || e.key === ' ') && e.target?.getAttribute?.('role') === 'button') {
         e.preventDefault();
@@ -3723,7 +3869,7 @@
   <script src="js/document-previewer.js?v=20260817"></script>
 
   <!-- ══ Manajemen Maqra — dimuat setelah admin login ══ -->
-  <script src="js/admin-maqra.js?v=20260820"></script>
+  <script src="js/admin-maqra.js?v=20260911"></script>
   <script src="js/admin-penilaian.js?v=20260817"></script>
   <style>
     /* Sistem Penilaian tab buttons */
@@ -3739,13 +3885,80 @@
        @media (max-width:768px) di <style> bagian atas file (dekat
        definisi .admin-content) — sekarang berlaku untuk SELURUH
        halaman admin, bukan cuma #page-penilaian. */
+
+    /* ══ Tab: 🎯 Ambil Maqra Peserta — animasi pengambilan maqra ══
+      Direplikasi dari panel Ambil Maqra di cekstatus.html/cek-maqra.js
+      (sisi peserta) — mekanismenya SAMA (lantern strip berputar →
+      mendarat tepat di maqra yang dipilih server → reveal + partikel/confetti);
+      variabel warna cuma disesuaikan ke token admin (--gray-*, --emerald-*,
+      --font-display di css/style.css) alih-alih alias lokal punya cekstatus.html
+      (--g*, --em*, --display). Lihat maqraAmbilStartDraw() di admin-maqra.js
+      untuk detail tiap fase.
+    */
+
+    .spin-stage  { display:flex; flex-direction:column; align-items:center; padding:6px 4px 4px; position:relative; }
+    .glow-ring   { position:absolute; width:220px; height:220px; border-radius:50%; border:2px solid rgba(251,191,36,.2);
+      box-shadow:0 0 40px rgba(251,191,36,.12); animation:ringPulse 2s ease-in-out infinite; pointer-events:none;
+      top:44%; left:50%; transform:translate(-50%,-50%); }
+    @keyframes ringPulse { 0%,100% { transform:translate(-50%,-50%) scale(1); opacity:.5; } 50% { transform:translate(-50%,-50%) scale(1.08); opacity:1; } }
+
+    .lantern-container { position:relative; width:100%; max-width:360px; height:190px; overflow:hidden;
+      border-radius:var(--radius-md); background:linear-gradient(135deg,#064e3b,#065f46);
+      box-shadow:0 8px 32px rgba(5,150,105,.3); margin:0 auto 18px; }
+    .lantern-strip { position:absolute; left:0; right:0; top:0; display:flex; flex-direction:column; will-change:transform; }
+    .lantern-item  { height:50px; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700;
+      color:#fff; border-bottom:1px solid rgba(255,255,255,.08); padding:0 16px; text-align:center; flex-shrink:0; opacity:.85; }
+    .lantern-item.highlight { opacity:1; color:#fbbf24; font-size:14px; }
+    .lantern-window { position:absolute; top:50%; left:0; right:0; height:52px; transform:translateY(-50%); pointer-events:none; z-index:10; }
+    .lantern-window::before { content:''; position:absolute; top:0; left:0; right:0; height:35%; background:linear-gradient(to bottom,#065f46,transparent); }
+    .lantern-window::after  { content:''; position:absolute; bottom:0; left:0; right:0; height:35%; background:linear-gradient(to top,#065f46,transparent); }
+    .lantern-window-border  { position:absolute; top:0; left:4px; right:4px; height:100%; border:2px solid rgba(251,191,36,.55);
+      border-radius:6px; box-shadow:0 0 12px rgba(251,191,36,.25), inset 0 0 10px rgba(251,191,36,.05); }
+    .star-field { position:absolute; inset:0; pointer-events:none; overflow:hidden; }
+    .star { position:absolute; background:#fff; border-radius:50%; opacity:0; animation:starTwinkle var(--s-dur,2s) var(--s-delay,0s) ease-in-out infinite; }
+    @keyframes starTwinkle { 0%,100% { opacity:0; transform:scale(.5); } 50% { opacity:.8; transform:scale(1); } }
+
+    .spin-status { font-size:13.5px; font-weight:600; color:var(--gray-500); text-align:center; min-height:20px; margin-bottom:4px; }
+
+    .result-reveal { display:none; width:100%; max-width:360px; margin:0 auto; }
+    .result-reveal.show { display:block; animation:resultReveal .6s ease both; }
+    @keyframes resultReveal { 0% { opacity:0; transform:scale(.9) translateY(8px); } 60% { transform:scale(1.02); } 100% { opacity:1; transform:scale(1) translateY(0); } }
+
+    .maqra-result-card { background:linear-gradient(135deg,#064e3b,#047857); border-radius:var(--radius-lg); padding:24px;
+      text-align:center; color:#fff; position:relative; overflow:hidden; }
+    .maqra-result-card::before { content:''; position:absolute; top:-40px; right:-40px; width:140px; height:140px; border-radius:50%; background:rgba(255,255,255,.06); }
+    .maqra-result-card::after  { content:''; position:absolute; bottom:-30px; left:-30px; width:100px; height:100px; border-radius:50%; background:rgba(255,255,255,.05); }
+    .mrc-label { font-size:11px; text-transform:uppercase; letter-spacing:.8px; opacity:.75; margin-bottom:8px; position:relative; }
+    .mrc-ayat  { font-size:clamp(17px,3vw,22px); font-weight:700; font-family:var(--font-display); line-height:1.35; position:relative; margin-bottom:4px; }
+    .mrc-surah { font-size:12.5px; opacity:.85; position:relative; }
+    .mrc-nomor { position:relative; margin-top:12px; display:inline-block; background:rgba(255,255,255,.15); border-radius:999px; padding:5px 16px; font-size:12px; font-weight:600; }
+
+    .particles { position:absolute; inset:0; pointer-events:none; overflow:hidden; border-radius:var(--radius-lg); }
+    .particle  { position:absolute; border-radius:50%; opacity:0; animation:particleFly var(--p-dur,1s) ease-out var(--p-delay,0s) forwards; }
+    @keyframes particleFly { 0% { opacity:1; transform:translate(var(--px,0),var(--py,0)) scale(1); } 100% { opacity:0; transform:translate(calc(var(--px,0)*4),calc(var(--py,0)*5)) scale(0); } }
+
+    .confetti-container { position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:9500; overflow:hidden; }
+    .conf-piece { position:absolute; opacity:0; animation:confettiFall var(--c-dur,3s) var(--c-delay,0s) ease-in forwards; }
+    @keyframes confettiFall { 0% { opacity:1; transform:translateX(0) translateY(-20px) rotate(0deg); } 100% { opacity:0; transform:translateX(var(--c-dx,50px)) translateY(100vh) rotate(720deg); } }
+
+    @media (prefers-reduced-motion: reduce) {
+      .glow-ring, .star, .lantern-strip, .result-reveal.show, .particle, .conf-piece {
+        animation:none !important; transition:none !important;
+      }
+    }
+
+    /* Tab Ambil Maqra Peserta: status-badge tambahan (base .status-badge
+       sudah ada di <style> atas file, dipakai juga oleh tab 👥 Daftar Peserta) */
+    .status-badge.maqra-sudah { background:var(--emerald-xs); color:var(--emerald); }
+    .status-badge.maqra-belum { background:var(--gold-pale);  color:var(--gold); }
+    .status-badge.maqra-habis { background:#fef2f2;           color:#dc2626; }
   </style>
   <script>
     // ── Tab switcher untuk sub-tab Maqra ─────────────────────────
     function switchMaqraTab(id) {
       document.querySelectorAll('.maqra-tab-pane').forEach(p => p.style.display = 'none');
       document.getElementById(id).style.display = 'block';
-      const map = { tabMaqraList:'mtab-list', tabMaqraConfig:'mtab-config', tabMaqraHasil:'mtab-hasil' };
+      const map = { tabMaqraList:'mtab-list', tabMaqraConfig:'mtab-config', tabMaqraHasil:'mtab-hasil', tabMaqraAmbil:'mtab-ambil' };
       document.querySelectorAll('.maqra-tab-btn').forEach(b => {
         b.style.background = 'transparent';
         b.style.color = 'var(--gray-500)';
