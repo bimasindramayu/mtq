@@ -756,13 +756,18 @@ function maqraExportHasil() {
 // downloadBukti() perorangan di cek-maqra.js (keduanya dari
 // js/kartu-bukti-shared.js) — jadi desain per-kartunya selalu identik,
 // termasuk kolom tanda tangan panitia & admin kecamatan.
-function maqraDownloadAllBukti() {
+// FIX: dulu diunduh sbg 1 file .html + window.print() (mengandalkan
+// dialog print browser utk "Simpan sbg PDF" manual) -- sekarang PDF
+// asli langsung disusun lewat downloadBuktiMaqraPdf() (SATU SUMBER jg
+// dgn downloadBukti() perorangan di cek-maqra.js dan
+// maqraAmbilDownloadBukti() di bawah), 1 kartu = 1 halaman.
+async function maqraDownloadAllBukti() {
   const rows = (_filteredHasil && _filteredHasil.length) ? _filteredHasil : _allHasil;
   if (!rows.length) {
     maqraShowToast('Kosong', 'Tidak ada hasil pengambilan maqra untuk diunduh (cek filter/pencarian).', 'warning');
     return;
   }
-  if (typeof buildBuktiMaqraCardHtml !== 'function' || typeof BUKTI_MAQRA_STYLES === 'undefined') {
+  if (typeof buildBuktiMaqraCardHtml !== 'function' || typeof downloadBuktiMaqraPdf !== 'function') {
     maqraShowToast('Error', 'Komponen bukti maqra belum termuat — muat ulang halaman.', 'error');
     return;
   }
@@ -771,21 +776,20 @@ function maqraDownloadAllBukti() {
   // objek datar (nama_lengkap, nomor_pendaftaran, cabang_lomba,
   // kecamatan, maqra_teks, maqra_detail, nomor_maqra) — jadi bisa dikirim
   // sebagai rec MAUPUN m sekaligus ke buildBuktiMaqraCardHtml().
-  const cards = rows.map(r => buildBuktiMaqraCardHtml(r, r, maqraEsc)).join('\n');
-  const html = `<!DOCTYPE html><html lang="id"><head><meta charset="UTF-8">
-<title>Bukti Maqra MTQ 2026 — ${rows.length} Peserta</title>
-<style>${BUKTI_MAQRA_STYLES}</style></head>
-<body>${cards}
-<script>window.print();<\/script>
-</body></html>`;
+  const cards = rows.map(r => buildBuktiMaqraCardHtml(r, r, maqraEsc));
+  const fname = `Bukti_Maqra_MTQ2026_Borongan_${rows.length}_${new Date().toISOString().slice(0,10)}.pdf`;
 
-  const a = Object.assign(document.createElement('a'), {
-    href    : URL.createObjectURL(new Blob([html], { type:'text/html;charset=utf-8' })),
-    download: `Bukti_Maqra_MTQ2026_Borongan_${rows.length}_${new Date().toISOString().slice(0,10)}.html`
-  });
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-
-  maqraShowToast('Berhasil', `${rows.length} bukti maqra diunduh dalam 1 file (siap cetak / simpan sebagai PDF).`, 'success');
+  maqraShowLoading(true, `Membuat PDF 0/${rows.length}...`);
+  try {
+    await downloadBuktiMaqraPdf(cards, fname, (i, total) => {
+      maqraShowLoading(true, `Membuat PDF ${i+1}/${total}...`);
+    });
+    maqraShowToast('Berhasil', `${rows.length} bukti maqra diunduh dalam 1 file PDF (${rows.length} halaman).`, 'success');
+  } catch (err) {
+    maqraShowToast('Gagal', 'Gagal membuat PDF: ' + err.message, 'error', 6000);
+  } finally {
+    maqraShowLoading(false);
+  }
 }
 
 // ── Session expired ───────────────────────────────────────────
@@ -1387,26 +1391,28 @@ async function maqraAmbilStartDraw() {
 function maqraSleep_(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 // ── Download Bukti (hasil pengambilan barusan di modal) ────
-// Pakai buildBuktiMaqraCardHtml()/BUKTI_MAQRA_STYLES yang SAMA dgn
+// Pakai buildBuktiMaqraCardHtml()/downloadBuktiMaqraPdf() yang SAMA dgn
 // downloadBukti() di cek-maqra.js (peserta) dan maqraDownloadAllBukti()
 // di file ini (borongan, tab Hasil Pengambilan) — satu sumber desain
-// kartu bukti utk ketiganya (lihat js/kartu-bukti-shared.js).
-function maqraAmbilDownloadBukti() {
+// & mekanisme PDF utk ketiganya (lihat js/kartu-bukti-shared.js).
+async function maqraAmbilDownloadBukti() {
   if (!_maqraAmbilLastResult) return;
   const { peserta, maqra } = _maqraAmbilLastResult;
-  if (typeof buildBuktiMaqraCardHtml !== 'function' || typeof BUKTI_MAQRA_STYLES === 'undefined') {
+  if (typeof buildBuktiMaqraCardHtml !== 'function' || typeof downloadBuktiMaqraPdf !== 'function') {
     maqraShowToast('Error', 'Komponen bukti maqra belum termuat — muat ulang halaman.', 'error');
     return;
   }
-  const html = `<!DOCTYPE html><html lang="id"><head><meta charset="UTF-8">
-<title>Bukti Maqra MTQ 2026</title>
-<style>${BUKTI_MAQRA_STYLES}</style></head>
-<body>${buildBuktiMaqraCardHtml(peserta, maqra, maqraEsc)}</body></html>`;
-  const a = Object.assign(document.createElement('a'), {
-    href    : URL.createObjectURL(new Blob([html], { type:'text/html;charset=utf-8' })),
-    download: `Bukti_Maqra_${(peserta.nomor_pendaftaran||'MTQ').replace(/[^A-Za-z0-9]/g,'_')}.html`
-  });
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  maqraShowLoading(true, 'Membuat PDF bukti maqra...');
+  try {
+    const cardHtml = buildBuktiMaqraCardHtml(peserta, maqra, maqraEsc);
+    const fname = `Bukti_Maqra_${(peserta.nomor_pendaftaran||'MTQ').replace(/[^A-Za-z0-9]/g,'_')}.pdf`;
+    await downloadBuktiMaqraPdf([cardHtml], fname);
+    maqraShowToast('Berhasil', 'Bukti maqra (PDF) diunduh', 'success');
+  } catch (err) {
+    maqraShowToast('Gagal', 'Gagal membuat PDF: ' + err.message, 'error', 6000);
+  } finally {
+    maqraShowLoading(false);
+  }
 }
 
 // ── Partikel & confetti (efek reveal) ──────────────────────

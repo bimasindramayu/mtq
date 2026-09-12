@@ -17,7 +17,7 @@
 const MTQ_CONFIG = {
 
   // ── Google Apps Script Web App URL — SATU-SATUNYA tempat edit ──
-  API_URL: 'https://script.google.com/macros/s/AKfycbwgalueD_cWYusNIWsuEjTdorOq8e99GKlFOArcy3BPlHp9f-QCm6qKEpo4gGGByZ9z/exec',
+  API_URL: 'https://script.google.com/macros/s/AKfycbxqHnF3PfGhOs4fkLOcGzDhN2Q2J12ACHJb3Ag2QZZRbOBRCig2dyjGD5d0FwU35CD1/exec',
 
   // ── Tanggal pendaftaran & cutoff umur ────────────────────────
   // Fallback bila API tidak terjangkau — akan ditimpa nilai live
@@ -83,6 +83,20 @@ const MTQ_CONFIG = {
     { cabang_lomba:"Syarh Al Qur'an Putra", tipe:'team', gender:'L', umur_min:0, umur_max_tahun:18, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' },
     { cabang_lomba:"Syarh Al Qur'an Putri", tipe:'team', gender:'P', umur_min:0, umur_max_tahun:18, umur_max_bulan:11, umur_max_hari:29, kuota:31, status_aktif:'Aktif' }
   ],
+
+  // ── Data Panitia Pengambilan Maqra ────────────────────────────
+  // Dipakai kartu-bukti-shared.js (buildBuktiMaqraCardHtml) utk mengisi
+  // kolom tanda tangan "Panitia Pengambilan Maqra" pada Bukti Maqra
+  // (nama tercetak + NIP, tanda tangan aslinya tetap ditulis tangan di
+  // atas kolom ini setelah dicetak). Frontend-only — tidak dibaca
+  // backend (config.gs), karena kartu bukti dibuat 100% di browser.
+  // Kolom "Admin Kecamatan" di kartu SENGAJA dibiarkan kosong (beda
+  // orang per kecamatan, bukan nilai tunggal seperti ini).
+  // GANTI nilai di bawah sebelum deploy produksi. Kosongkan
+  // PANITIA_MAQRA_NIP (string kosong) kalau panitia tidak punya
+  // NIP (mis. bukan ASN) — baris NIP otomatis disembunyikan di kartu.
+  PANITIA_MAQRA_NAMA: 'ROSID, S.H.',
+  PANITIA_MAQRA_NIP : '19',
 
   // ── Developer Mode ───────────────────────────────────────────
   // true  = tampilkan tombol Random Fill (untuk testing)

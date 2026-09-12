@@ -487,7 +487,7 @@
 <!-- PENTING: config.js HARUS dimuat pertama agar window.MTQ_API_URL tersedia -->
 <!-- FIX: ?v= cache-busting — NAIKKAN setiap kali js/config.js atau
      js/cek-maqra.js diupdate (lihat catatan sama di index.html) -->
-<script src="js/config.js?v=20260817"></script>
+<script src="js/config.js?v=20260912"></script>
 <script>
   // Deteksi dini: warning jika API_URL tidak terkonfigurasi
   (function() {
@@ -501,6 +501,11 @@
   })();
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<!-- html2canvas -- dipakai downloadBuktiMaqraPdf() (js/kartu-bukti-shared.js)
+     utk "memotret" kartu Bukti Maqra (HTML/CSS) jadi gambar sebelum
+     disusun jadi PDF oleh jsPDF di atas. Kartu Peserta TIDAK butuh ini
+     (renderKartuCanvas menggambar langsung ke <canvas>, bukan dari DOM). -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
 <!-- FIX #2: DocumentPreviewer — preview dokumen existing (foto/KTP/rekom).
      Pastikan 3 file ini ada di path yang sama dengan yang dipakai admin panel. -->
@@ -508,7 +513,7 @@
 <script src="js/document-previewer.js?v=20260817"></script>
 <script src="js/document-previewer.config.js?v=20260817"></script>
 
-<script src="js/kartu-bukti-shared.js?v=20260820"></script>
-<script src="js/cek-maqra.js?v=20260820"></script>
+<script src="js/kartu-bukti-shared.js?v=20260912"></script>
+<script src="js/cek-maqra.js?v=20260912"></script>
 </body>
 </html>

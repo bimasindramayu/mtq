@@ -277,7 +277,7 @@ async function renderKartuCanvas(member, rec, memberIdx, isTeam, CW, CH, imageLo
 
   // ── Rows info ──────────────────────────────────────────────
   const rowStart = divY + px(5);
-  const ROW_H    = px(12);
+  const ROW_H    = px(10);
 
   drawKartuRow(ctx, px, cardMargin, cardW, rowStart,        GOLD,      '🏆', 'CABANG LOMBA', cabang);
   drawKartuRow(ctx, px, cardMargin, cardW, rowStart + ROW_H, '#059669', '📍', 'KECAMATAN',  kec);
@@ -317,7 +317,7 @@ async function renderKartuCanvas(member, rec, memberIdx, isTeam, CW, CH, imageLo
 
 /** Gambar satu baris info (label + value) di dalam kartu putih — anti-overflow */
 function drawKartuRow(ctx, px, cardMargin, cardW, y, accentColor, _icon, label, value) {
-  const rowH   = px(11);
+  const rowH   = px(9);
   const padL   = px(4);
   const x      = cardMargin;
   const boxX   = x + px(2);
@@ -344,29 +344,16 @@ function drawKartuRow(ctx, px, cardMargin, cardW, y, accentColor, _icon, label, 
 
   // Label
   ctx.textAlign = 'left';
-  ctx.font = `500 ${px(2.6)}px 'Segoe UI',sans-serif`;
-  ctx.fillStyle = '#1f2937';
-  ctx.fillText(
-    truncateText(ctx, label, maxTextW),
-    textX,
-    y + px(3.0)
-  );
+  ctx.font      = `500 ${px(2.6)}px 'Segoe UI',sans-serif`;
+  ctx.fillStyle = '#9ca3af';
+  ctx.fillText(truncateText(ctx, label, maxTextW), textX, y + px(3.2));
 
   // Value — coba kecilkan ukuran font dulu agar teks panjang (mis. nama
   // cabang lomba) tetap terbaca utuh; hanya dipotong jika benar-benar
   // tidak muat bahkan di ukuran font terkecil.
-  const fitted = fitTextSize(
-    ctx,
-    String(value),
-    maxTextW,
-    4.8,
-    2.7,
-    'bold',
-    "'Segoe UI',sans-serif",
-    px
-  );
+  const fitted = fitTextSize(ctx, String(value), maxTextW, 3.8, 2.5, 'bold', "'Segoe UI',sans-serif", px);
   ctx.fillStyle = '#1f2937';
-  ctx.fillText(fitted.text, textX, y + px(8.2));
+  ctx.fillText(fitted.text, textX, y + px(7.2));
 
   ctx.restore();
 }
@@ -438,15 +425,23 @@ function truncateText(ctx, text, maxWidth) {
 //    tab Hasil Pengambilan -> cetak semua jadi 1 file, 1 kartu/halaman)
 //  Satu sumber supaya kedua jalur selalu identik desainnya.
 // ================================================================
-const BUKTI_MAQRA_STYLES = `*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Georgia',serif;background:#f9fafb;padding:20px}.card{background:#fff;border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,.15);width:100%;max-width:480px;overflow:hidden;margin:0 auto 24px}.header{background:linear-gradient(135deg,#064e3b,#059669);padding:28px 32px;color:#fff;text-align:center}.header h1{font-size:22px;margin-bottom:4px}.header p{font-size:13px;opacity:.8}.body{padding:28px 32px}.ornament{text-align:center;color:#9ca3af;margin:12px 0;letter-spacing:4px}.field{margin-bottom:14px}.field label{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#9ca3af;display:block;margin-bottom:3px}.field .val{font-size:15px;font-weight:600;color:#1f2937}.mbox{background:linear-gradient(135deg,#065f46,#047857);color:#fff;border-radius:12px;padding:24px;text-align:center;margin:20px 0}.mbox .ml{font-size:11px;text-transform:uppercase;letter-spacing:.6px;opacity:.75;margin-bottom:8px}.mbox .ma{font-size:22px;font-weight:700;margin-bottom:4px}.mbox .ms{font-size:14px;opacity:.85}.mbox .mn{background:rgba(255,255,255,.15);border-radius:999px;padding:5px 16px;font-size:12px;font-weight:600;display:inline-block;margin-top:10px}.warn{background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px 16px;font-size:12px;color:#b45309;margin-top:16px}.ttd-section{display:flex;gap:18px;margin-top:26px;padding-top:18px;border-top:1px dashed #d1d5db}.ttd-box{flex:1;text-align:center}.ttd-role{font-size:10.5px;color:#6b7280;margin-bottom:46px;line-height:1.4}.ttd-name{font-size:9.5px;color:#9ca3af;margin-top:4px;font-style:italic}.ttd-line{border-bottom:1px solid #9ca3af;margin:0 6px}.footer{border-top:1px solid #e5e7eb;padding:16px 32px;font-size:12px;color:#9ca3af;text-align:center}@media print{body{background:#fff}.card{box-shadow:none;page-break-after:always}.card:last-child{page-break-after:auto}}`;
+const BUKTI_MAQRA_STYLES = `*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Georgia',serif;background:#f9fafb;padding:20px}.card{background:#fff;border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,.15);width:100%;max-width:480px;overflow:hidden;margin:0 auto 24px}.header{background:linear-gradient(135deg,#064e3b,#059669);padding:28px 32px;color:#fff;text-align:center}.header h1{font-size:22px;margin-bottom:4px}.header p{font-size:13px;opacity:.8}.body{padding:28px 32px}.ornament{text-align:center;color:#9ca3af;margin:12px 0;letter-spacing:4px}.field{margin-bottom:14px}.field label{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#9ca3af;display:block;margin-bottom:3px}.field .val{font-size:15px;font-weight:600;color:#1f2937}.mbox{background:linear-gradient(135deg,#065f46,#047857);color:#fff;border-radius:12px;padding:24px;text-align:center;margin:20px 0}.mbox .ml{font-size:11px;text-transform:uppercase;letter-spacing:.6px;opacity:.75;margin-bottom:8px}.mbox .ma{font-size:22px;font-weight:700;margin-bottom:4px}.mbox .ms{font-size:14px;opacity:.85}.mbox .mn{background:rgba(255,255,255,.15);border-radius:999px;padding:5px 16px;font-size:12px;font-weight:600;display:inline-block;margin-top:10px}.warn{background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px 16px;font-size:12px;color:#b45309;margin-top:16px}.ttd-section{display:flex;gap:18px;margin-top:26px;padding-top:18px;border-top:1px dashed #d1d5db}.ttd-box{flex:1;text-align:center}.ttd-role{font-size:10.5px;color:#6b7280;margin-bottom:46px;line-height:1.4;white-space:nowrap}.ttd-name{font-size:9.5px;color:#9ca3af;margin-top:4px;font-style:italic}.ttd-printed-name{font-size:11px;color:#374151;margin-top:4px;font-weight:600}.ttd-printed-nip{font-size:9.5px;color:#6b7280;margin-top:1px}.ttd-line{border-bottom:1px solid #9ca3af;margin:0 6px}.footer{border-top:1px solid #e5e7eb;padding:16px 32px;font-size:12px;color:#9ca3af;text-align:center}@media print{body{background:#fff}.card{box-shadow:none;page-break-after:always}.card:last-child{page-break-after:auto}}`;
 
 /**
  * Bangun 1 kartu "Bukti Maqra" (fragment <div class="card">...</div>).
  * @param {object} rec - data peserta {nama_lengkap, nomor_pendaftaran, cabang_lomba, kecamatan}
  * @param {object} m   - data maqra {maqra_teks|maqra, maqra_detail|surah, nomor_maqra}
  * @param {function} esc - fungsi escape HTML (nama beda tapi isi sama di tiap file pemanggil)
+ *
+ * Kolom "Panitia Pengambilan Maqra" diisi otomatis dari
+ * MTQ_CONFIG.PANITIA_MAQRA_NAMA/PANITIA_MAQRA_NIP (js/config.js) — edit
+ * di sana kalau ganti panitia, JANGAN hardcode ulang di sini. Kolom
+ * "Admin Kecamatan" sengaja dibiarkan kosong (beda orang per kecamatan,
+ * bukan nilai config tunggal) — nama & tanda tangan ditulis tangan.
  */
 function buildBuktiMaqraCardHtml(rec, m, esc) {
+  const panitiaNama = (typeof MTQ_CONFIG !== 'undefined' && MTQ_CONFIG.PANITIA_MAQRA_NAMA) || '';
+  const panitiaNip  = (typeof MTQ_CONFIG !== 'undefined' && MTQ_CONFIG.PANITIA_MAQRA_NIP)  || '';
   return `<div class="card">
 <div class="header"><h1>📖 Bukti Maqra MTQ 2026</h1><p>Kabupaten Indramayu — ${new Date().toLocaleString('id-ID')}</p></div>
 <div class="body"><div class="ornament">✦ ✦ ✦</div>
@@ -460,15 +455,130 @@ function buildBuktiMaqraCardHtml(rec, m, esc) {
   <div class="ttd-box">
     <div class="ttd-role">Panitia Pengambilan Maqra</div>
     <div class="ttd-line"></div>
-    <div class="ttd-name">( Nama &amp; Tanda Tangan )</div>
+    <div class="ttd-printed-name">${esc(panitiaNama)}</div>
+    ${panitiaNip ? `<div class="ttd-printed-nip">NIP. ${esc(panitiaNip)}</div>` : ''}
   </div>
   <div class="ttd-box">
-    <div class="ttd-role">Admin Kecamatan<br>${esc(rec.kecamatan||'-')}</div>
+    <div class="ttd-role">Admin Kecamatan ${esc(rec.kecamatan||'-')}</div>
     <div class="ttd-line"></div>
-    <div class="ttd-name">( Nama &amp; Tanda Tangan )</div>
   </div>
 </div>
 </div>
 <div class="footer">MTQ Kabupaten Indramayu 2026 — Sah setelah ditandatangani panitia &amp; admin kecamatan</div>
 </div>`;
+}
+
+// ================================================================
+//  loadScript / downloadBuktiMaqraPdf -- unduh Bukti Maqra sbg PDF
+//  ---------------------------------------------------------------
+//  Dipakai bersama oleh:
+//   - cek-maqra.js   (downloadBukti(): 1 peserta, self-service)
+//   - admin-maqra.js (maqraDownloadAllBukti(): banyak peserta sekaligus
+//     dari tab Hasil Pengambilan; maqraAmbilDownloadBukti(): 1 peserta
+//     dari modal tab Ambil Maqra Peserta)
+//  Sebelumnya tiap jalur mengunduh .html (dgn window.print() utk versi
+//  admin-bulk) dan mengandalkan admin/peserta menyimpan manual sbg PDF
+//  lewat dialog print browser. Sekarang PDF asli dibuat langsung di
+//  browser: html2canvas "memotret" tiap kartu (elemen HTML/CSS yang
+//  SAMA persis dgn buildBuktiMaqraCardHtml di atas, jadi tampilannya
+//  tetap identik), lalu jsPDF menyusun potretnya jadi 1 file PDF
+//  (1 kartu = 1 halaman A4). jsPDF sendiri sudah dimuat statis di
+//  cekstatus.html & doyourmagic.html; html2canvas belum, makanya
+//  dimuat dinamis di sini (sama seperti downloadKartuPeserta() di
+//  cek-maqra.js memuat ulang jsPDF secara dinamis juga — loadScript()
+//  idempoten, aman dipanggil walau skrip-nya sudah ada).
+//  CATATAN utk yang membaca downloadStatsPdf()/_runDownloadAllKartu_()
+//  di doyourmagic.html dan heran kenapa di sini malah PAKAI html2canvas:
+//  keduanya SENGAJA menghindari jsPDF.html() (yang otomatis pakai
+//  html2canvas di baliknya) karena kontrol layout/ukurannya kurang
+//  cocok utk TABEL LEBAR/dinamis. Di sini beda kasus — kartunya
+//  ukuran TETAP & HTML/CSS-nya sederhana (bukan tabel), dan kita
+//  TIDAK memakai jsPDF.html() sama sekali: html2canvas cuma dipakai
+//  manual utk "memotret" jadi 1 gambar, lalu ditempel ke halaman PDF
+//  dengan perhitungan ukuran/posisi sendiri (persis pola manual yang
+//  sama dgn downloadStatsPdf()/_runDownloadAllKartu_(), cuma sumber
+//  gambarnya dari html2canvas krn kartunya HTML/CSS, bukan <canvas>
+//  yang digambar langsung).
+// ================================================================
+
+/** Muat 1 script CDN via tag <script>, idempoten (aman dipanggil berkali-kali). */
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    if (document.querySelector(`script[src="${src}"]`)) { resolve(); return; }
+    const s = document.createElement('script');
+    s.src = src;
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error('Gagal memuat pustaka: ' + src));
+    document.head.appendChild(s);
+  });
+}
+
+/**
+ * Ubah 1 atau lebih kartu bukti maqra (fragment HTML dari
+ * buildBuktiMaqraCardHtml) menjadi 1 file PDF (1 kartu = 1 halaman A4),
+ * lalu langsung diunduh ke browser.
+ * @param {string[]} cardsHtml - array fragment `<div class="card">...</div>`, satu per kartu
+ * @param {string}   filename  - nama file .pdf yang diunduh
+ * @param {function} [onProgress] - opsional, dipanggil (i, total) sebelum kartu ke-i diproses
+ */
+async function downloadBuktiMaqraPdf(cardsHtml, filename, onProgress) {
+  if (!cardsHtml || !cardsHtml.length) throw new Error('Tidak ada kartu untuk diunduh');
+
+  await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
+  await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+  if (typeof html2canvas !== 'function') throw new Error('Pustaka html2canvas gagal dimuat');
+  if (!window.jspdf || !window.jspdf.jsPDF) throw new Error('Pustaka jsPDF gagal dimuat');
+
+  // Style tag BUKTI_MAQRA_STYLES perlu ada di document (di mana pun --
+  // browser tetap menerapkannya walau bukan di <head>) supaya
+  // html2canvas membaca computed style yang benar saat "memotret".
+  if (!document.getElementById('_buktiMaqraPdfStyle')) {
+    const styleTag = document.createElement('style');
+    styleTag.id = '_buktiMaqraPdfStyle';
+    styleTag.textContent = BUKTI_MAQRA_STYLES;
+    document.head.appendChild(styleTag);
+  }
+
+  // Panggung di luar viewport tempat tiap kartu dirender satu-satu
+  // sebelum difoto -- html2canvas butuh elemen yang benar-benar
+  // ter-layout (bukan display:none), jadi digeser ke luar layar,
+  // bukan disembunyikan.
+  const stage = document.createElement('div');
+  stage.style.cssText = 'position:fixed;left:-99999px;top:0;width:480px;background:#f9fafb';
+  document.body.appendChild(stage);
+
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const PAGE_W = 210, PAGE_H = 297, MARGIN = 14;
+
+  try {
+    for (let i = 0; i < cardsHtml.length; i++) {
+      if (onProgress) onProgress(i, cardsHtml.length);
+
+      stage.innerHTML = cardsHtml[i];
+      // Beri waktu 2 frame supaya layout & font selesai settle sebelum
+      // dipotret -- memotret persis setelah innerHTML diisi kadang masih
+      // menangkap kondisi belum sepenuhnya ter-layout.
+      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+      const canvas = await html2canvas(stage.firstElementChild, {
+        scale: 2.5, backgroundColor: '#f9fafb', useCORS: true, logging: false
+      });
+      const imgData = canvas.toDataURL('image/jpeg', 0.95);
+
+      const availW = PAGE_W - MARGIN * 2;
+      const availH = PAGE_H - MARGIN * 2;
+      let imgWmm = availW;
+      let imgHmm = canvas.height * (imgWmm / canvas.width);
+      if (imgHmm > availH) { imgHmm = availH; imgWmm = canvas.width * (imgHmm / canvas.height); }
+      const x = MARGIN + (availW - imgWmm) / 2;
+      const y = MARGIN;
+
+      if (i > 0) pdf.addPage('a4', 'portrait');
+      pdf.addImage(imgData, 'JPEG', x, y, imgWmm, imgHmm);
+    }
+    pdf.save(filename);
+  } finally {
+    document.body.removeChild(stage);
+  }
 }

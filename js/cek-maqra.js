@@ -761,7 +761,7 @@ function renderMaqraArea(maqraData, rec) {
       <div style="max-width:380px;margin:0 auto 8px">
         <button class="btn btn-emerald" onclick="downloadKartuPeserta()" style="width:100%;justify-content:center;font-size:15px;padding:13px;background:linear-gradient(135deg,#065f46,#059669);box-shadow:0 2px 8px rgba(5,150,105,.35)">🪪 Unduh Kartu Peserta PDF</button>
         <div class="secondary-links">
-          <button onclick="downloadBukti()">⬇️ Unduh Bukti Maqra</button>
+          <button onclick="downloadBukti()">⬇️ Unduh Bukti Maqra (PDF)</button>
           <a href="index.html">🏠 Beranda</a>
         </div>
       </div>`;
@@ -818,7 +818,7 @@ function buildSpinCardHtml() {
             <div style="max-width:340px;margin:14px auto 0">
               <button class="btn btn-emerald" onclick="downloadKartuPeserta()" style="width:100%;justify-content:center;font-size:15px;padding:13px;background:linear-gradient(135deg,#065f46,#059669)">🪪 Unduh Kartu Peserta PDF</button>
               <div class="secondary-links">
-                <button onclick="downloadBukti()">⬇️ Unduh Bukti</button>
+                <button onclick="downloadBukti()">⬇️ Unduh Bukti (PDF)</button>
                 <a href="index.html">🏠 Beranda</a>
               </div>
             </div>
@@ -1066,21 +1066,28 @@ function launchConfetti() {
   setTimeout(() => { cc.innerHTML = ''; }, 5500);
 }
 
-function downloadBukti() {
+async function downloadBukti() {
   if (!_maqraResult || !_record) return;
   const m = _maqraResult, rec = _record;
   // FIX #33: template kartu diambil dari kartu-bukti-shared.js (SATU
   // SUMBER dipakai bersama admin-maqra.js utk unduh borongan) -- lihat
   // file itu utk detail markup/style, jangan duplikasi lagi di sini.
-  const html = `<!DOCTYPE html><html lang="id"><head><meta charset="UTF-8">
-<title>Bukti Maqra MTQ 2026</title>
-<style>${BUKTI_MAQRA_STYLES}</style></head>
-<body>${buildBuktiMaqraCardHtml(rec, m, esc)}</body></html>`;
-  const a = Object.assign(document.createElement('a'), {
-    href    : URL.createObjectURL(new Blob([html], { type:'text/html;charset=utf-8' })),
-    download: `Bukti_Maqra_${(rec.nomor_pendaftaran||'MTQ').replace(/[^A-Za-z0-9]/g,'_')}.html`
-  });
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  // FIX: dulu diunduh sbg .html (mengandalkan dialog print browser utk
+  // "Simpan sbg PDF" manual) -- sekarang PDF asli langsung dibuat lewat
+  // downloadBuktiMaqraPdf() (html2canvas+jsPDF, SATU SUMBER jg dgn
+  // downloadKartuPeserta() di bawah utk pola loading/toast-nya).
+  showLoading(true, 'Membuat PDF bukti maqra...');
+  try {
+    const cardHtml = buildBuktiMaqraCardHtml(rec, m, esc);
+    const fname = `Bukti_Maqra_${(rec.nomor_pendaftaran||'MTQ').replace(/[^A-Za-z0-9]/g,'_')}.pdf`;
+    await downloadBuktiMaqraPdf([cardHtml], fname);
+    showToast('Berhasil', 'Bukti maqra (PDF) diunduh', 'success', 5000);
+  } catch (err) {
+    log.error('[BuktiMaqra]', err);
+    showToast('Error', 'Gagal membuat PDF: ' + err.message, 'error');
+  } finally {
+    showLoading(false);
+  }
 }
 
 // ════════════════════════════════════════════════════════════
