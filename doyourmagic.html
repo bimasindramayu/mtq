@@ -2622,16 +2622,33 @@
       const { headers, rows: bodyRows, groupLabel } = _buildStatsTableView(d);
 
       const theadRow = document.getElementById('cabangTheadRow');
-      if (theadRow) theadRow.innerHTML = headers.map((h,i) => `<th${i>0?' style="text-align:center"':''}>${esc(h)}</th>`).join('');
+      if (theadRow) theadRow.innerHTML = headers.map((h,i) => {
+        // FIX: kolom "Total" (paling kanan, cuma ada kalau headers.length>1
+        // — lihat _buildStatsTableView) diberi garis pemisah tipis supaya
+        // kelihatan beda dari kolom data biasa.
+        const isTotalCol = i === headers.length - 1 && headers.length > 1;
+        const style = (i>0?'text-align:center;':'') + (isTotalCol?'border-left:2px solid rgba(255,255,255,.4);':'');
+        return `<th${style?` style="${style}"`:''}>${esc(h)}</th>`;
+      }).join('');
 
       const tbodyEl = document.getElementById('cabangTbody');
       if (tbodyEl) {
         const colCount = headers.length;
         tbodyEl.innerHTML = bodyRows.length
-          ? bodyRows.map(row => `<tr>
-              <td style="font-weight:600;white-space:nowrap">${esc(row.label)}</td>
-              ${row.cells.map(c => `<td style="text-align:center;${c.color?`color:${c.color};`:''}${c.bold?'font-weight:700;':''}">${c.value}</td>`).join('')}
-            </tr>`).join('')
+          ? bodyRows.map(row => {
+              // FIX: baris "TOTAL" (paling bawah, lihat _buildStatsTableView)
+              // ditandai latar emerald muda + garis atas tebal supaya
+              // langsung kelihatan sbg baris rekap, bukan baris data biasa.
+              const trStyle = row.isTotal ? ' style="border-top:2px solid var(--emerald)"' : '';
+              const tdBg    = row.isTotal ? 'background:var(--emerald-xs);' : '';
+              const labelTd = `<td style="font-weight:${row.isTotal?800:600};white-space:nowrap;${tdBg}">${esc(row.label)}</td>`;
+              const isLastCol = row.cells.length - 1;
+              const cellTds = row.cells.map((c,ci) => {
+                const sep = ci === isLastCol ? 'border-left:2px solid var(--gray-300);' : '';
+                return `<td style="text-align:center;${c.color?`color:${c.color};`:''}${c.bold?'font-weight:700;':''}${tdBg}${sep}">${c.value}</td>`;
+              }).join('');
+              return `<tr${trStyle}>${labelTd}${cellTds}</tr>`;
+            }).join('')
           : `<tr><td colspan="${colCount}" style="text-align:center;padding:32px;color:var(--gray-400)">${headers.length>1 ? 'Belum ada data' : 'Belum ada kolom dipilih — klik ⚙️ Kustomisasi.'}</td></tr>`;
       }
     }
@@ -2731,6 +2748,17 @@
     }
     // Bangun {headers, rows, groupLabel} lengkap dari preferensi yang
     // TERSIMPAN saat ini — dipakai renderStats() & downloadStatsPdf().
+    // FIX: tambah kolom "Total" (paling kanan, jumlah baris pendaftaran
+    // di grup itu — SELALU rows.length, apa pun kolom yang aktif, supaya
+    // artinya tetap jelas & benar) dan baris "TOTAL" (paling bawah).
+    // PENTING: baris TOTAL dihitung ULANG dari SELURUH dataset (d),
+    // BUKAN dengan menjumlahkan nilai per-grup yang sudah dihitung —
+    // beda hasilnya utk metrik yang TIDAK bisa dijumlah antar grup, mis.
+    // jml_cabang/jml_kecamatan (hitungan cabang/kecamatan UNIK — kalau
+    // dijumlah antar grup, cabang/kecamatan yang sama bisa numpuk
+    // kehitung berkali-kali). Metrik lain (total, headcount,
+    // terverifikasi, dst) tetap benar dgn cara ini karena rows.length
+    // dkk otomatis konsisten dijumlah maupun dihitung ulang.
     function _buildStatsTableView(d) {
       const groupByField   = getStatsTableGroupBy();
       const rowGenderSplit = getStatsTableRowGenderSplit();
@@ -2742,27 +2770,49 @@
       if (colMode === 'cabang') {
         const colGenderSplit = getStatsTableColGenderSplit();
         const cabangCols = _getCabangColumnList(colGenderSplit);
-        return {
-          groupLabel: groupDef.label,
-          headers: [groupDef.label, ...cabangCols],
-          rows: groupEntries.map(([label, groupRows]) => ({
-            label,
-            cells: cabangCols.map(c => {
+        const dataRows = groupEntries.map(([label, groupRows]) => ({
+          label,
+          cells: [
+            ...cabangCols.map(c => {
               const n = _countByCabangColumn(groupRows, c, colGenderSplit);
               return { value:String(n), color: n>0?'var(--emerald)':'var(--gray-300)', bold: n>0 };
-            })
-          }))
+            }),
+            { value:String(groupRows.length), color:'var(--emerald)', bold:true }
+          ]
+        }));
+        const totalRow = {
+          label:'TOTAL', isTotal:true,
+          cells: [
+            ...cabangCols.map(c => ({ value:String(_countByCabangColumn(d, c, colGenderSplit)), bold:true })),
+            { value:String(d.length), bold:true }
+          ]
+        };
+        return {
+          groupLabel: groupDef.label,
+          headers: [groupDef.label, ...cabangCols, 'Total'],
+          rows: dataRows.length ? [...dataRows, totalRow] : []
         };
       }
       const activeColIds = getStatsTableColumns();
       const activeCols   = STATS_TABLE_COLUMN_DEFS.filter(c => activeColIds.includes(c.id));
+      const dataRows = activeCols.length ? groupEntries.map(([label, groupRows]) => ({
+        label,
+        cells: [
+          ...activeCols.map(c => ({ value:String(c.calc(groupRows)), color:c.color, bold:c.bold })),
+          { value:String(groupRows.length), color:'var(--emerald)', bold:true }
+        ]
+      })) : [];
+      const totalRow = {
+        label:'TOTAL', isTotal:true,
+        cells: [
+          ...activeCols.map(c => ({ value:String(c.calc(d)), bold:true })),
+          { value:String(d.length), bold:true }
+        ]
+      };
       return {
         groupLabel: groupDef.label,
-        headers: [groupDef.label, ...activeCols.map(c=>c.label)],
-        rows: activeCols.length ? groupEntries.map(([label, groupRows]) => ({
-          label,
-          cells: activeCols.map(c => ({ value:String(c.calc(groupRows)), color:c.color, bold:c.bold }))
-        })) : []
+        headers: activeCols.length ? [groupDef.label, ...activeCols.map(c=>c.label), 'Total'] : [groupDef.label],
+        rows: dataRows.length ? [...dataRows, totalRow] : []
       };
     }
 
@@ -3115,16 +3165,30 @@
         ctx.textAlign = 'left';
         ry += ROW_H;
       } else {
+        // FIX: kolom "Total" (kolom terakhir) & baris "TOTAL" (baris
+        // terakhir, row.isTotal — lihat _buildStatsTableView) ditandai
+        // beda dari sel biasa, sama seperti versi HTML di renderStats().
+        const lastColIdx = dataColCount - 1;
         view.rows.forEach((row, ri) => {
-          ctx.fillStyle = ri % 2 === 0 ? COLOR.white : COLOR.g50;
+          ctx.fillStyle = row.isTotal ? COLOR.emeraldXs : (ri % 2 === 0 ? COLOR.white : COLOR.g50);
           ctx.fillRect(tableX, ry, tableRight - tableX, ROW_H);
+          if (row.isTotal) {
+            ctx.strokeStyle = COLOR.emerald; ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(tableX, ry); ctx.lineTo(tableRight, ry); ctx.stroke();
+            ctx.lineWidth = 1;
+          }
 
           ctx.fillStyle = COLOR.g900;
-          ctx.font = '600 12px Arial, sans-serif';
+          ctx.font = (row.isTotal ? '800 ' : '600 ') + '12px Arial, sans-serif';
           _fillTextClipped(ctx, row.label, tableX + 10, ry + ROW_H/2 + 4, LABEL_COL_W - 18);
 
           row.cells.forEach((cell, ci) => {
             const colLeft = colX[ci+1];
+            if (ci === lastColIdx) {
+              ctx.strokeStyle = COLOR.g300; ctx.lineWidth = 2;
+              ctx.beginPath(); ctx.moveTo(colLeft, ry); ctx.lineTo(colLeft, ry+ROW_H); ctx.stroke();
+              ctx.lineWidth = 1;
+            }
             ctx.fillStyle = cell.color ? _resolveCssVarColor(cell.color, COLOR) : COLOR.g700;
             ctx.font = (cell.bold ? '700 ' : '400 ') + '12px Arial, sans-serif';
             ctx.textAlign = 'center';
