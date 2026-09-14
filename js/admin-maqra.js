@@ -728,14 +728,38 @@ async function maqraSaveConfig() {
 }
 
 // ── Export Hasil CSV ──────────────────────────────────────────
+// FIX #38: sebelumnya SELALU mengekspor _allHasil (SEMUA hasil,
+// mengabaikan filter cabang & kotak pencarian yang sedang aktif di
+// tabel) — tidak konsisten dgn maqraDownloadAllBukti() tepat di bawah
+// (FIX #34 poin 3) yang sudah lebih dulu mengikuti filter aktif.
+// Sekarang keduanya konsisten: "Export CSV" mengekspor PERSIS baris
+// yang sedang TAMPIL di tabel "Hasil Pengambilan Maqra" saat tombol
+// ini diklik. _filteredHasil SELALU sinkron dgn tabel — diperbarui di
+// maqraFilterHasil(), yang dipanggil baik saat data pertama kali
+// dimuat (lihat maqraLoadData()) MAUPUN setiap kali cabang/pencarian
+// diubah (oninput/onchange #maqraSearchHasil & #maqraFilterHasilCabang
+// di doyourmagic.html) — jadi dipakai LANGSUNG di sini tanpa fallback
+// diam-diam ke _allHasil: kalau filter yang aktif memang menghasilkan
+// 0 baris, ekspornya pun SEHARUSNYA kosong (bukan malah mengekspor
+// semua data begitu saja).
 function maqraExportHasil() {
-  if (!_allHasil.length) { maqraShowToast('Info', 'Belum ada data untuk diekspor', 'info'); return; }
-  const header = ['No','Nomor Pendaftaran','Nama','Kecamatan','Cabang Lomba','Maqra','Detail Maqra','Nomor Undian','Waktu'];
-  const rows   = _allHasil.map((r, i) => [
+  const rows = _filteredHasil;
+  if (!rows.length) {
+    maqraShowToast(
+      'Kosong',
+      _allHasil.length
+        ? 'Tidak ada hasil yang cocok dengan filter/pencarian saat ini untuk diekspor. Ubah/hapus filter dulu kalau ingin ekspor semua data.'
+        : 'Belum ada data untuk diekspor',
+      'info'
+    );
+    return;
+  }
+  const header  = ['No','Nomor Pendaftaran','Nama','Kecamatan','Cabang Lomba','Maqra','Detail Maqra','Nomor Undian','Waktu'];
+  const csvRows = rows.map((r, i) => [
     i+1, r.nomor_pendaftaran||'', r.nama_lengkap||'', r.kecamatan||'',
     r.cabang_lomba||'', r.maqra_teks||'', r.maqra_detail||'', r.nomor_maqra||'', r.timestamp||''
   ]);
-  const csv  = [header,...rows].map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const csv  = [header,...csvRows].map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
   const blob = new Blob(['\uFEFF'+csv], { type:'text/csv;charset=utf-8' });
   const url  = URL.createObjectURL(blob);
   const a    = Object.assign(document.createElement('a'), {
@@ -744,7 +768,8 @@ function maqraExportHasil() {
   });
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   URL.revokeObjectURL(url);
-  maqraShowToast('Berhasil', 'File CSV berhasil diunduh', 'success');
+  const filterAktif = rows.length !== _allHasil.length;
+  maqraShowToast('Berhasil', `File CSV berhasil diunduh (${rows.length} baris${filterAktif ? ', sesuai filter aktif' : ''})`, 'success');
 }
 
 // FIX #34 (poin 3): download semua "Bukti Maqra" dari data yang SEDANG
@@ -1088,7 +1113,14 @@ function maqraAmbilRenderList() {
     if (hasil) {
       statusCell = `<span class="status-badge maqra-sudah">✅ Sudah Ambil</span>
         <div style="font-size:11px;color:var(--gray-400);margin-top:3px;max-width:210px;white-space:normal">${maqraEsc(hasil.maqra_teks || '')}</div>`;
-      actionCell = `<span style="color:var(--gray-300);font-size:12px">🔒 Terkunci</span>`;
+      // FIX #37: sebelumnya cuma label statis "🔒 Terkunci" — maqra
+      // MEMANG tidak bisa ditarik ulang (itu tetap benar, tidak
+      // berubah), tapi kolom aksinya jadi mubazir/tidak berguna.
+      // Sekarang jadi tombol unduh bukti PDF utk peserta ini, supaya
+      // admin tidak perlu pindah ke tab "📊 Hasil Pengambilan Maqra"
+      // dulu hanya utk mencetak ulang 1 bukti yang sudah lama diambil
+      // (mis. berkasnya hilang/rusak). Lihat maqraAmbilDownloadBuktiRow().
+      actionCell = `<button class="action-btn view" onclick="maqraAmbilDownloadBuktiRow('${n}')" title="Unduh ulang bukti maqra peserta ini sebagai PDF">🖨️ Unduh Bukti</button>`;
     } else if (!tersedia) {
       statusCell = `<span class="status-badge maqra-habis">⚠️ Belum Ambil</span>`;
       actionCell = `<span style="color:#dc2626;font-size:11px;font-weight:600">Maqra habis</span>`;
@@ -1203,10 +1235,44 @@ function maqraAmbilBuildLanternStrip(list) {
   });
 }
 
+// FIX #36: pemanggil khusus action 'ambilMaqraAdmin' dgn retry OTOMATIS
+// — pelengkap perubahan di apiAmbilMaqraAdmin_ (maqra.gs): lock di
+// server sekarang menunggu s/d 30 dtk (naik dari 10 dtk) sebelum
+// menyerah, jadi timeout di sini SENGAJA dibuat lebih besar (40 dtk)
+// supaya klien tidak menyerah duluan sebelum server sempat membalas
+// apa pun. Kalau server MASIH balas busy:true juga (antrean admin
+// benar2 sangat panjang/ekstrem — kasus langka, karena 30 dtk di
+// server SUDAH menampung sebagian besar tabrakan wajar), coba SEKALI
+// LAGI otomatis dgn jeda singkat, sambil memberi tahu admin lewat
+// statusEl — supaya tabrakan antar-admin pulih sendiri ("smooth")
+// tanpa admin perlu sadar ada error lalu klik ulang manual. Respons
+// gagal LAIN (peserta tak ditemukan, belum Terverifikasi, maqra
+// habis, sesi tidak valid, dst) TIDAK diulang — itu bukan soal
+// tabrakan/antre, mengulang tidak akan mengubah hasilnya, jadi
+// langsung dikembalikan ke pemanggil apa adanya.
+async function maqraAmbilCallAmbilAdmin_(nomor, statusEl) {
+  const RETRY_DELAYS_MS = [2000];   // 1x percobaan ulang, jeda 2 dtk
+  for (let attempt = 0; ; attempt++) {
+    const data = await maqraPostJSON(
+      { action:'ambilMaqraAdmin', token:_maqraToken, nomor_pendaftaran:nomor },
+      40000
+    );
+    if (data.success || !data.busy || attempt >= RETRY_DELAYS_MS.length) {
+      return data;
+    }
+    const wait = RETRY_DELAYS_MS[attempt];
+    if (statusEl) statusEl.textContent = `⏳ Server sibuk (banyak admin bersamaan), mencoba lagi...`;
+    await maqraSleep_(wait);
+    if (statusEl) statusEl.textContent = '🔐 Mengunci pilihan...';
+  }
+}
+
 // ── Modal: mulai pengambilan (spin) ────────────────────────
 // Logika step-by-step mereplikasi startSpin() di cek-maqra.js — lihat
 // komentar di sana utk penjelasan lengkap tiap fase. Beda di sini:
-// action backend 'ambilMaqraAdmin' (bukan 'ambilMaqra'), dan pemulihan
+// action backend 'ambilMaqraAdmin' (bukan 'ambilMaqra'), pemanggilan
+// lewat maqraAmbilCallAmbilAdmin_() yang otomatis retry sekali kalau
+// server balas busy:true (FIX #36 — lihat komentarnya), dan pemulihan
 // tambahan lewat maqraLoadData() kalau respons jaringan tidak jelas.
 async function maqraAmbilStartDraw() {
   if (_maqraAmbilSpinning || !_maqraAmbilTarget) return;
@@ -1269,7 +1335,7 @@ async function maqraAmbilStartDraw() {
 
   let chosen = null, wasAlready = false;
   try {
-    const data = await maqraPostJSON({ action:'ambilMaqraAdmin', token:_maqraToken, nomor_pendaftaran:_maqraAmbilTarget.nomor_pendaftaran });
+    const data = await maqraAmbilCallAmbilAdmin_(_maqraAmbilTarget.nomor_pendaftaran, status);
     keepSpinning = false;
 
     if (!data.success) {
@@ -1406,6 +1472,42 @@ async function maqraAmbilDownloadBukti() {
   try {
     const cardHtml = buildBuktiMaqraCardHtml(peserta, maqra, maqraEsc);
     const fname = `Bukti_Maqra_${(peserta.nomor_pendaftaran||'MTQ').replace(/[^A-Za-z0-9]/g,'_')}.pdf`;
+    await downloadBuktiMaqraPdf([cardHtml], fname);
+    maqraShowToast('Berhasil', 'Bukti maqra (PDF) diunduh', 'success');
+  } catch (err) {
+    maqraShowToast('Gagal', 'Gagal membuat PDF: ' + err.message, 'error', 6000);
+  } finally {
+    maqraShowLoading(false);
+  }
+}
+
+// FIX #37: unduh bukti PDF langsung dari BARIS TABEL di tab "🎯 Ambil
+// Maqra Peserta" — utk peserta yang SUDAH ambil maqra (kapan pun,
+// bukan cuma hasil barusan di modal seperti maqraAmbilDownloadBukti()
+// di atas). Dipanggil dari tombol "🖨️ Unduh Bukti" di
+// maqraAmbilRenderList() (menggantikan label statis "🔒 Terkunci").
+// Sumber data: _allHasil lewat maqraAmbilSudahAmbil_(nomor) — SATU
+// SUMBER yang sama dgn yang dipakai merender status/kolom Aksi tabel
+// ini sendiri, jadi selalu konsisten dgn apa yang terlihat di layar.
+// Objek hasil (MAQRA_RESULT — lihat maqra.gs) sudah memuat SEMUA field
+// yang dibutuhkan buildBuktiMaqraCardHtml (data peserta MAUPUN data
+// maqra sekaligus dalam satu objek datar), jadi dikirim sebagai rec
+// MAUPUN m sekaligus — pola SAMA PERSIS dgn maqraDownloadAllBukti()
+// (borongan, tab Hasil Pengambilan) di atas file ini.
+async function maqraAmbilDownloadBuktiRow(nomor) {
+  const hasil = maqraAmbilSudahAmbil_(nomor);
+  if (!hasil) {
+    maqraShowToast('Gagal', 'Data bukti peserta ini tidak ditemukan — coba klik 🔄 Refresh lalu ulangi.', 'error');
+    return;
+  }
+  if (typeof buildBuktiMaqraCardHtml !== 'function' || typeof downloadBuktiMaqraPdf !== 'function') {
+    maqraShowToast('Error', 'Komponen bukti maqra belum termuat — muat ulang halaman.', 'error');
+    return;
+  }
+  maqraShowLoading(true, 'Membuat PDF bukti maqra...');
+  try {
+    const cardHtml = buildBuktiMaqraCardHtml(hasil, hasil, maqraEsc);
+    const fname = `Bukti_Maqra_${(hasil.nomor_pendaftaran||'MTQ').replace(/[^A-Za-z0-9]/g,'_')}.pdf`;
     await downloadBuktiMaqraPdf([cardHtml], fname);
     maqraShowToast('Berhasil', 'Bukti maqra (PDF) diunduh', 'success');
   } catch (err) {
