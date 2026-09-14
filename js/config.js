@@ -96,7 +96,7 @@ const MTQ_CONFIG = {
   // PANITIA_MAQRA_NIP (string kosong) kalau panitia tidak punya
   // NIP (mis. bukan ASN) — baris NIP otomatis disembunyikan di kartu.
   PANITIA_MAQRA_NAMA: 'ROSID, S.H.',
-  PANITIA_MAQRA_NIP : '19',
+  PANITIA_MAQRA_NIP : '197003072014111002',
 
   // ── Developer Mode ───────────────────────────────────────────
   // true  = tampilkan tombol Random Fill (untuk testing)
