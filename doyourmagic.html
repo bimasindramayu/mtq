@@ -593,6 +593,12 @@
           <div style="display:flex;gap:8px">
             <button class="btn btn-outline" style="font-size:13px" onclick="refreshData()">🔄 Refresh</button>
             <button class="btn btn-emerald" style="font-size:13px" onclick="exportCSV()">📥 Export CSV</button>
+            <!-- FIX: exportCSV() di atas 1 baris = 1 PENDAFTARAN — utk tim
+                 (anggotanya 2-3 orang), anggota selain ketua TIDAK ikut
+                 muncul sbg baris sendiri di situ. Tombol ini sebaliknya:
+                 1 baris CSV = 1 ORANG (ketua + semua anggota tim dipecah
+                 jadi baris masing-masing) — lihat exportCSVPerOrang(). -->
+            <button class="btn" style="font-size:13px;background:rgba(99,102,241,.12);border-color:rgba(99,102,241,.3);color:#818cf8" onclick="exportCSVPerOrang()">👥 Export CSV (Per Orang)</button>
             <!-- FIX #33 (poin 1): download semua kartu peserta dari data
                  yang SEDANG TAMPIL di tabel (ikut filter/pencarian aktif),
                  digabung jadi 1 file PDF. Format kartu SAMA PERSIS dengan
@@ -3572,7 +3578,65 @@
       a.click(); URL.revokeObjectURL(a.href);
       toast('Export',`${rows.length} baris diekspor`,'success');
     }
-    
+
+    // FIX: exportCSV() di atas 1 baris = 1 PENDAFTARAN — utk cabang tim
+    // (Fahm/Syarh Al Qur'an, anggotanya 2-3 orang), anggota selain ketua
+    // TIDAK kebawa sbg baris sendiri, jadi CSV-nya kehitung lebih sedikit
+    // orang dari yang sebenarnya. Fungsi ini sebaliknya: 1 baris CSV = 1
+    // ORANG — pola pemecahannya SAMA PERSIS dgn _runDownloadAllKartu() di
+    // bawah (anggota_json = SEMUA anggota tim termasuk ketua di index 0;
+    // utk individu, disintesis 1 "anggota" dari field baris utama supaya
+    // diperlakukan seragam). Kolom level-pendaftaran (nomor_pendaftaran,
+    // kecamatan, cabang_lomba, email, rekening, dst — lihat spread `...r`)
+    // ikut ditulis ulang di TIAP baris orang supaya baris tim tetap bisa
+    // dikelompokkan/di-filter; kolom baru "peran" (Ketua Tim/Anggota N/
+    // Individu) menandai posisi orang itu dalam pendaftarannya. Filter &
+    // pencarian yang aktif di tabel ikut terpakai, sama seperti exportCSV().
+    function exportCSVPerOrang() {
+      const rows = adm.filtered.length ? adm.filtered : adm.allData;
+      if (!rows.length){ toast('Kosong','Tidak ada data untuk diekspor','warning'); return; }
+
+      const hdrs = ['nomor_pendaftaran','timestamp','kecamatan','cabang_lomba','gender_cabang',
+        'tipe_lomba','nama_tim','peran','nama_lengkap','nik','tempat_lahir','tanggal_lahir',
+        'umur_display','jenis_kelamin','no_hp','email','nama_bank','nomor_rekening',
+        'nama_rekening','alamat','status_verifikasi','catatan','link_folder'];
+
+      const people = [];
+      rows.forEach(r => {
+        const isTeam = String(r.tipe_lomba||'').toLowerCase() === 'team';
+        let anggota = [];
+        if (r.anggota_json) { try { anggota = JSON.parse(r.anggota_json); } catch(e) { anggota = []; } }
+        if (!Array.isArray(anggota)) anggota = [];
+        // Tim: pakai SEMUA anggota_json apa adanya (index 0 = ketua, sudah
+        // termasuk). Individu/anggota_json kosong: 1 "anggota" sintetis
+        // dari field baris utama, supaya loop di bawah seragam utk keduanya.
+        const members = isTeam && anggota.length ? anggota : [{
+          nama_lengkap: r.nama_lengkap, nik: r.nik, jenis_kelamin: r.jenis_kelamin,
+          tempat_lahir: r.tempat_lahir, tanggal_lahir: r.tanggal_lahir,
+          umur_display: r.umur_display, no_hp: r.no_hp, alamat: r.alamat
+        }];
+        members.forEach((m, i) => {
+          people.push({
+            ...r,   // field level-pendaftaran (nomor_pendaftaran, email, rekening, dst) ikut di tiap baris orang
+            nama_tim: r.nama_tim || '',
+            peran: isTeam ? (i===0 ? 'Ketua Tim' : `Anggota ${i+1}`) : 'Individu',
+            // field per-ORANG — timpa punya r dgn punya anggota (m) di atas
+            nama_lengkap: m.nama_lengkap, nik: m.nik, jenis_kelamin: m.jenis_kelamin,
+            tempat_lahir: m.tempat_lahir, tanggal_lahir: m.tanggal_lahir,
+            umur_display: m.umur_display, no_hp: m.no_hp, alamat: m.alamat
+          });
+        });
+      });
+
+      const csv = [hdrs.join(','), ...people.map(p=>hdrs.map(h=>`"${String(p[h]||'').replace(/"/g,'""')}"`).join(','))].join('\n');
+      const blob = new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `MTQ2026_PerOrang_${new Date().toISOString().slice(0,10)}.csv`;
+      a.click(); URL.revokeObjectURL(a.href);
+      toast('Export',`${people.length} orang (dari ${rows.length} pendaftaran) diekspor`,'success');
+    }
+
     // FIX #33 (poin 1): download semua kartu peserta dari data yang SEDANG
     // TAMPIL di tabel (ikut filter/pencarian aktif — sama seperti
     // exportCSV() di atas) jadi 1 file PDF. Anggota tim dapat kartu
