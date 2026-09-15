@@ -307,6 +307,16 @@
       font-size:12.5px; font-weight:700; cursor:pointer; transition:all .18s ease; white-space:nowrap; }
     .stats-qv-btn:hover { border-color:var(--emerald-light); color:var(--emerald); }
     .stats-qv-btn.active { border-color:var(--emerald); background:var(--emerald-xs); color:var(--emerald); }
+
+    /* FIX: header tabel Rekap (#cabangTable) sekarang bisa diklik utk
+       urutkan baris berdasarkan kolom itu — lihat statsSortClick()/
+       _applyStatsSort() di script utama. Baris TOTAL (grand total)
+       SENGAJA tidak ikut terurut, selalu tetap di paling bawah. */
+    .data-table th.stats-th-sort { cursor:pointer; user-select:none; }
+    .data-table th.stats-th-sort:hover { background:var(--gray-100); color:var(--gray-700); }
+    .data-table th.stats-th-sort.active { color:var(--emerald); background:var(--emerald-xs); }
+    .stats-sort-arrow { display:inline-block; margin-left:4px; font-size:9px; opacity:.4; }
+    .data-table th.stats-th-sort.active .stats-sort-arrow { opacity:1; }
     
     /* login */
     .login-overlay { position:fixed; inset:0; background:linear-gradient(135deg,#064e3b,#065f46);
@@ -1355,12 +1365,22 @@
           </select>
         </div>
         <!-- FIX: cuma relevan kalau Kolom = "Cabang Lomba" — semua cabang
-             SELALU ditampilkan (tidak bisa dipilih sebagian), toggle ini
-             cuma mengatur digabung atau dipisah per gender. -->
+             SELALU ditampilkan (tidak bisa dipilih sebagian). Dua toggle
+             di bawah ini mengatur (1) digabung/dipisah per gender, dan
+             (2) nilai tiap sel dihitung sbg "Jumlah Pendaftar" (jumlah
+             BARIS pendaftaran/tim) atau "Jumlah Orang" (ketua/individu +
+             semua anggota tim) — lihat getStatsTableColGenderSplit() &
+             getStatsTableColCabangValueMode()/_cabangColumnValue() di
+             script utama. -->
         <label id="statsColGenderSplitWrap" style="display:none;align-items:center;gap:10px;padding:8px 10px;margin-bottom:12px;cursor:pointer;background:var(--gray-50);border-radius:8px">
           <input type="checkbox" id="statsColGenderSplitChk" onchange="setStatsTableColGenderSplit(this.checked)"
                  style="width:16px;height:16px;accent-color:var(--emerald);flex-shrink:0;cursor:pointer">
           <span style="font-size:13px;color:var(--gray-700);font-weight:500">Pisahkan Putra / Putri (kolom terpisah)</span>
+        </label>
+        <label id="statsColValueModeWrap" style="display:none;align-items:center;gap:10px;padding:8px 10px;margin-bottom:12px;cursor:pointer;background:var(--gray-50);border-radius:8px">
+          <input type="checkbox" id="statsColValueModeChk" onchange="setStatsTableColCabangValueMode(this.checked ? 'orang' : 'pendaftar')"
+                 style="width:16px;height:16px;accent-color:var(--emerald);flex-shrink:0;cursor:pointer">
+          <span style="font-size:13px;color:var(--gray-700);font-weight:500">Hitung Jumlah Orang (bukan jumlah pendaftar/tim)</span>
         </label>
         <p id="statsColCabangNote" style="display:none;font-size:12px;color:var(--gray-500);margin:0 0 10px 0">Semua cabang lomba ditampilkan sebagai kolom (tidak bisa dipilih sebagian).</p>
 
@@ -1372,13 +1392,19 @@
         </div>
 
         <!-- FIX: baris "TOTAL" (grand total, paling bawah) & kolom "Total"
-             (jumlah pendaftaran per baris, paling kanan) sekarang bisa
-             disembunyikan masing-masing — dulu selalu tampil, tidak bisa
-             dimatikan. Berguna mis. utk tampilan 1-metrik (Tampilan Cepat
-             di atas tabel) yang ingin bersih tanpa angka tambahan. Lihat
-             getStatsShowTotalRow/Col di script utama — dipakai LANGSUNG
-             oleh _buildStatsTableView, jadi otomatis berlaku juga di
-             Download PDF (satu sumber logika yang sama). -->
+             (paling kanan) sekarang bisa disembunyikan masing-masing —
+             dulu selalu tampil, tidak bisa dimatikan. Berguna mis. utk
+             tampilan 1-metrik (Tampilan Cepat di atas tabel) yang ingin
+             bersih tanpa angka tambahan. Lihat getStatsShowTotalRow/Col
+             di script utama — dipakai LANGSUNG oleh _buildStatsTableView,
+             jadi otomatis berlaku juga di Download PDF (satu sumber
+             logika yang sama).
+             FIX: kolom "Total" DULU selalu jumlah pendaftaran (rows.length)
+             apa pun kolom yang tampil — sekarang benar2 MENJUMLAHKAN
+             angka kolom-kolom lain pada baris yang sama, jadi otomatis
+             ikut benar kalau kolomnya bukan cuma "jumlah pendaftar" (mis.
+             kolom Cabang Lomba dihitung sbg "Jumlah Orang" — lihat toggle
+             "Hitung Jumlah Orang" di atas). -->
         <div style="font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;letter-spacing:.04em;margin:18px 0 8px">➕ Total</div>
         <label style="display:flex;align-items:center;gap:10px;padding:8px 10px;margin-bottom:4px;cursor:pointer;background:var(--gray-50);border-radius:8px">
           <input type="checkbox" id="statsShowTotalRowChk" onchange="setStatsShowTotalRow(this.checked)"
@@ -1388,7 +1414,7 @@
         <label style="display:flex;align-items:center;gap:10px;padding:8px 10px;cursor:pointer;background:var(--gray-50);border-radius:8px">
           <input type="checkbox" id="statsShowTotalColChk" onchange="setStatsShowTotalCol(this.checked)"
                  style="width:16px;height:16px;accent-color:var(--emerald);flex-shrink:0;cursor:pointer">
-          <span style="font-size:13px;color:var(--gray-700);font-weight:500">Tampilkan kolom Total (jumlah pendaftaran, paling kanan)</span>
+          <span style="font-size:13px;color:var(--gray-700);font-weight:500">Tampilkan kolom Total (jumlah semua kolom pada baris tsb, paling kanan)</span>
         </label>
       </div>
       <div class="modal-actions">
@@ -2674,8 +2700,11 @@
       // (STATS_TABLE_GROUPBY_DEFS, + opsi gabung/pisah Putra-Putri kalau
       // dikelompokkan per Cabang Lomba) DAN kolomnya berupa metrik pilihan
       // (STATS_TABLE_COLUMN_DEFS) ATAU seluruh cabang lomba jadi kolom
-      // (mode 'cabang' — lihat _getCabangColumnList/_countByCabangColumn).
-      const { headers, rows: bodyRows, groupLabel, hasTotalCol } = _buildStatsTableView(d);
+      // (mode 'cabang' — lihat _getCabangColumnList/_cabangColumnValue).
+      // FIX: _applyStatsSort() menerapkan sort kolom yang lagi aktif (klik
+      // header, lihat statsSortClick()) di atas hasil _buildStatsTableView
+      // — baris TOTAL tetap dikunci di paling bawah, tidak ikut terurut.
+      const { headers, rows: bodyRows, groupLabel, hasTotalCol } = _applyStatsSort(_buildStatsTableView(d));
 
       const theadRow = document.getElementById('cabangTheadRow');
       if (theadRow) theadRow.innerHTML = headers.map((h,i) => {
@@ -2686,7 +2715,12 @@
         // tidak selalu Total lagi — pakai flag hasTotalCol yang eksplisit.
         const isTotalCol = hasTotalCol && i === headers.length - 1;
         const style = (i>0?'text-align:center;':'') + (isTotalCol?'border-left:2px solid rgba(255,255,255,.4);':'');
-        return `<th${style?` style="${style}"`:''}>${esc(h)}</th>`;
+        // FIX: setiap header sekarang bisa diklik utk urutkan tabel —
+        // lihat statsSortClick()/_applyStatsSort(). Panah "⇅" pudar =
+        // kolom ini belum jadi acuan urutan, "▲"/"▼" solid = kolom aktif.
+        const isSorted = _statsSortState.index === i;
+        const arrow = isSorted ? (_statsSortState.dir === 'asc' ? '▲' : '▼') : '⇅';
+        return `<th${style?` style="${style}"`:''} class="stats-th-sort${isSorted?' active':''}" tabindex="0" role="button" aria-label="Urutkan berdasarkan ${esc(h)}" title="Urutkan berdasarkan ${esc(h)}" onclick="statsSortClick(${i})">${esc(h)}<span class="stats-sort-arrow">${arrow}</span></th>`;
       }).join('');
 
       const tbodyEl = document.getElementById('cabangTbody');
@@ -2766,6 +2800,7 @@
       localStorage.setItem('mtq-stats-table-groupby', qv.groupBy);
       localStorage.setItem('mtq-stats-table-colmode', 'metrik');
       setStatsTableColumns(qv.cols.slice());
+      _statsSortReset();   // FIX: groupBy+kolom berganti total — sort lama bisa nyasar
       renderStats();
     }
     // Cocok kalau colMode=metrik DAN groupBy DAN kolom aktif PERSIS sama
@@ -2814,10 +2849,20 @@
       all.forEach(name => { const base = _cabangBaseName(name); if (!seen.includes(base)) seen.push(base); });
       return seen;
     }
-    function _countByCabangColumn(rows, colName, splitGender) {
-      return splitGender
-        ? rows.filter(r => r.cabang_lomba === colName).length
-        : rows.filter(r => _cabangBaseName(r.cabang_lomba) === colName).length;
+    // FIX: dulu bernama _countByCabangColumn dan SELALU menghitung jumlah
+    // BARIS pendaftaran ("Jumlah Pendaftar"). Sekarang bisa juga menghitung
+    // "Jumlah Orang" (ketua/individu + SEMUA anggota tim, sama seperti
+    // _statsHeadcount di bawah) lewat parameter valueMode — dipilih admin
+    // via toggle "Hitung Jumlah Orang" (mode kolom "Cabang Lomba"), lihat
+    // getStatsTableColCabangValueMode(). SATU fungsi ini dipakai baik utk
+    // sel per-grup maupun baris TOTAL di _buildStatsTableView, supaya
+    // kolom Total (jumlah horizontal sel2 di baris yang sama) otomatis
+    // ikut konsisten dengan valueMode yang aktif, tanpa logika terpisah.
+    function _cabangColumnValue(rows, colName, splitGender, valueMode) {
+      const filtered = splitGender
+        ? rows.filter(r => r.cabang_lomba === colName)
+        : rows.filter(r => _cabangBaseName(r.cabang_lomba) === colName);
+      return valueMode === 'orang' ? _statsHeadcount(filtered) : filtered.length;
     }
     function _statsByStatus(rows, status) {
       return rows.filter(r => String(r.status_verifikasi||'').toLowerCase() === status).length;
@@ -2834,6 +2879,13 @@
         } catch(_) {}
       });
       return n;
+    }
+    // FIX: jumlah sederhana dari sekumpulan angka — dipakai kolom "Total"
+    // (lihat _buildStatsTableView) supaya nilainya SELALU sama dengan
+    // jumlah kolom-kolom lain yang tampil di baris yang sama, apa pun
+    // metrik/mode nilai yang lagi aktif (bukan lagi rows.length tetap).
+    function _sumNums(arr) {
+      return arr.reduce((s, n) => s + (Number(n) || 0), 0);
     }
 
     // FIX: pengelompokan BARIS diekstrak jadi fungsi bersama — dipakai
@@ -2860,17 +2912,25 @@
     }
     // Bangun {headers, rows, groupLabel, hasTotalCol} lengkap dari
     // preferensi yang TERSIMPAN saat ini — dipakai renderStats() &
-    // downloadStatsPdf(). FIX: tambah kolom "Total" (paling kanan, jumlah
-    // baris pendaftaran di grup itu — SELALU rows.length, apa pun kolom
-    // yang aktif, supaya artinya tetap jelas & benar) dan baris "TOTAL"
-    // (paling bawah). PENTING: baris TOTAL dihitung ULANG dari SELURUH
-    // dataset (d), BUKAN dengan menjumlahkan nilai per-grup yang sudah
-    // dihitung — beda hasilnya utk metrik yang TIDAK bisa dijumlah antar
-    // grup, mis. jml_cabang/jml_kecamatan (hitungan cabang/kecamatan UNIK
-    // — kalau dijumlah antar grup, cabang/kecamatan yang sama bisa numpuk
-    // kehitung berkali-kali). Metrik lain (total, headcount,
-    // terverifikasi, dst) tetap benar dgn cara ini karena rows.length
-    // dkk otomatis konsisten dijumlah maupun dihitung ulang.
+    // downloadStatsPdf(). Tambah kolom "Total" (paling kanan) dan baris
+    // "TOTAL" (paling bawah).
+    // FIX: kolom "Total" DULU selalu rows.length (jumlah BARIS
+    // pendaftaran), apa pun kolom/metrik yang lagi tampil — salah kalau
+    // kolomnya bukan "jumlah pendaftar", mis. waktu kolom Cabang Lomba
+    // dihitung sbg "Jumlah Orang" (lihat getStatsTableColCabangValueMode/
+    // _cabangColumnValue). Sekarang kolom Total = MENJUMLAHKAN nilai
+    // kolom-kolom lain yang ada di baris YANG SAMA (lihat _sumNums) —
+    // otomatis ikut benar utk metrik/mode nilai apa pun yang sedang aktif,
+    // tidak lagi dihitung ulang terpisah dari rows.length.
+    // PENTING: baris "TOTAL" (grand total, per KOLOM) tetap dihitung ULANG
+    // dari SELURUH dataset (d) lewat c.calc(d)/_cabangColumnValue(d,...),
+    // BUKAN dengan menjumlahkan nilai per-grup yang sudah dihitung — beda
+    // hasilnya utk metrik yang TIDAK bisa dijumlah antar grup, mis.
+    // jml_cabang/jml_kecamatan (hitungan cabang/kecamatan UNIK — kalau
+    // dijumlah antar grup, cabang/kecamatan yang sama bisa numpuk kehitung
+    // berkali-kali). Sel Total PADA baris TOTAL itu sendiri tetap ikut
+    // aturan yang sama dgn baris lain (jumlah horizontal sel2 di baris
+    // TOTAL itu) — satu aturan kolom Total yang konsisten di SEMUA baris.
     //
     // FIX: kolom Total & baris TOTAL sekarang masing-masing bisa
     // disembunyikan (getStatsShowTotalCol/getStatsShowTotalRow, toggle di
@@ -2895,22 +2955,30 @@
       const colMode = getStatsTableColMode();
       if (colMode === 'cabang') {
         const colGenderSplit = getStatsTableColGenderSplit();
+        // FIX: "Jumlah Pendaftar" (bawaan, jumlah BARIS) ATAU "Jumlah
+        // Orang" (ketua/individu + anggota tim) — toggle "Hitung Jumlah
+        // Orang" di modal, lihat getStatsTableColCabangValueMode().
+        const colValueMode = getStatsTableColCabangValueMode();
         const cabangCols = _getCabangColumnList(colGenderSplit);
-        const dataRows = groupEntries.map(([label, groupRows]) => ({
-          label,
-          cells: [
-            ...cabangCols.map(c => {
-              const n = _countByCabangColumn(groupRows, c, colGenderSplit);
-              return { value:String(n), color: n>0?'var(--emerald)':'var(--gray-300)', bold: n>0 };
-            }),
-            ...(showTotalCol ? [{ value:String(groupRows.length), color:'var(--emerald)', bold:true }] : [])
-          ]
-        }));
+        const dataRows = groupEntries.map(([label, groupRows]) => {
+          const vals = cabangCols.map(c => _cabangColumnValue(groupRows, c, colGenderSplit, colValueMode));
+          return {
+            label,
+            cells: [
+              ...vals.map(n => ({ value:String(n), color: n>0?'var(--emerald)':'var(--gray-300)', bold: n>0 })),
+              // FIX: dulu groupRows.length (selalu jumlah pendaftar) —
+              // sekarang jumlah horizontal sel2 di baris ini sendiri, jadi
+              // otomatis benar juga kalau vals di atas berarti "orang".
+              ...(showTotalCol ? [{ value:String(_sumNums(vals)), color:'var(--emerald)', bold:true }] : [])
+            ]
+          };
+        });
+        const totalVals = cabangCols.map(c => _cabangColumnValue(d, c, colGenderSplit, colValueMode));
         const totalRow = {
           label:'TOTAL', isTotal:true,
           cells: [
-            ...cabangCols.map(c => ({ value:String(_countByCabangColumn(d, c, colGenderSplit)), bold:true })),
-            ...(showTotalCol ? [{ value:String(d.length), bold:true }] : [])
+            ...totalVals.map(n => ({ value:String(n), bold:true })),
+            ...(showTotalCol ? [{ value:String(_sumNums(totalVals)), bold:true }] : [])
           ]
         };
         return {
@@ -2924,18 +2992,24 @@
       const activeCols   = STATS_TABLE_COLUMN_DEFS.filter(c => activeColIds.includes(c.id));
       const appendTotalCol = showTotalCol && !activeColIds.includes('total');
       const hasAnyCol = activeCols.length > 0 || appendTotalCol;
-      const dataRows = hasAnyCol ? groupEntries.map(([label, groupRows]) => ({
-        label,
-        cells: [
-          ...activeCols.map(c => ({ value:String(c.calc(groupRows)), color:c.color, bold:c.bold })),
-          ...(appendTotalCol ? [{ value:String(groupRows.length), color:'var(--emerald)', bold:true }] : [])
-        ]
-      })) : [];
+      const dataRows = hasAnyCol ? groupEntries.map(([label, groupRows]) => {
+        const vals = activeCols.map(c => c.calc(groupRows));
+        return {
+          label,
+          cells: [
+            ...vals.map((v,i) => ({ value:String(v), color:activeCols[i].color, bold:activeCols[i].bold })),
+            // FIX: dulu groupRows.length — sekarang jumlah horizontal dari
+            // sel2 metrik di baris ini sendiri (lihat _sumNums).
+            ...(appendTotalCol ? [{ value:String(_sumNums(vals)), color:'var(--emerald)', bold:true }] : [])
+          ]
+        };
+      }) : [];
+      const totalVals = activeCols.map(c => c.calc(d));
       const totalRow = {
         label:'TOTAL', isTotal:true,
         cells: [
-          ...activeCols.map(c => ({ value:String(c.calc(d)), bold:true })),
-          ...(appendTotalCol ? [{ value:String(d.length), bold:true }] : [])
+          ...totalVals.map(v => ({ value:String(v), bold:true })),
+          ...(appendTotalCol ? [{ value:String(_sumNums(totalVals)), bold:true }] : [])
         ]
       };
       return {
@@ -2946,12 +3020,60 @@
       };
     }
 
+    // ── Sort tabel Rekap (klik header kolom, lihat FIX di renderStats) ──
+    // State sengaja TIDAK disimpan ke localStorage — reset tiap admin
+    // muat ulang halaman, jadi urutan alfabetis bawaan (lihat sort()
+    // pada groupEntries di atas) selalu jadi titik awal yang bisa
+    // diprediksi. index mengacu ke posisi kolom pada header HASIL
+    // _buildStatsTableView saat ini (0 = kolom label/grup, 1..n = kolom
+    // data) — direset (_statsSortReset) tiap kali BENTUK tabel berubah
+    // (groupBy/mode kolom/daftar kolom aktif/gabung-pisah gender kolom)
+    // supaya index lama tidak nyasar ke kolom yang sudah bukan itu lagi.
+    let _statsSortState = { index: null, dir: 'asc' };
+    function _statsSortReset() {
+      _statsSortState = { index: null, dir: 'asc' };
+    }
+    // Klik header: belum diurutkan → ascending, klik lagi kolom sama →
+    // descending, klik sekali lagi → kembali ke urutan bawaan (tanpa sort).
+    function statsSortClick(index) {
+      if (_statsSortState.index !== index) {
+        _statsSortState = { index, dir: 'asc' };
+      } else if (_statsSortState.dir === 'asc') {
+        _statsSortState.dir = 'desc';
+      } else {
+        _statsSortState = { index: null, dir: 'asc' };
+      }
+      renderStats();
+    }
+    // Terapkan _statsSortState ke hasil _buildStatsTableView — baris TOTAL
+    // (row.isTotal) SELALU tetap di paling bawah, tidak ikut diurutkan
+    // (itu rekap, bukan data biasa). Kolom 0 (label grup) diurutkan
+    // alfabetis, kolom data (1..n) diurutkan angka (cell.value SELALU
+    // string angka, lihat _buildStatsTableView). Dipakai renderStats()
+    // (tampilan layar) MAUPUN downloadStatsPdf() (ekspor) — SATU sumber,
+    // jadi urutan yang di-download PERSIS sama dgn yang sedang tampil.
+    function _applyStatsSort(view) {
+      const { index, dir } = _statsSortState;
+      if (index == null || index >= view.headers.length) return view;
+      const dirMul    = dir === 'desc' ? -1 : 1;
+      const dataRows  = view.rows.filter(r => !r.isTotal);
+      const totalRows = view.rows.filter(r => r.isTotal);
+      const sorted = dataRows.slice().sort((a, b) => {
+        if (index === 0) return dirMul * String(a.label).localeCompare(String(b.label));
+        const na = Number(a.cells[index - 1].value) || 0;
+        const nb = Number(b.cells[index - 1].value) || 0;
+        return dirMul * (na - nb);
+      });
+      return { ...view, rows: [...sorted, ...totalRows] };
+    }
+
     function getStatsTableGroupBy() {
       const saved = localStorage.getItem('mtq-stats-table-groupby');
       return STATS_TABLE_GROUPBY_DEFS.some(g => g.id === saved) ? saved : STATS_TABLE_DEFAULT_GROUPBY;
     }
     function setStatsTableGroupBy(id) {
       localStorage.setItem('mtq-stats-table-groupby', id);
+      _statsSortReset();   // FIX: baris berubah bentuk — sort lama bisa nyasar
       renderStatsRowGenderUI();
       renderStats();
     }
@@ -2979,6 +3101,7 @@
       if (isOn && !active.includes(id)) active.push(id);
       if (!isOn) active = active.filter(x => x !== id);
       setStatsTableColumns(active);
+      _statsSortReset();   // FIX: kolom data berubah — sort lama bisa nyasar
       renderStats();
     }
     // 'metrik' (bawaan, checklist STATS_TABLE_COLUMN_DEFS) | 'cabang'
@@ -2988,6 +3111,7 @@
     }
     function setStatsTableColMode(mode) {
       localStorage.setItem('mtq-stats-table-colmode', mode);
+      _statsSortReset();   // FIX: kolom berganti total — sort lama bisa nyasar
       renderStatsTableColModeUI();
       renderStats();
     }
@@ -2997,6 +3121,22 @@
     }
     function setStatsTableColGenderSplit(on) {
       localStorage.setItem('mtq-stats-table-col-gender-split', on ? '1' : '0');
+      _statsSortReset();   // FIX: jumlah/susunan kolom cabang berubah
+      renderStats();
+    }
+    // FIX: nilai sel kolom "Cabang Lomba" (mode kolom = 'cabang') — bisa
+    // 'pendaftar' (bawaan, jumlah BARIS pendaftaran/tim) atau 'orang'
+    // (ketua/individu + SEMUA anggota tim, sama seperti metrik 'headcount'
+    // di mode kolom "Metrik"). Berguna krn cabang bertipe 'team' (Fahm/
+    // Syarh Al Qur'an) 1 baris pendaftaran = 1 TIM padahal isinya beberapa
+    // ORANG — lihat _cabangColumnValue(). TIDAK perlu _statsSortReset()
+    // di sini: toggle ini cuma mengganti NILAI sel, bukan jumlah/susunan
+    // kolomnya, jadi index kolom yang lagi disortir tetap valid.
+    function getStatsTableColCabangValueMode() {
+      return localStorage.getItem('mtq-stats-table-col-cabang-valuemode') === 'orang' ? 'orang' : 'pendaftar';
+    }
+    function setStatsTableColCabangValueMode(mode) {
+      localStorage.setItem('mtq-stats-table-col-cabang-valuemode', mode === 'orang' ? 'orang' : 'pendaftar');
       renderStats();
     }
 
@@ -3076,12 +3216,16 @@
       if (modeSelect) modeSelect.value = mode;
       const metrikWrap = document.getElementById('statsColMetrikWrap');
       const genderWrap = document.getElementById('statsColGenderSplitWrap');
+      const valueModeWrap = document.getElementById('statsColValueModeWrap');
       const cabangNote = document.getElementById('statsColCabangNote');
       if (metrikWrap) metrikWrap.style.display = mode === 'metrik' ? '' : 'none';
       if (genderWrap) genderWrap.style.display = mode === 'cabang' ? 'flex' : 'none';
+      if (valueModeWrap) valueModeWrap.style.display = mode === 'cabang' ? 'flex' : 'none';
       if (cabangNote) cabangNote.style.display = mode === 'cabang' ? 'block' : 'none';
       const chk = document.getElementById('statsColGenderSplitChk');
       if (chk) chk.checked = getStatsTableColGenderSplit();
+      const valChk = document.getElementById('statsColValueModeChk');
+      if (valChk) valChk.checked = getStatsTableColCabangValueMode() === 'orang';
     }
     function renderStatsTableColList() {
       const active = getStatsTableColumns();
@@ -3111,9 +3255,11 @@
       localStorage.setItem('mtq-stats-table-row-gender-split', '1');
       localStorage.setItem('mtq-stats-table-colmode', 'metrik');
       localStorage.setItem('mtq-stats-table-col-gender-split', '1');
+      localStorage.setItem('mtq-stats-table-col-cabang-valuemode', 'pendaftar');
       setStatsTableColumns(STATS_TABLE_DEFAULT_COLUMNS.slice());
       localStorage.setItem('mtq-stats-table-show-total-row', '1');
       localStorage.setItem('mtq-stats-table-show-total-col', '1');
+      _statsSortReset();
       renderStatsConfigList();
       renderStatsTableGroupBySelect();
       renderStatsRowGenderUI();
@@ -3149,10 +3295,13 @@
         const cards = STATS_CARD_DEFS.filter(def => activeCardIds.includes(def.id))
           .map(def => ({ icon: def.icon, label: def.label, value: String(def.calc(d)), cls: def.cls }));
 
-        const view = _buildStatsTableView(d);   // { headers, rows, groupLabel } — SUMBER SAMA dgn tabel di layar
+        const view = _applyStatsSort(_buildStatsTableView(d));   // { headers, rows, groupLabel } — SUMBER SAMA dgn tabel di layar (termasuk sort yg aktif)
         const colMode = getStatsTableColMode();
         let tableCaption = `Rekap per ${view.groupLabel}`;
-        if (colMode === 'cabang') tableCaption += ' — kolom: semua Cabang Lomba' + (getStatsTableColGenderSplit() ? ' (Putra/Putri terpisah)' : ' (Putra+Putri digabung)');
+        if (colMode === 'cabang') {
+          tableCaption += ' — kolom: semua Cabang Lomba' + (getStatsTableColGenderSplit() ? ' (Putra/Putri terpisah)' : ' (Putra+Putri digabung)');
+          tableCaption += getStatsTableColCabangValueMode() === 'orang' ? ', nilai: Jumlah Orang' : ', nilai: Jumlah Pendaftar';
+        }
 
         const canvas = _renderStatsPdfCanvas(cards, view, tableCaption, colMode === 'cabang');
 
