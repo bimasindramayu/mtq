@@ -50,9 +50,21 @@ function maqraKelompok(cabang) {
 const MAQRA_KELOMPOK_LIST = [...new Set(MAQRA_CABANG_LIST.map(maqraKelompok))];
 
 // ── Init: dipanggil saat tab Maqra dibuka ─────────────────────
+// Token sesi admin dibagi antar tab lewat localStorage (kunci sama dgn
+// mtqTokenGet() di doyourmagic.html); sessionStorage = cadangan/sesi lama.
+function maqraGetToken_() {
+  try { const t = localStorage.getItem('mtq_admin_token'); if (t) return t; } catch (e) {}
+  try { return sessionStorage.getItem('mtq_admin_token') || null; } catch (e) {}
+  return null;
+}
+function maqraClearToken_() {
+  try { localStorage.removeItem('mtq_admin_token'); } catch (e) {}
+  try { sessionStorage.removeItem('mtq_admin_token'); } catch (e) {}
+}
+
 function maqraInit() {
   // Ambil token dari sesi admin.js yang sudah login
-  _maqraToken = sessionStorage.getItem('mtq_admin_token') || null;
+  _maqraToken = maqraGetToken_();
   maqraPopulateCabangSelects();
   // FIX: lihat catatan _maqraLoaded di atas — hanya memuat dari server
   // kalau BELUM PERNAH berhasil dimuat di sesi halaman ini.
@@ -90,7 +102,7 @@ function maqraPopulateCabangSelects() {
 async function maqraLoadData() {
   if (!_maqraToken) {
     // Coba ambil token lagi (mungkin baru login)
-    _maqraToken = sessionStorage.getItem('mtq_admin_token') || null;
+    _maqraToken = maqraGetToken_();
     if (!_maqraToken) {
       maqraSetEl('maqraStatTotal', '—');
       maqraSetEl('maqraStatTersedia', '—');
@@ -133,7 +145,7 @@ async function maqraLoadData() {
     // balik. typeof-check karena fungsinya didefinisikan di bagian bawah
     // file ini (setelah maqraLoadData) — pola sama dgn pengecekan
     // showPage di doyourmagic.html.
-    if (typeof maqraAmbilFilter === 'function') maqraAmbilFilter();
+    if (typeof maqraAmbilFilter === 'function') maqraAmbilFilter(true);   // tetap di halaman aktif
   } catch (err) {
     maqraShowToast('Error', 'Gagal memuat data: ' + err.message, 'error');
   } finally {
@@ -820,9 +832,10 @@ async function maqraDownloadAllBukti() {
 // ── Session expired ───────────────────────────────────────────
 function maqraHandleSessionExpired() {
   _maqraToken = null;
-  sessionStorage.removeItem('mtq_admin_token');
+  maqraClearToken_();
   // Kembalikan ke halaman login admin.js
   if (typeof showLoginGate === 'function') showLoginGate();
+  else if (typeof doLogout === 'function') doLogout();
   maqraShowToast('Sesi Habis', 'Silakan login kembali', 'warning', 5000);
 }
 
@@ -972,6 +985,9 @@ function maqraShowToast(title, msg, type = 'info', duration = 4000) {
 let _maqraAmbilPage       = 1;
 const MAQRA_AMBIL_PER_PAGE = 10;
 let _maqraAmbilFiltered   = [];
+// Urutan kolom tabel Ambil Maqra. key: null (urutan asli) | 'nomor' | 'nama' |
+// 'kec' | 'cabang' | 'status'. dir: 'asc' | 'desc'. Lihat maqraAmbilSortBy().
+let _maqraAmbilSort       = { key: null, dir: 'asc' };
 let _maqraAmbilTarget     = null;   // peserta (row adm.allData) yang sedang diproses di modal
 let _maqraAmbilSpinning   = false;
 let _maqraAmbilLastResult = null;   // { peserta, maqra } — utk tombol "Download Bukti" di modal
@@ -1051,9 +1067,37 @@ function maqraAmbilSudahAmbil_(nomor) {
   return _allHasil.find(r => r.nomor_pendaftaran === nomor) || null;
 }
 
+// Masih ada maqra yang tersedia (belum diambil) di kelompok/cabang peserta
+// ini? Dipakai maqraAmbilFilter() untuk menyembunyikan peserta yang
+// cabangnya sudah kehabisan maqra (belum ambil + tidak ada maqra tersedia).
+// (Pemanggil WAJIB sudah memastikan data maqra termuat — _maqraLoaded —
+// lihat guard di awal maqraAmbilFilter().)
+function maqraAmbilAdaMaqraTersedia_(r) {
+  const kelompok = maqraKelompok(r.cabang_lomba);
+  return _allMaqra.some(m => maqraKelompok(m.cabang_lomba) === kelompok && !m.sudah_diambil);
+}
+
 // ── Filter + render ─────────────────────────────────────────
-function maqraAmbilFilter() {
+// keepPage=false (default, dipakai pencarian/filter/sort/buka tab) → kembali
+// ke halaman 1 karena hasil filternya berubah. keepPage=true (dipakai setelah
+// pengambilan maqra / tutup modal / refresh data) → tetap di halaman yang
+// sedang dibuka admin (otomatis dikurangi kalau halamannya sudah tidak ada,
+// mis. karena baris hilang setelah maqra cabang itu habis).
+function maqraAmbilFilter(keepPage) {
   if (typeof adm === 'undefined') return;
+
+  // Data maqra (_allMaqra/_allHasil) belum termuat dari server → status
+  // "tersedia/habis" belum bisa ditentukan. Jangan render baris dulu:
+  // dengan _allMaqra masih kosong SEMUA peserta akan salah tampil sebagai
+  // "Maqra habis". maqraLoadData() memanggil maqraAmbilFilter() lagi
+  // begitu data berhasil dimuat, jadi tabel terisi otomatis setelahnya.
+  if (!_maqraLoaded) {
+    _maqraAmbilFiltered = [];
+    maqraSetTbodyMsg_('maqraAmbilTbody', 6, '⏳ Memuat data maqra... (jika terlalu lama, klik 🔄 Refresh)');
+    const bar = document.getElementById('maqraAmbilPagination');
+    if (bar) bar.innerHTML = '';
+    return;
+  }
 
   const q      = (document.getElementById('maqraAmbilSearch')?.value || '').toLowerCase().trim();
   const kec    = document.getElementById('maqraAmbilFilterKec')?.value || '';
@@ -1074,7 +1118,13 @@ function maqraAmbilFilter() {
   maqraSetEl('maqraAmbilStatSudah', sudahCount);
   maqraSetEl('maqraAmbilStatBelum', base.length - sudahCount);
 
-  let rows = base;
+  // Sembunyikan peserta yang belum ambil maqra DAN maqra di cabangnya sudah
+  // habis. Yang tampil hanya: (a) yang masih bisa diambilkan maqra (cabang
+  // ready di tab Daftar Maqra), dan (b) yang sudah pernah mengambil maqra.
+  // Kartu statistik di atas tetap dihitung dari `base` (total sebenarnya).
+  let rows = base.filter(r =>
+    !!maqraAmbilSudahAmbil_(r.nomor_pendaftaran) || maqraAmbilAdaMaqraTersedia_(r)
+  );
   if (q) rows = rows.filter(r =>
     String(r.nama_lengkap || '').toLowerCase().includes(q) ||
     String(r.nomor_pendaftaran || '').toLowerCase().includes(q)
@@ -1084,9 +1134,68 @@ function maqraAmbilFilter() {
   if (status === 'sudah') rows = rows.filter(r =>  !!maqraAmbilSudahAmbil_(r.nomor_pendaftaran));
   if (status === 'belum') rows = rows.filter(r =>  !maqraAmbilSudahAmbil_(r.nomor_pendaftaran));
 
+  rows = maqraAmbilApplySort_(rows);
+
   _maqraAmbilFiltered = rows;
-  _maqraAmbilPage = 1;
+  if (keepPage === true) {
+    const totalPages = Math.max(1, Math.ceil(rows.length / MAQRA_AMBIL_PER_PAGE));
+    _maqraAmbilPage = Math.min(Math.max(1, _maqraAmbilPage), totalPages);
+  } else {
+    _maqraAmbilPage = 1;
+  }
+  maqraAmbilUpdateSortHeaders_();
   maqraAmbilRenderList();
+}
+
+// ── Sort per kolom ───────────────────────────────────────────
+const _maqraAmbilCollator = new Intl.Collator('id', { numeric: true, sensitivity: 'base' });
+
+function maqraAmbilSortValue_(r, key) {
+  switch (key) {
+    case 'nomor':  return String(r.nomor_pendaftaran || '');
+    case 'nama':   return String(r.nama_lengkap || '');
+    case 'kec':    return String(r.kecamatan || '');
+    case 'cabang': return String(r.cabang_lomba || '');
+    // Belum Ambil (0) lebih dulu dari Sudah Ambil (1) pada urutan naik.
+    case 'status': return maqraAmbilSudahAmbil_(r.nomor_pendaftaran) ? 1 : 0;
+    default:       return '';
+  }
+}
+
+function maqraAmbilApplySort_(rows) {
+  const { key, dir } = _maqraAmbilSort;
+  if (!key) return rows;
+  const mul = dir === 'desc' ? -1 : 1;
+  const byNomor = (a, b) => _maqraAmbilCollator.compare(String(a.nomor_pendaftaran || ''), String(b.nomor_pendaftaran || ''));
+  return rows.slice().sort((a, b) => {
+    const va = maqraAmbilSortValue_(a, key), vb = maqraAmbilSortValue_(b, key);
+    const c = (typeof va === 'number' && typeof vb === 'number')
+      ? va - vb
+      : _maqraAmbilCollator.compare(va, vb);
+    if (c !== 0) return c * mul;
+    return byNomor(a, b);   // tie-breaker: No. Daftar naik (tidak ikut dibalik)
+  });
+}
+
+// Klik header: urutan naik → turun → kembali ke urutan asli.
+function maqraAmbilSortBy(key) {
+  if (_maqraAmbilSort.key !== key)          _maqraAmbilSort = { key, dir: 'asc' };
+  else if (_maqraAmbilSort.dir === 'asc')   _maqraAmbilSort = { key, dir: 'desc' };
+  else                                       _maqraAmbilSort = { key: null, dir: 'asc' };
+  maqraAmbilFilter();   // urutan berubah → mulai dari halaman 1
+}
+
+// Panah "⇅" pudar = kolom belum jadi acuan urutan; "▲"/"▼" = kolom aktif.
+// Memakai kelas .stats-th-sort / .stats-sort-arrow yang sudah ada di
+// doyourmagic.html (sama seperti tabel Rekap di halaman Statistik).
+function maqraAmbilUpdateSortHeaders_() {
+  document.querySelectorAll('#maqraAmbilThead th[data-sort-key]').forEach(th => {
+    const active = th.getAttribute('data-sort-key') === _maqraAmbilSort.key;
+    th.classList.toggle('active', active);
+    const arrow = th.querySelector('.stats-sort-arrow');
+    if (arrow) arrow.textContent = active ? (_maqraAmbilSort.dir === 'asc' ? '▲' : '▼') : '⇅';
+    th.setAttribute('aria-sort', active ? (_maqraAmbilSort.dir === 'asc' ? 'ascending' : 'descending') : 'none');
+  });
 }
 
 function maqraAmbilRenderList() {
@@ -1094,7 +1203,7 @@ function maqraAmbilRenderList() {
   if (!tbody) return;
   const rows = _maqraAmbilFiltered;
   if (!rows.length) {
-    tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="ei">📭</div><div>Tidak ada peserta Terverifikasi yang cocok dengan filter ini</div></div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="ei">📭</div><div>Tidak ada peserta yang cocok dengan filter ini (peserta dengan maqra habis disembunyikan)</div></div></td></tr>`;
     const bar = document.getElementById('maqraAmbilPagination');
     if (bar) bar.innerHTML = '';
     return;
@@ -1163,7 +1272,7 @@ function maqraAmbilOpenModal(nomor) {
   if (!peserta) { maqraShowToast('Gagal', 'Data peserta tidak ditemukan — refresh dan coba lagi.', 'error'); return; }
   if (maqraAmbilSudahAmbil_(nomor)) {
     maqraShowToast('Info', 'Peserta ini sudah mengambil maqra sebelumnya.', 'info');
-    maqraAmbilFilter();
+    maqraAmbilFilter(true);
     return;
   }
 
@@ -1206,7 +1315,7 @@ function maqraAmbilOpenModal(nomor) {
 function maqraAmbilCloseModal() {
   if (_maqraAmbilSpinning) return;
   closeModal('ambilMaqraModal');
-  maqraAmbilFilter();   // sinkronkan tabel kalau ada reveal yang barusan terjadi
+  maqraAmbilFilter(true);   // sinkronkan tabel (tetap di halaman yang sedang dibuka)
 }
 
 function maqraAmbilBuildStars() {
@@ -1451,7 +1560,7 @@ async function maqraAmbilStartDraw() {
   // secara manual) — supaya semua tab tetap konsisten dgn server, dan
   // tidak salah tandai kalau ada 2 maqra berteks identik dalam satu
   // cabang (lihat catatan anti-duplikat di maqraSaveMaqra).
-  if (!wasAlready) maqraLoadData(); else maqraAmbilFilter();
+  if (!wasAlready) maqraLoadData(); else maqraAmbilFilter(true);
 }
 
 function maqraSleep_(ms) { return new Promise(r => setTimeout(r, ms)); }
