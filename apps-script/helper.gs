@@ -199,6 +199,112 @@ function cachedRead_(name, ttlSec, scopes, computeFn, opts) {
   return val;
 }
 
+// ════════════════════════════════════════════════════════════
+//  CACHE UNTUK HASIL BESAR — gzip + pecah beberapa key (rev 14)
+// ════════════════════════════════════════════════════════════
+// Latar: cachedRead_() di atas MELEWATI cache begitu hasilnya > ~95 KB
+// (batas CacheService 100 KB per key). Itu tepat sasaran utk getConfig
+// dkk, tapi justru membuat endpoint TERBERAT — getAllPendaftar, yang
+// membaca SELURUH sheet PENDAFTAR — tidak pernah ter-cache sama sekali:
+// tiap tab admin & tiap refresh = 1 pembacaan penuh spreadsheet, dan
+// tiap pembacaan itu memegang 1 dari 30 slot "simultaneous executions
+// per user" milik akun pemilik selama beberapa detik. Sepuluh admin yang
+// membuka panel bersamaan sudah cukup membuat antreannya penuh; request
+// yang mengantre terlalu lama dijawab Google dengan halaman 404
+// "Sorry, unable to open the file at this time" dari
+// script.googleusercontent.com/macros/echo (kaki kedua redirect /exec).
+//
+// Solusinya bukan menaikkan batas, tapi mengecilkan datanya lalu
+// memecahnya: JSON di-gzip dulu (data pendaftaran teks berulang, rasio
+// kompresinya besar), di-base64 (naik ~33%, masih jauh lebih kecil dari
+// aslinya), lalu dipotong ~90 KB per key dengan satu key induk berisi
+// jumlah potongan. Satu potongan hilang/kedaluwarsa → dianggap MISS
+// seluruhnya (jangan pernah menyajikan hasil separuh).
+//
+// Invalidasi tetap lewat mekanisme yang sudah ada: scope ['p'] +
+// bumpCacheForAction_() yang sudah dipasang di doGet/doPost, jadi setiap
+// updateStatus/editPeserta/register langsung menyegarkan cache ini juga.
+var CACHE_CHUNK_ = 90000;   // karakter base64 per key (batas aman < 100 KB)
+var CACHE_MAX_CHUNK_ = 12;  // > ini, hasilnya dianggap terlalu besar utk di-cache
+
+function _gzB64_(str) {
+  return Utilities.base64Encode(
+    Utilities.gzip(Utilities.newBlob(str, 'application/octet-stream', 'd.txt')).getBytes());
+}
+
+function _ungzB64_(b64) {
+  return Utilities.ungzip(
+    Utilities.newBlob(Utilities.base64Decode(b64), 'application/x-gzip', 'd.gz')).getDataAsString();
+}
+
+function _cachePutBig_(c, key, str, ttlSec) {
+  var b64 = _gzB64_(str);
+  var n   = Math.ceil(b64.length / CACHE_CHUNK_);
+  if (n > CACHE_MAX_CHUNK_) { try { c.remove(key); } catch (e) {} return false; }
+  var payload = {};
+  for (var i = 0; i < n; i++) {
+    payload[key + ':' + i] = b64.substring(i * CACHE_CHUNK_, (i + 1) * CACHE_CHUNK_);
+  }
+  payload[key] = String(n);
+  c.putAll(payload, ttlSec);
+  return true;
+}
+
+function _cacheGetBig_(c, key) {
+  var n = parseInt(c.get(key), 10);
+  if (!n || n < 1) return null;
+  var keys = [], i;
+  for (i = 0; i < n; i++) keys.push(key + ':' + i);
+  var got = c.getAll(keys), parts = [];
+  for (i = 0; i < n; i++) {
+    var p = got[keys[i]];
+    if (p === undefined || p === null) return null;   // 1 potongan hilang → MISS total
+    parts.push(p);
+  }
+  try { return _ungzB64_(parts.join('')); } catch (e) { return null; }
+}
+
+/**
+ * Versi cachedRead_ untuk hasil yang BESAR (lihat catatan di atas).
+ * Tanda tangan & perilaku anti-stampede-nya sengaja dibuat sama persis
+ * dengan cachedRead_ supaya bisa ditukar tanpa mengubah pemanggil.
+ */
+function cachedReadBig_(name, ttlSec, scopes, computeFn) {
+  var c = _cache_();
+  if (!c) return computeFn();
+  var key, busyKey, staleKey = 'z:stale:' + name;
+  try {
+    key     = 'z:' + name + ':' + _cacheVers_(c, scopes);
+    busyKey = key + ':busy';
+    var hit = _cacheGetBig_(c, key);
+    if (hit) return JSON.parse(hit);
+    // Anti-stampede: saat satu eksekusi sedang membaca sheet, eksekusi lain
+    // yang datang bersamaan memakai salinan terakhir (maks. 120 dtk) daripada
+    // ikut membaca sheet berbarengan dan sama-sama menahan slot eksekusi.
+    if (c.get(busyKey)) {
+      var st = _cacheGetBig_(c, staleKey);
+      if (st) {
+        try {
+          var o = JSON.parse(st);
+          if (o && o._t && (Date.now() - o._t) < 120000) return o;
+        } catch (eS) {}
+      }
+    }
+    c.put(busyKey, '1', 40);
+  } catch (e) { return computeFn(); }
+
+  var val = computeFn();
+  try {
+    if (val && val.success !== false) {
+      val._t  = Date.now();
+      var str = JSON.stringify(val);
+      if (_cachePutBig_(c, key, str, ttlSec)) _cachePutBig_(c, staleKey, str, 300);
+    }
+    c.remove(busyKey);
+  } catch (e2) {}
+  return val;
+}
+
 // Buang buffer log tanpa membuka spreadsheet kalau sheet LOG dimatikan.
 // Dulu doGet/doPost SELALU memanggil getSS_() di ekornya hanya untuk
 // _flushLog() — padahal dgn SHEET_LOG_ENABLED=false buffernya toh dibuang.

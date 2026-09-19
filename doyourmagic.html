@@ -14,7 +14,7 @@
   <!-- Config terpusat — SATU sumber API_URL -->
   <!-- FIX: ?v= cache-busting — NAIKKAN setiap kali js/config.js diupdate
        (lihat catatan sama di index.html) -->
-  <script src="js/config.js?v=20260912"></script>
+  <script src="js/config.js?v=202609201"></script>
   <!-- PDF.js (required by DocumentPreviewer) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <!-- FIX #33: jsPDF + kartu-bukti-shared.js — dipakai fitur download
@@ -28,7 +28,7 @@
        (renderKartuCanvas menggambar langsung ke <canvas>, bukan DOM). -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <script src="js/kartu-bukti-shared.js?v=20260912"></script>
+  <script src="js/kartu-bukti-shared.js?v=202609201"></script>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>">
   <style>
     /* ── Extra admin styles ── */
@@ -3924,7 +3924,7 @@
     // TIDAK berisiko (tidak ada downside selain toast error yang lebih
     // jarang muncul prematur), cuma memberi lebih banyak waktu sebelum
     // UI "menyerah" duluan padahal server sebenarnya masih memprosesnya.
-    function _jsonpScript(url, cbPrefix, fn, timeout=35000) {
+    function _jsonpScript(url, cbPrefix, fn, timeout=45000) {
       const cbName = cbPrefix+'_'+Date.now();
       const script = document.createElement('script');
       let timer, gaveUp = false;
@@ -3966,7 +3966,7 @@
     // TIDAK diulang. Jika fetch gagal total, jatuh ke <script> lama
     // (_jsonpScript) sebagai cadangan terakhir. Kontrak callback sama:
     // fn(data) atau fn({__jsonpError:true, message:'JSONP_TIMEOUT'|'JSONP_LOAD_FAILED'}).
-    function jsonp(url, cbPrefix, fn, timeout=35000) {
+    function jsonp(url, cbPrefix, fn, timeout=45000) {
       if (typeof MTQ_HTTP === 'undefined' || !MTQ_HTTP.available) { _jsonpScript(url, cbPrefix, fn, timeout); return; }
       MTQ_HTTP.request(url, { timeout: timeout }).then(
         (data) => { try { fn(data); } catch(e){ adminLog.error('JSONP cb error',e); } },
@@ -4473,11 +4473,11 @@
   </script>
   <!-- FIX: ?v= cache-busting — NAIKKAN setiap kali file js/ ini diupdate
        (lihat catatan sama di index.html) -->
-  <script src="js/document-previewer.js?v=20260817"></script>
+  <script src="js/document-previewer.js?v=202609201"></script>
 
   <!-- ══ Manajemen Maqra — dimuat setelah admin login ══ -->
-  <script src="js/admin-maqra.js?v=20260912"></script>
-  <script src="js/admin-penilaian.js?v=20260817"></script>
+  <script src="js/admin-maqra.js?v=202609201"></script>
+  <script src="js/admin-penilaian.js?v=202609201"></script>
   <style>
     /* Sistem Penilaian tab buttons */
     .pn-tab-btn        { transition: background .2s, color .2s, box-shadow .2s; }

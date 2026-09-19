@@ -804,7 +804,7 @@ async function maqraDownloadAllBukti() {
     maqraShowToast('Kosong', 'Tidak ada hasil pengambilan maqra untuk diunduh (cek filter/pencarian).', 'warning');
     return;
   }
-  if (typeof buildBuktiMaqraCardHtml !== 'function' || typeof downloadBuktiMaqraPdf !== 'function') {
+  if (typeof buildBuktiMaqraCardHtmlAsync !== 'function' || typeof downloadBuktiMaqraPdf !== 'function') {
     maqraShowToast('Error', 'Komponen bukti maqra belum termuat — muat ulang halaman.', 'error');
     return;
   }
@@ -813,7 +813,8 @@ async function maqraDownloadAllBukti() {
   // objek datar (nama_lengkap, nomor_pendaftaran, cabang_lomba,
   // kecamatan, maqra_teks, maqra_detail, nomor_maqra) — jadi bisa dikirim
   // sebagai rec MAUPUN m sekaligus ke buildBuktiMaqraCardHtml().
-  const cards = rows.map(r => buildBuktiMaqraCardHtml(r, r, maqraEsc));
+  const cards = [];
+  for (const r of rows) cards.push(await buildBuktiMaqraCardHtmlAsync(r, r, maqraEsc));
   const fname = `Bukti_Maqra_MTQ2026_Borongan_${rows.length}_${new Date().toISOString().slice(0,10)}.pdf`;
 
   maqraShowLoading(true, `Membuat PDF 0/${rows.length}...`);
@@ -1582,8 +1583,15 @@ async function maqraAmbilStartDraw() {
   }
 
   // Phase 4: reveal
-  document.getElementById('admResultAyat').textContent  = chosen.maqra_teks   || '—';
-  document.getElementById('admResultSurah').textContent = chosen.maqra_detail || '—';
+  // rev 14: baris maqra dipecah dgn parseMaqra() (kartu-bukti-shared.js)
+  // supaya nama SURAT tampil terpisah, sama dengan yang dicetak di PDF.
+  var _pm = (typeof parseMaqra === 'function') ? parseMaqra(chosen.maqra_teks) : null;
+  document.getElementById('admResultAyat').textContent  =
+    (_pm && _pm.ok && (_pm.ayat || _pm.halaman))
+      ? [(_pm.ayat ? 'Ayat ' + _pm.ayat : ''), (_pm.halaman ? 'Hal. ' + _pm.halaman : '')].filter(Boolean).join(' • ')
+      : (chosen.maqra_teks || '—');
+  document.getElementById('admResultSurah').textContent =
+    (_pm && _pm.surat) ? ('SURAT ' + _pm.surat.toUpperCase()) : (chosen.maqra_detail || '—');
   document.getElementById('admResultNomor').textContent = `Nomor Undian: ${chosen.nomor_maqra || '—'}`;
   reveal.style.display = 'block';
   reveal.classList.add('show');
@@ -1619,13 +1627,13 @@ function maqraSleep_(ms) { return new Promise(r => setTimeout(r, ms)); }
 async function maqraAmbilDownloadBukti() {
   if (!_maqraAmbilLastResult) return;
   const { peserta, maqra } = _maqraAmbilLastResult;
-  if (typeof buildBuktiMaqraCardHtml !== 'function' || typeof downloadBuktiMaqraPdf !== 'function') {
+  if (typeof buildBuktiMaqraCardHtmlAsync !== 'function' || typeof downloadBuktiMaqraPdf !== 'function') {
     maqraShowToast('Error', 'Komponen bukti maqra belum termuat — muat ulang halaman.', 'error');
     return;
   }
   maqraShowLoading(true, 'Membuat PDF bukti maqra...');
   try {
-    const cardHtml = buildBuktiMaqraCardHtml(peserta, maqra, maqraEsc);
+    const cardHtml = await buildBuktiMaqraCardHtmlAsync(peserta, maqra, maqraEsc);
     const fname = `Bukti_Maqra_${(peserta.nomor_pendaftaran||'MTQ').replace(/[^A-Za-z0-9]/g,'_')}.pdf`;
     await downloadBuktiMaqraPdf([cardHtml], fname);
     maqraShowToast('Berhasil', 'Bukti maqra (PDF) diunduh', 'success');
@@ -1655,13 +1663,13 @@ async function maqraAmbilDownloadBuktiRow(nomor) {
     maqraShowToast('Gagal', 'Data bukti peserta ini tidak ditemukan — coba klik 🔄 Refresh lalu ulangi.', 'error');
     return;
   }
-  if (typeof buildBuktiMaqraCardHtml !== 'function' || typeof downloadBuktiMaqraPdf !== 'function') {
+  if (typeof buildBuktiMaqraCardHtmlAsync !== 'function' || typeof downloadBuktiMaqraPdf !== 'function') {
     maqraShowToast('Error', 'Komponen bukti maqra belum termuat — muat ulang halaman.', 'error');
     return;
   }
   maqraShowLoading(true, 'Membuat PDF bukti maqra...');
   try {
-    const cardHtml = buildBuktiMaqraCardHtml(hasil, hasil, maqraEsc);
+    const cardHtml = await buildBuktiMaqraCardHtmlAsync(hasil, hasil, maqraEsc);
     const fname = `Bukti_Maqra_${(hasil.nomor_pendaftaran||'MTQ').replace(/[^A-Za-z0-9]/g,'_')}.pdf`;
     await downloadBuktiMaqraPdf([cardHtml], fname);
     maqraShowToast('Berhasil', 'Bukti maqra (PDF) diunduh', 'success');

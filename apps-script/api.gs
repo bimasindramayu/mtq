@@ -1297,26 +1297,39 @@ function apiGetQuota_(params) {
 // ── getAllPendaftar (GET via JSONP) ────────────────────────────
 function apiGetAll_(params) {
   var token = String(params.token || '').trim();
-  logInfo('api','apiGetAll_ token length: '+token.length);
   if (!isTokenValid_(token)) {
     logWarn('api','apiGetAll_ — token tidak valid');
     return { success:false, message:'Sesi tidak valid. Silakan login ulang.' };
   }
-  var ss    = getSS_();
-  var sheet = getOrCreateSheet_(ss, SHEET_PENDAFTAR, PENDAFTAR_HEADERS);
-  if (sheet.getLastRow()<=1) return { success:true, data:[] };
-  var rows = sheet.getRange(2,1,sheet.getLastRow()-1,PENDAFTAR_HEADERS.length).getValues();
-  logInfo('api','apiGetAll_ — rows: '+rows.length);
-  return {
-    success    : true,
-    data       : rows.map(function(r){ return rowToObj_(r); }),
-    driveApiKey: DRIVE_API_KEY || ''   // returned only to authenticated admin
-  };
+
+  // rev 14: SATU pembacaan sheet dipakai bersama semua admin/tab selama 45
+  // detik. Ini endpoint paling berat di seluruh proyek (baca SELURUH sheet
+  // PENDAFTAR + serialisasi tiap baris) dan satu-satunya yang dulu belum
+  // ter-cache — tiap tab & tiap refresh memicu pembacaan penuh sendiri, dan
+  // tiap pembacaan menahan 1 dari 30 "simultaneous executions per user"
+  // milik akun pemilik selama beberapa detik. Begitu antreannya penuh,
+  // request yang menunggu terlalu lama dijawab Google dengan halaman 404
+  // dari script.googleusercontent.com/macros/echo (bukan error di kode ini).
+  // cachedReadBig_ (helper.gs) dipakai, BUKAN cachedRead_, karena hasil
+  // endpoint ini hampir pasti > 95 KB dan cachedRead_ akan diam-diam
+  // melewatkannya — lihat catatan panjang di helper.gs.
+  // Invalidasi otomatis lewat scope ['p'] + bumpCacheForAction_() yang sudah
+  // terpasang di doGet/doPost, jadi verifikasi/edit peserta langsung terlihat.
+  var out = cachedReadBig_('pendaftar_all', 45, ['p'], function () {
+    var ss    = getSS_();
+    var sheet = getOrCreateSheet_(ss, SHEET_PENDAFTAR, PENDAFTAR_HEADERS);
+    if (sheet.getLastRow() <= 1) return { success:true, data:[] };
+    var rows = sheet.getRange(2,1,sheet.getLastRow()-1,PENDAFTAR_HEADERS.length).getValues();
+    logInfo('api','apiGetAll_ — baca sheet, rows: '+rows.length);
+    return { success:true, data: rows.map(function(r){ return rowToObj_(r); }) };
+  });
+
+  // driveApiKey SENGAJA di luar cache: kunci ini hanya boleh menempel pada
+  // respons yang tokennya sudah diverifikasi di atas, jangan sampai ikut
+  // tersimpan di CacheService bersama datanya.
+  out.driveApiKey = DRIVE_API_KEY || '';
+  return out;
 }
-
-
-
-
 
 // ── register ──────────────────────────────────────────────────
 function apiRegister_(body) {
