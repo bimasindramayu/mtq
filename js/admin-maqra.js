@@ -50,9 +50,21 @@ function maqraKelompok(cabang) {
 const MAQRA_KELOMPOK_LIST = [...new Set(MAQRA_CABANG_LIST.map(maqraKelompok))];
 
 // ── Init: dipanggil saat tab Maqra dibuka ─────────────────────
+// Token sesi admin dibagi antar tab lewat localStorage (kunci sama dgn
+// mtqTokenGet() di doyourmagic.html); sessionStorage = cadangan/sesi lama.
+function maqraGetToken_() {
+  try { const t = localStorage.getItem('mtq_admin_token'); if (t) return t; } catch (e) {}
+  try { return sessionStorage.getItem('mtq_admin_token') || null; } catch (e) {}
+  return null;
+}
+function maqraClearToken_() {
+  try { localStorage.removeItem('mtq_admin_token'); } catch (e) {}
+  try { sessionStorage.removeItem('mtq_admin_token'); } catch (e) {}
+}
+
 function maqraInit() {
   // Ambil token dari sesi admin.js yang sudah login
-  _maqraToken = sessionStorage.getItem('mtq_admin_token') || null;
+  _maqraToken = maqraGetToken_();
   maqraPopulateCabangSelects();
   // FIX: lihat catatan _maqraLoaded di atas — hanya memuat dari server
   // kalau BELUM PERNAH berhasil dimuat di sesi halaman ini.
@@ -90,7 +102,7 @@ function maqraPopulateCabangSelects() {
 async function maqraLoadData() {
   if (!_maqraToken) {
     // Coba ambil token lagi (mungkin baru login)
-    _maqraToken = sessionStorage.getItem('mtq_admin_token') || null;
+    _maqraToken = maqraGetToken_();
     if (!_maqraToken) {
       maqraSetEl('maqraStatTotal', '—');
       maqraSetEl('maqraStatTersedia', '—');
@@ -820,9 +832,10 @@ async function maqraDownloadAllBukti() {
 // ── Session expired ───────────────────────────────────────────
 function maqraHandleSessionExpired() {
   _maqraToken = null;
-  sessionStorage.removeItem('mtq_admin_token');
+  maqraClearToken_();
   // Kembalikan ke halaman login admin.js
   if (typeof showLoginGate === 'function') showLoginGate();
+  else if (typeof doLogout === 'function') doLogout();
   maqraShowToast('Sesi Habis', 'Silakan login kembali', 'warning', 5000);
 }
 

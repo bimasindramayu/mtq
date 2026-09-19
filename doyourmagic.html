@@ -1558,6 +1558,38 @@
       if (el) el.style.display = 'none';
     }
     
+    // ── Token sesi admin ──────────────────────────────────────────
+    // FIX: dulu token disimpan di sessionStorage, yang TERISOLASI PER TAB —
+    // tab baru (Ctrl+klik / duplikat tab / buka URL lagi) mulai dengan
+    // sessionStorage kosong, jadi selalu diminta login ulang padahal admin
+    // sudah login di tab lain. Sekarang disimpan di localStorage, yang
+    // dipakai bersama semua tab origin yang sama. sessionStorage tetap
+    // dibaca sekali sebagai migrasi (sesi lama yang masih terbuka tidak
+    // ter-logout) dan sebagai cadangan kalau localStorage diblokir browser.
+    // Kalau token sudah kedaluwarsa/tidak valid di server, loadAll() memanggil
+    // doLogout() yang membersihkan token ini — lihat loadAll().
+    // admin-maqra.js membaca kunci yang sama (maqraGetToken_()).
+    const MTQ_TOKEN_KEY = 'mtq_admin_token';
+    function mtqTokenGet() {
+      try {
+        const t = localStorage.getItem(MTQ_TOKEN_KEY);
+        if (t) return t;
+      } catch (e) {}
+      try {
+        const legacy = sessionStorage.getItem(MTQ_TOKEN_KEY);
+        if (legacy) { mtqTokenSet(legacy); return legacy; }
+      } catch (e) {}
+      return null;
+    }
+    function mtqTokenSet(token) {
+      try { localStorage.setItem(MTQ_TOKEN_KEY, token); sessionStorage.removeItem(MTQ_TOKEN_KEY); return; } catch (e) {}
+      try { sessionStorage.setItem(MTQ_TOKEN_KEY, token); } catch (e) {}   // cadangan: localStorage diblokir
+    }
+    function mtqTokenClear() {
+      try { localStorage.removeItem(MTQ_TOKEN_KEY); } catch (e) {}
+      try { sessionStorage.removeItem(MTQ_TOKEN_KEY); } catch (e) {}
+    }
+
     // ── Init ──────────────────────────────────────────────────────
     document.addEventListener('DOMContentLoaded', () => {
       adminLog.info('DOMContentLoaded');
@@ -1568,7 +1600,7 @@
         document.getElementById('navbar')?.classList.toggle('scrolled', window.scrollY > 40));
       document.getElementById('hamburger')?.addEventListener('click', () =>
         document.getElementById('adminSidebar')?.classList.toggle('open'));
-      const saved = sessionStorage.getItem('mtq_admin_token');
+      const saved = mtqTokenGet();
       if (saved) {
         adminLog.info('Token found — auto-login');
         // FIX: dulu cuma loadAll() di sini, jadi adm.cabangConfig tetap [] tiap
@@ -1579,6 +1611,20 @@
       } else {
         adminLog.info('No token — show login');
       }
+
+      // Sinkronkan sesi antar tab: logout di satu tab → semua tab kembali ke
+      // layar login; login di satu tab → tab lain yang masih menampilkan
+      // layar login langsung ikut masuk. Event "storage" hanya terpicu di
+      // tab LAIN (bukan tab yang mengubah), jadi tidak ada loop.
+      window.addEventListener('storage', (e) => {
+        if (e.key !== MTQ_TOKEN_KEY) return;
+        if (!e.newValue) {
+          if (adm.token) { adminLog.info('Logout dari tab lain'); doLogout(); }
+        } else if (!adm.token) {
+          adminLog.info('Login dari tab lain — ikut masuk');
+          adm.token = e.newValue; hideLoginOverlay(); loadCabangConfig(); loadAll();
+        }
+      });
     });
     
     // ── Image Captcha ─────────────────────────────────────────────
@@ -1708,7 +1754,7 @@
     
         if (data && data.success) {
           adm.token = data.token;
-          sessionStorage.setItem('mtq_admin_token', data.token);
+          mtqTokenSet(data.token);
           adminLog.info('Login ✓ token.length:', data.token?.length);
           errEl.style.display = 'none';
           document.getElementById('deployGuide').style.display = 'none';
@@ -1742,7 +1788,7 @@
     
     function doLogout() {
       adminLog.info('doLogout');
-      adm.token = null; sessionStorage.removeItem('mtq_admin_token');
+      adm.token = null; mtqTokenClear();
       document.getElementById('loginOverlay').style.display = 'flex';
       document.getElementById('loginPass').value = '';
       initCaptcha();
