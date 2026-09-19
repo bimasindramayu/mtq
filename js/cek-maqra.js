@@ -941,7 +941,7 @@ async function startSpin() {
 
   let chosen = null;
   try {
-    const data = await jsonpPost({
+    const data = await ambilMaqraRetry_({
       action            : 'ambilMaqra',
       nomor_pendaftaran : _record.nomor_pendaftaran,
       cabang_lomba      : _record.cabang_lomba,
@@ -2018,6 +2018,27 @@ function jsonpGet(params, timeout = 20000) {
   return _jsonp(`${apiUrl}?${qs}`, timeout);
 }
 
+// rev 12 — ambilMaqra dengan percobaan ulang otomatis.
+// Server (apiAmbilMaqra_) IDEMPOTEN: kalau nomor ini sudah punya maqra, hasil
+// yang SUDAH ADA dikembalikan (sudahAmbil:true), tidak digambar ulang. Jadi
+// aman mengulang bila (a) server menjawab busy:true (antrean lock penuh saat
+// banyak peserta serentak) atau (b) respons telat/hilang (timeout/jaringan)
+// padahal server mungkin sudah menyimpan hasilnya.
+async function ambilMaqraRetry_(payload) {
+  const MAX = 4;
+  let lastErr = null, data = null;
+  for (let i = 0; i < MAX; i++) {
+    try {
+      data = await jsonpPost(payload, 45000);
+      if (!data || !data.busy) return data;   // sukses / penolakan jelas → jangan diulang
+      lastErr = null;
+    } catch (err) { lastErr = err; }
+    if (i < MAX - 1) await sleep(1200 + Math.floor(Math.random() * 1800) + i * 800);
+  }
+  if (lastErr) throw lastErr;
+  return data;   // masih busy setelah MAX percobaan → pesan "Server sedang sibuk" ditampilkan
+}
+
 /**
  * POST-via-GET tunnel — payload JSON di ?postData=, dengan ?callback=
  */
@@ -2088,6 +2109,16 @@ async function postJSON(payload, timeout = 30000) {
  * GAS tidak redirect ketika ada parameter callback=
  */
 function _jsonp(baseUrl, timeout) {
+  // rev 13: fetch TANPA cookie lebih dulu (MTQ_HTTP, js/config.js) — <script>
+  // membawa cookie Google & memicu 404 saat browser login >1 akun Google.
+  if (typeof MTQ_HTTP === 'undefined' || !MTQ_HTTP.available) return _jsonpScript(baseUrl, timeout);
+  return MTQ_HTTP.request(baseUrl, { timeout: Math.max(timeout, 30000) }).catch((err) => {
+    if (err && err.code === 'TIMEOUT') throw new Error('Server tidak merespons — coba lagi sesaat lagi.');
+    return _jsonpScript(baseUrl, timeout);
+  });
+}
+
+function _jsonpScript(baseUrl, timeout) {
   return new Promise((resolve, reject) => {
     const cbName = 'mtq_' + Date.now() + '_' + Math.floor(Math.random() * 999999);
     const sep    = baseUrl.includes('?') ? '&' : '?';

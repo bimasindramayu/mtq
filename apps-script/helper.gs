@@ -99,6 +99,120 @@ function _flushLog(ss) {
 }
 
 // ════════════════════════════════════════════════════════════
+//  CACHE — CacheService dgn versi per-"scope" (rev 12)
+// ════════════════════════════════════════════════════════════
+// Latar belakang: Apps Script Web App hanya memproses ~30 eksekusi BERSAMAAN
+// per project; sisanya ditolak/ditunda. Hampir semua endpoint publik dulu
+// membuka spreadsheet + membaca seluruh sheet PENDAFTAR di TIAP request,
+// jadi ~10+ pengunjung serentak (tiap halaman memanggil 3-5 action) sudah
+// cukup untuk menabrak batas itu → respons gagal/timeout. Sekarang hasil
+// baca yang sifatnya "boleh basi beberapa detik" disimpan di CacheService
+// dan dipakai bersama SEMUA pengunjung — 100 pengunjung ≈ 1 kali baca sheet.
+//
+// Invalidasi: tiap scope punya nomor versi ('p' = data PENDAFTAR,
+// 'n' = data Sistem Penilaian). Aksi yang MENULIS data memanggil
+// bumpCacheForAction_() (dipasang SATU tempat di doGet/doPost) → nomor
+// versi naik → cache lama otomatis tidak terpakai lagi. TTL tetap ada
+// sebagai jaring pengaman untuk edit manual langsung di Google Sheets.
+var CACHE_WRITE_SCOPES_ = {
+  register:['p'], perbaikan:['p'], updateStatus:['p'], editPeserta:['p'],
+  editAnggota:['p'], addAnggota:['p'], removeAnggota:['p'], deactivate:['p'],
+  initSheets:['p'],
+  saveHakim:['n'], updateHakim:['n'], deleteHakim:['n'], saveParam:['n'],
+  savePeserta:['n'], deletePeserta:['n'], importPesertaFromPendaftaran:['n'],
+  setHasilPublikStatus:['n'], saveNilai:['n']
+  // Aksi Maqra (ambilMaqra, saveMaqra, dst.) sengaja TIDAK ada di sini:
+  // belum ada hasil baca Maqra yang di-cache, jadi tidak perlu invalidasi.
+};
+
+function _cache_() {
+  try { return CacheService.getScriptCache(); } catch (e) { return null; }
+}
+
+function _cacheVers_(c, scopes) {
+  if (!scopes || !scopes.length) return '';
+  var keys = scopes.map(function(s){ return 'ver_' + s; });
+  var got  = c.getAll(keys), out = [], missing = {}, anyMissing = false;
+  keys.forEach(function(k) {
+    var v = got[k];
+    if (!v) { v = String(Date.now()); missing[k] = v; anyMissing = true; }
+    out.push(v);
+  });
+  if (anyMissing) c.putAll(missing, 21600);
+  return out.join('.');
+}
+
+function bumpCache_(scope) {
+  var c = _cache_(); if (!c) return;
+  try { c.put('ver_' + scope, String(Date.now()) + String(Math.floor(Math.random()*1000)), 21600); } catch (e) {}
+}
+
+function bumpCacheForAction_(action) {
+  var sc = CACHE_WRITE_SCOPES_[String(action || '')];
+  if (sc) sc.forEach(bumpCache_);
+}
+
+/**
+ * cachedRead_(name, ttlSec, scopes, computeFn [, opts])
+ *  - name    : nama unik hasil (sertakan parameter pembeda di dalamnya)
+ *  - scopes  : ['p'] / ['n'] / ['p','n'] / [] (tanpa versi, murni TTL)
+ *  - opts.stale === false : jangan pernah menyajikan salinan lama
+ * Hasil dengan success===false TIDAK disimpan. Nilai > ~95 KB tidak disimpan
+ * (batas CacheService 100 KB) — tetap benar, hanya tanpa cache.
+ * Anti-stampede: begitu versi naik, hanya satu eksekusi yang menghitung
+ * ulang; eksekusi lain yg datang bersamaan memakai salinan terakhir
+ * (maks. 120 dtk) kalau ada, alih-alih ikut membaca sheet berbarengan.
+ */
+function cachedRead_(name, ttlSec, scopes, computeFn, opts) {
+  var c = _cache_();
+  if (!c) return computeFn();
+  var allowStale = !(opts && opts.stale === false);
+  var key, busyKey, staleKey = 'stale:' + name;
+  try {
+    key     = 'c:' + name + ':' + _cacheVers_(c, scopes);
+    busyKey = key + ':busy';
+    var hit = c.get(key);
+    if (hit) return JSON.parse(hit);
+    if (allowStale && c.get(busyKey)) {
+      var st = c.get(staleKey);
+      if (st) {
+        var bar = st.indexOf('|');
+        if (bar > 0 && (Date.now() - Number(st.substring(0, bar))) < 120000) {
+          return JSON.parse(st.substring(bar + 1));
+        }
+      }
+    }
+    c.put(busyKey, '1', 25);
+  } catch (e) { return computeFn(); }
+
+  var val = computeFn();
+  try {
+    if (val && val.success !== false) {
+      var s = JSON.stringify(val);
+      if (Utilities.newBlob(s).getBytes().length < 95000) {
+        c.put(key, s, ttlSec);
+        if (allowStale) c.put(staleKey, Date.now() + '|' + s, 300);
+      }
+    }
+    c.remove(busyKey);
+  } catch (e2) {}
+  return val;
+}
+
+// Buang buffer log tanpa membuka spreadsheet kalau sheet LOG dimatikan.
+// Dulu doGet/doPost SELALU memanggil getSS_() di ekornya hanya untuk
+// _flushLog() — padahal dgn SHEET_LOG_ENABLED=false buffernya toh dibuang.
+// Sekarang request yang dijawab dari cache tidak menyentuh Spreadsheet
+// sama sekali.
+function _flushLogIfEnabled_() {
+  if (typeof SHEET_LOG_ENABLED !== 'undefined' && !SHEET_LOG_ENABLED) { _logBuffer = []; return; }
+  if (!_logBuffer.length) return;
+  var ss = null;
+  try { ss = getSS_(); } catch (e) {}
+  _flushLog(ss);
+}
+
+// ════════════════════════════════════════════════════════════
 //  AUTH — token berbasis hash + timestamp sesi (1 jam)
 // ════════════════════════════════════════════════════════════
 var TOKEN_TTL_MS = 3600 * 1000 * 8;   // token valid 8 jam
@@ -236,20 +350,45 @@ function checkNIKDuplicate_(sheet, nikList, excludeNomor) {
   if (sheet.getLastRow() <= 1) return { isDuplicate:false };
   var rows = sheet.getRange(2,1,sheet.getLastRow()-1,PENDAFTAR_HEADERS.length).getValues();
   var excl = excludeNomor ? String(excludeNomor).trim() : '';
-  var existing = [];
-  rows.forEach(function(row) {
-    if (excl && String(row[COL.NOMOR_PENDAFTARAN]||'').trim() === excl) return;
+  // rev 12: dulu SETIAP baris di-JSON.parse (ratusan baris, di dalam
+  // LockService yang dipakai bersama semua pendaftar/maqra). Sekarang
+  // ANGGOTA_JSON hanya di-parse kalau teks mentahnya MEMANG memuat NIK
+  // yang dicari — hasilnya identik, kerjanya jauh lebih sedikit, jadi lock
+  // dilepas lebih cepat.
+  var wanted = [];
+  for (var wi=0; wi<nikList.length; wi++) {
+    var wn = String(nikList[wi]).trim();
+    if (wn) wanted.push(wn);
+  }
+  var found = {};
+  for (var r=0; r<rows.length; r++) {
+    var row = rows[r];
+    if (excl && String(row[COL.NOMOR_PENDAFTARAN]||'').trim() === excl) continue;
     var s = String(row[COL.STATUS_VERIFIKASI]||'').toLowerCase();
-    if (s === 'nonaktif') return;
-    existing.push(String(row[COL.NIK]||'').trim());
+    if (s === 'nonaktif') continue;
+    var rowNik = String(row[COL.NIK]||'').trim();
     var aj = row[COL.ANGGOTA_JSON];
-    if (aj) { try { JSON.parse(aj).forEach(function(a){if(a.nik)existing.push(String(a.nik).trim());}); } catch(e){} }
-  });
-  for (var i=0; i<nikList.length; i++) {
-    var nik = String(nikList[i]).trim();
-    if (!nik) continue;
-    if (existing.indexOf(nik) !== -1) return { isDuplicate:true, nik:nik,
-      msg:'NIK '+nik+' sudah terdaftar. Satu NIK hanya boleh mendaftar satu kali.' };
+    var ajStr = aj ? String(aj) : '';
+    for (var k=0; k<wanted.length; k++) {
+      var nik = wanted[k];
+      if (found[nik]) continue;
+      var hit = (rowNik === nik);
+      if (!hit && ajStr && ajStr.indexOf(nik) !== -1) {
+        try {
+          var arr = JSON.parse(aj);
+          for (var a=0; a<arr.length; a++) {
+            if (arr[a].nik && String(arr[a].nik).trim() === nik) { hit = true; break; }
+          }
+        } catch(e) {}
+      }
+      if (hit) found[nik] = true;
+    }
+    if (wanted.length && found[wanted[0]]) break;   // NIK pertama di daftar sudah ketemu — tak ada yang lebih awal lagi
+  }
+  // Laporkan NIK duplikat PERTAMA menurut URUTAN DAFTAR (sama seperti kode lama).
+  for (var w=0; w<wanted.length; w++) {
+    if (found[wanted[w]]) return { isDuplicate:true, nik:wanted[w],
+      msg:'NIK '+wanted[w]+' sudah terdaftar. Satu NIK hanya boleh mendaftar satu kali.' };
   }
   return { isDuplicate:false };
 }

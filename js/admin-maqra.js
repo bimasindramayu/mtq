@@ -847,7 +847,21 @@ function maqraHandleSessionExpired() {
 // data yang sebenarnya sudah berhasil. Sekarang window[cb] hanya dihapus
 // di onerror (yang berarti browser sudah pasti tidak akan mencoba lagi),
 // bukan di timeout.
+// rev 13: fetch TANPA cookie lebih dulu (MTQ_HTTP di js/config.js) — <script>
+// membawa cookie Google browser dan memicu "404 Not Found" saat browser login
+// ke >1 akun Google. <script> lama (maqraJsonpGetScript_) jadi cadangan.
 function maqraJsonpGet(params, timeout = 15000) {
+  if (typeof MTQ_HTTP === 'undefined' || !MTQ_HTTP.available) return maqraJsonpGetScript_(params, timeout);
+  const qs  = Object.entries(params)
+    .map(([k,v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&');
+  return MTQ_HTTP.request(`${MAQRA_API_URL()}?${qs}`, { timeout: Math.max(timeout, 35000) })
+    .catch((err) => {
+      if (err && err.code === 'TIMEOUT') throw new Error('Timeout');
+      return maqraJsonpGetScript_(params, timeout);
+    });
+}
+
+function maqraJsonpGetScript_(params, timeout = 15000) {
   return new Promise((resolve, reject) => {
     const cb  = 'mtqMqG_' + Date.now() + '_' + Math.floor(Math.random()*9999);
     const qs  = Object.entries(params)
@@ -880,6 +894,16 @@ function maqraJsonpGet(params, timeout = 15000) {
 // meledak ReferenceError kalau toh masih ada pemanggil lama yang pakai
 // fungsi deprecated ini.
 function maqraJsonpPost(payload, timeout = 30000) {
+  if (typeof MTQ_HTTP === 'undefined' || !MTQ_HTTP.available) return maqraJsonpPostScript_(payload, timeout);
+  const enc = encodeURIComponent(JSON.stringify(payload));
+  return MTQ_HTTP.request(`${MAQRA_API_URL()}?postData=${enc}`, { timeout: Math.max(timeout, 35000) })
+    .catch((err) => {
+      if (err && err.code === 'TIMEOUT') throw new Error('Timeout');
+      return maqraJsonpPostScript_(payload, timeout);
+    });
+}
+
+function maqraJsonpPostScript_(payload, timeout = 30000) {
   return new Promise((resolve, reject) => {
     const cb  = 'mtqMqP_' + Date.now() + '_' + Math.floor(Math.random()*9999);
     const enc = encodeURIComponent(JSON.stringify(payload));
@@ -903,9 +927,29 @@ function maqraJsonpPost(payload, timeout = 30000) {
 // (lihat postJSON() di cek-maqra.js) — action saveMaqra/deleteMaqra/
 // saveMaqraConfig sudah dirutekan lewat _dispatchPost(body) yang sama
 // persis dengan tunnel ?postData=, jadi tinggal ganti cara kirimnya saja.
+// rev 13: aksi yang IDEMPOTEN di server (ambilMaqraAdmin: sudah punya maqra →
+// hasil lama dikembalikan; saveMaqraConfig: upsert; deleteMaqra/Bulk: hapus
+// yang sudah tiada = aman) diulang otomatis 2x dgn jeda acak bila gagal
+// KONEKSI (bukan timeout, bukan respons server). Aksi lain (saveMaqra yang
+// MENAMBAH baris) TIDAK diulang — bisa menggandakan data.
+const MAQRA_IDEMPOTENT_POST_ = { ambilMaqraAdmin:1, saveMaqraConfig:1, deleteMaqra:1, deleteMaqraBulk:1 };
 async function maqraPostJSON(payload, timeout = 30000) {
+  const retries = (payload && MAQRA_IDEMPOTENT_POST_[payload.action]) ? 2 : 0;
+  let lastErr;
+  for (let i = 0; i <= retries; i++) {
+    try { return await maqraPostJSONOnce_(payload, timeout); }
+    catch (err) {
+      lastErr = err;
+      if (err && err.noRetry) throw err;
+      if (i < retries) await new Promise(r => setTimeout(r, 800 * (i + 1) + Math.floor(Math.random() * 800)));
+    }
+  }
+  throw lastErr;
+}
+
+async function maqraPostJSONOnce_(payload, timeout = 30000) {
   const apiUrl = MAQRA_API_URL();
-  if (!apiUrl) throw new Error('API_URL tidak terkonfigurasi — periksa js/config.js');
+  if (!apiUrl) { const e = new Error('API_URL tidak terkonfigurasi — periksa js/config.js'); e.noRetry = true; throw e; }
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeout);
@@ -921,13 +965,15 @@ async function maqraPostJSON(payload, timeout = 30000) {
   } catch (err) {
     clearTimeout(timer);
     if (err.name === 'AbortError') {
-      throw new Error('Request timeout (' + Math.round(timeout / 1000) + 's) — server lambat merespons. Data mungkin sudah tersimpan; refresh untuk memastikan.');
+      const te = new Error('Request timeout (' + Math.round(timeout / 1000) + 's) — server lambat merespons. Data mungkin sudah tersimpan; refresh untuk memastikan.');
+      te.noRetry = true;   // timeout: request pertama mungkin masih berjalan — jangan digandakan
+      throw te;
     }
     throw new Error('Gagal menghubungi server: ' + err.message);
   }
   clearTimeout(timer);
 
-  if (!res.ok) throw new Error('Server merespons dengan status ' + res.status);
+  if (!res.ok) { const he = new Error('Server merespons dengan status ' + res.status); if (res.status !== 404 && res.status < 500) he.noRetry = true; throw he; }
   return res.json();
 }
 

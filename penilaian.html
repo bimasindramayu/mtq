@@ -974,6 +974,18 @@ function isApiReady() {
  * itu, tidak ada respons susulan yang mungkin datang).
  */
 function jsonpRequest(url, prefix, timeoutMs = 25000) {
+  // rev 13: fetch TANPA cookie lebih dulu (MTQ_HTTP di js/config.js) — <script>
+  // membawa cookie Google & memicu "404 Not Found" saat browser login >1 akun.
+  // saveNilai/aksi tulis lain hanya 1 percobaan (MTQ_HTTP.attemptsFor) —
+  // pengiriman ulang tetap ditangani resyncPendingNilai() di bawah.
+  if (typeof MTQ_HTTP === 'undefined' || !MTQ_HTTP.available) return jsonpRequestScript_(url, prefix, timeoutMs);
+  return MTQ_HTTP.request(url, { timeout: timeoutMs }).catch((err) => {
+    if (err && err.code === 'TIMEOUT') return null;
+    return jsonpRequestScript_(url, prefix, timeoutMs);
+  });
+}
+
+function jsonpRequestScript_(url, prefix, timeoutMs = 25000) {
   return new Promise((resolve) => {
     const cbName = prefix + '_' + Date.now() + '_' + (Math.random() * 99999 | 0);
     const script = document.createElement('script');

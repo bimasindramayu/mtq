@@ -3924,7 +3924,7 @@
     // TIDAK berisiko (tidak ada downside selain toast error yang lebih
     // jarang muncul prematur), cuma memberi lebih banyak waktu sebelum
     // UI "menyerah" duluan padahal server sebenarnya masih memprosesnya.
-    function jsonp(url, cbPrefix, fn, timeout=35000) {
+    function _jsonpScript(url, cbPrefix, fn, timeout=35000) {
       const cbName = cbPrefix+'_'+Date.now();
       const script = document.createElement('script');
       let timer, gaveUp = false;
@@ -3955,6 +3955,31 @@
         // penjelasan panjang di atas fungsi ini.
       }, timeout);
       document.head.appendChild(script);
+    }
+    
+    // FIX #26 (rev 13): jsonp() sekarang memakai fetch TANPA cookie (MTQ_HTTP,
+    // js/config.js) — <script src> selalu membawa cookie Google browser, dan
+    // kalau browser login ke >1 akun Google, script.google.com menjawab
+    // "404 Not Found" untuk semua action (persis penjelasan di deployGuide di
+    // atas: gagal di browser biasa, aman di Incognito). Ditambah antrean
+    // maks. 4 request bersamaan + retry 404/jaringan dgn jeda acak. Timeout
+    // TIDAK diulang. Jika fetch gagal total, jatuh ke <script> lama
+    // (_jsonpScript) sebagai cadangan terakhir. Kontrak callback sama:
+    // fn(data) atau fn({__jsonpError:true, message:'JSONP_TIMEOUT'|'JSONP_LOAD_FAILED'}).
+    function jsonp(url, cbPrefix, fn, timeout=35000) {
+      if (typeof MTQ_HTTP === 'undefined' || !MTQ_HTTP.available) { _jsonpScript(url, cbPrefix, fn, timeout); return; }
+      MTQ_HTTP.request(url, { timeout: timeout }).then(
+        (data) => { try { fn(data); } catch(e){ adminLog.error('JSONP cb error',e); } },
+        (err)  => {
+          if (err && err.code === 'TIMEOUT') {
+            adminLog.warn(`Request timeout ${timeout/1000}s untuk:`, cbPrefix);
+            fn({ __jsonpError: true, message: 'JSONP_TIMEOUT' });
+            return;
+          }
+          adminLog.warn('fetch gagal (' + (err && err.message) + ') — mencoba <script> lama untuk:', cbPrefix);
+          _jsonpScript(url, cbPrefix, fn, timeout);
+        }
+      );
     }
     
     // ── Toast ─────────────────────────────────────────────────────

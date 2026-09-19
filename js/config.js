@@ -17,7 +17,7 @@
 const MTQ_CONFIG = {
 
   // ── Google Apps Script Web App URL — SATU-SATUNYA tempat edit ──
-  API_URL: 'https://script.google.com/macros/s/AKfycbw6eEQE9EPdAPaXmedEGEJkZd1rCkOsEKQZBlwyfPtOuIXoTejeLlnSPS6zdY-lINK-/exec',
+  API_URL: 'https://script.google.com/macros/s/AKfycbzfc7hHJHy2kZ3KMwwNIwVIdkiEf9IxA068w2qWs6LKt9UkhR5Er20SI9qzP_voeqyj/exec',
 
   // ── Tanggal pendaftaran & cutoff umur ────────────────────────
   // Fallback bila API tidak terjangkau — akan ditimpa nilai live
@@ -25,7 +25,7 @@ const MTQ_CONFIG = {
   // Sesuai Juknis MTQ ke-56 Kab. Indramayu: pendaftaran online 5 s.d. 15 Agustus 2026,
   // usia dihitung per 1 November 2026.
   PENDAFTARAN_BUKA : '2026-08-05T00:00:00',
-  PENDAFTARAN_TUTUP: '2026-09-19T23:59:59',
+  PENDAFTARAN_TUTUP: '2026-09-17T21:59:59',
   AGE_CUTOFF_DATE  : '2026-11-01',
 
   // ── Info Event ───────────────────────────────────────────────
@@ -108,7 +108,7 @@ const MTQ_CONFIG = {
   // MTQ_LOG (penilaian.html). true = tampil di console (dan panel
   // logger di penilaian.html), false = senyap di semua halaman.
   // Ganti HANYA di sini — jangan hardcode ulang di file lain.
-  LOGGER_ENABLED: false,
+  LOGGER_ENABLED: true,
 };
 
 // ── Turunan otomatis: nama cabang saja (untuk dropdown/filter) ──
@@ -235,3 +235,109 @@ function getRegStatus() {
 // main.js, daftar.js, admin.html, admin-maqra.js, admin-penilaian.js,
 // penilaian.js/.html, cek-maqra.js, maqra.js — semuanya baca dari sini.
 window.MTQ_API_URL = MTQ_CONFIG.API_URL;
+
+// ── Transport HTTP bersama: fetch TANPA cookie + antrean + retry ─────────
+// MASALAH (rev 13): semua halaman admin/hakim/peserta memanggil Apps Script
+// lewat <script src="...exec?...&callback=..."> (JSONP). Tag <script> SELALU
+// ikut mengirim cookie login Google milik browser. Kalau browser sedang login
+// ke LEBIH DARI SATU akun Google (hampir semua HP Android & laptop admin),
+// script.google.com mengalihkan ke /macros/u/1/s/... lalu menjawab
+// "404 Not Found / Sorry, unable to open the file at present" — untuk SEMUA
+// action (getAllPendaftar, getMaqraAdmin, ...). Gejalanya persis yang tertulis di
+// panduan deploy doyourmagic.html: gagal di browser biasa, aman di Incognito.
+// fetch() lintas-origin TIDAK mengirim cookie (credentials:'omit'), jadi
+// masalah akun ganda itu hilang. Dipakai lebih dulu; <script> lama tetap jadi
+// cadangan di tiap pemanggil.
+//   MTQ_HTTP.request(url, {timeout, attempts}) → Promise<objek JSON>
+//     ditolak dgn Error.code = 'TIMEOUT' | 'FAILED' | 'BAD_RESPONSE'
+//   MTQ_HTTP.attemptsFor(url) → jumlah percobaan yang AMAN utk action itu
+// Batas 4 request berjalan bersamaan per halaman (sisanya antre) supaya satu
+// halaman tidak menghabiskan slot eksekusi Apps Script sendirian; kegagalan
+// cepat (404/5xx/jaringan) diulang dgn jeda acak. TIMEOUT tidak diulang
+// (server sedang sibuk — request pertama mungkin masih berjalan).
+const MTQ_HTTP = (function () {
+  const MAX_CONCURRENT = 4;
+  let running = 0;
+  const waiting = [];
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  // Action yang aman diulang otomatis (baca, atau tulis idempoten).
+  const IDEMPOTENT = {
+    updateStatus:1, deactivate:1, editPeserta:1, editAnggota:1, adminLogin:1,
+    ambilMaqra:1, ambilMaqraAdmin:1, saveMaqraConfig:1, setHasilPublikStatus:1,
+    saveParam:1, updateHakim:1, deletePeserta:1, deleteHakim:1, deleteMaqra:1,
+  };
+
+  function actionOf(url) {
+    try {
+      const u = new URL(url, location.href);
+      const pd = u.searchParams.get('postData');
+      if (pd) { try { return String(JSON.parse(pd).action || ''); } catch (e) { return ''; } }
+      return String(u.searchParams.get('action') || '');
+    } catch (e) { return ''; }
+  }
+
+  function attemptsFor(url) {
+    const a = actionOf(url);
+    if (!a) return 1;
+    if (/^(get|check|verify|ping)/i.test(a)) return 3;   // baca
+    return IDEMPOTENT[a] ? 2 : 1;                        // tulis
+  }
+
+  function parseBody(text) {
+    if (!text) return null;
+    try { return JSON.parse(text); } catch (e) {}
+    const m = String(text).match(/^[^(]*\(([\s\S]*)\)\s*;?\s*$/);   // _noop({...})
+    if (m) { try { return JSON.parse(m[1]); } catch (e) {} }
+    return null;
+  }
+
+  async function once(url, timeout) {
+    const ctrl  = (typeof AbortController === 'function') ? new AbortController() : null;
+    const timer = ctrl ? setTimeout(() => ctrl.abort(), timeout) : null;
+    try {
+      const full = url + (url.indexOf('?') >= 0 ? '&' : '?') + 'callback=_noop';   // sama dgn jalur fetch di daftar.js
+      const res  = await fetch(full, { method: 'GET', credentials: 'omit', redirect: 'follow', signal: ctrl ? ctrl.signal : undefined });
+      const text = await res.text();
+      if (!res.ok) { const e = new Error('HTTP ' + res.status); e.code = 'FAILED'; e.status = res.status; throw e; }
+      const json = parseBody(text);
+      if (json === null) { const e = new Error('Respons bukan JSON'); e.code = 'BAD_RESPONSE'; throw e; }
+      return json;
+    } catch (err) {
+      if (err && err.name === 'AbortError') { const e = new Error('Timeout'); e.code = 'TIMEOUT'; throw e; }
+      if (err && !err.code) err.code = 'FAILED';
+      throw err;
+    } finally { if (timer) clearTimeout(timer); }
+  }
+
+  async function run(url, o) {
+    let last;
+    for (let i = 0; i < o.attempts; i++) {
+      try { return await once(url, o.timeout); }
+      catch (err) {
+        last = err;
+        if (err && err.code === 'TIMEOUT') break;
+        if (i < o.attempts - 1) await sleep(600 * (i + 1) + Math.floor(Math.random() * 700));
+      }
+    }
+    throw last;
+  }
+
+  function request(url, opts) {
+    const o = Object.assign({ timeout: 35000, attempts: attemptsFor(url) }, opts || {});
+    return new Promise((resolve, reject) => {
+      const start = () => {
+        running++;
+        run(url, o).then(resolve, reject).finally(() => {
+          running--;
+          const next = waiting.shift();
+          if (next) next();
+        });
+      };
+      if (running < MAX_CONCURRENT) start(); else waiting.push(start);
+    });
+  }
+
+  return { request, attemptsFor, available: (typeof fetch === 'function') };
+})();
+window.MTQ_HTTP = MTQ_HTTP;
