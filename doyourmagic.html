@@ -1038,13 +1038,13 @@
             <div class="table-scroll-hint">👉 Geser tabel untuk melihat kolom lainnya</div>
             <div class="table-wrap">
               <table class="data-table">
-                <thead>
+                <thead id="maqraAmbilThead">
                   <tr>
-                    <th>No. Daftar</th>
-                    <th>Nama</th>
-                    <th>Kecamatan</th>
-                    <th>Cabang</th>
-                    <th>Status Maqra</th>
+                    <th class="stats-th-sort" data-sort-key="nomor" tabindex="0" role="button" aria-sort="none" title="Urutkan berdasarkan No. Daftar" onclick="maqraAmbilSortBy('nomor')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();maqraAmbilSortBy('nomor')}">No. Daftar<span class="stats-sort-arrow">⇅</span></th>
+                    <th class="stats-th-sort" data-sort-key="nama" tabindex="0" role="button" aria-sort="none" title="Urutkan berdasarkan Nama" onclick="maqraAmbilSortBy('nama')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();maqraAmbilSortBy('nama')}">Nama<span class="stats-sort-arrow">⇅</span></th>
+                    <th class="stats-th-sort" data-sort-key="kec" tabindex="0" role="button" aria-sort="none" title="Urutkan berdasarkan Kecamatan" onclick="maqraAmbilSortBy('kec')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();maqraAmbilSortBy('kec')}">Kecamatan<span class="stats-sort-arrow">⇅</span></th>
+                    <th class="stats-th-sort" data-sort-key="cabang" tabindex="0" role="button" aria-sort="none" title="Urutkan berdasarkan Cabang" onclick="maqraAmbilSortBy('cabang')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();maqraAmbilSortBy('cabang')}">Cabang<span class="stats-sort-arrow">⇅</span></th>
+                    <th class="stats-th-sort" data-sort-key="status" tabindex="0" role="button" aria-sort="none" title="Urutkan berdasarkan Status Maqra" onclick="maqraAmbilSortBy('status')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();maqraAmbilSortBy('status')}">Status Maqra<span class="stats-sort-arrow">⇅</span></th>
                     <th>Aksi</th>
                   </tr>
                 </thead>
