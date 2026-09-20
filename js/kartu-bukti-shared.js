@@ -523,6 +523,11 @@ const QURAN_ALIAS = {
   'ALMUMIN':40, 'ATTAHRIM':66, 'ADDAHR':76, 'ALINSYIRAH':94, 'ALAMNASYRAH':94,
   'ALLAHAB':111, 'ATTABBAT':111, 'ALMASAD':111, 'ALMASADD':111, 'ALIIMRAN':3, 'AALIIMRAN':3, 'ALFATEHAH':1,
   'ALFATIHA':1, 'UMMULKITAB':1, 'FATIHAH':1, 'ALKAHFI':18, 'ANNAHL':16, 'ANNAS':114, 'ALFALAQ':113, 'ALIKHLAS':112,
+  // 'Thaha' (ejaan umum) TIDAK senasib dgn normalisasi kanonik 'Taha': aturan
+  // TH->S di quranNormNama() (utk menyeragamkan ejaan TSA/DZA/dst.) ikut
+  // memakan T+H di sini, padahal keduanya huruf hijaiyah terpisah (Tha-Ha),
+  // bukan 1 bunyi gabungan -- jadi dipetakan manual: quranNormNama('Thaha')='SAHA'.
+  'SAHA':20,
 };
 
 /**
@@ -574,9 +579,18 @@ function quranCariSurat(nama) {
     if (d < bestD) { bestD = d; best = n; }
   }
   if (exact) return exact;
-  // Toleransi salah ketik ~1 huruf per 6 huruf, dibatasi supaya nama pendek
-  // (An-Nas, Hud, Qaf) tidak salah tebak ke surat lain yang mirip.
-  return (bestD <= Math.max(1, Math.floor(q.length / 6))) ? best : 0;
+  // Toleransi salah ketik HANYA untuk nama yang cukup panjang (>=7 huruf
+  // setelah dinormalkan, kira-kira 1 kesalahan per 7 huruf). Di bawah itu
+  // WAJIB persis (atau lewat alias di atas) -- pernah ketahuan bug nyata:
+  // "AN'AM" tanpa awalan "AL-" (admin lupa/singkat) ternormalisasi jadi
+  // "ANAM" (4 huruf), dan dengan toleransi lama (selalu minimal 1 walau
+  // nama pendek) itu malah dianggap "mirip" AN-NAML ("ANAML") dan salah
+  // menampilkan ayat surat lain sama sekali. Nama pendek terlalu mudah
+  // "mirip" ke surat yang sama sekali berbeda kalau toleransinya disamakan
+  // dengan nama panjang -- salah tebak nama surat pada dokumen resmi jauh
+  // lebih buruk daripada sekadar gagal mengenali & tidak menampilkan ayat.
+  if (q.length < 7) return 0;
+  return (bestD <= Math.floor(q.length / 7)) ? best : 0;
 }
 
 function quranNamaSurat(n) {
@@ -590,9 +604,14 @@ function _quranBase() {
   return (typeof MTQ_CONFIG !== 'undefined' && MTQ_CONFIG.QURAN_BASE) || 'data/quran';
 }
 
+// v2: kunci cache diberi versi (rev 17). Kalau berkas data/quran/*.json
+// pernah diperbarui setelah sempat ter-cache di localStorage seseorang
+// (mis. saat masih tahap uji coba), versi lama ini membuat salinan basi itu
+// otomatis diabaikan sekali saja -- tanpa perlu minta orangnya membersihkan
+// localStorage manual. Naikkan angka v ini lagi kalau berkas data diganti.
 async function quranMuatSurat(n) {
   if (_quranMem[n]) return _quranMem[n];
-  const lsKey = 'mtq_quran_s' + n;
+  const lsKey = 'mtq_quran_v2_s' + n;
   try {
     const raw = localStorage.getItem(lsKey);
     if (raw) { const o = JSON.parse(raw); if (o && o.ayat && o.ayat.length) return (_quranMem[n] = o); }
@@ -600,6 +619,7 @@ async function quranMuatSurat(n) {
   const res = await fetch(`${_quranBase()}/${n}.json`, { cache: 'force-cache' });
   if (!res.ok) throw new Error('Berkas surat ' + n + ' tidak ditemukan (HTTP ' + res.status + ')');
   const o = await res.json();
+  if (!o || !Array.isArray(o.ayat) || !o.ayat.length) throw new Error('Berkas surat ' + n + ' formatnya tidak valid');
   _quranMem[n] = o;
   try { localStorage.setItem(lsKey, JSON.stringify(o)); } catch (e) { /* kuota penuh — cukup cache memori */ }
   return o;
@@ -624,16 +644,46 @@ const QURAN_MAKS_AYAT = 10;   // di atas ini dipotong, biar 1 kartu tetap 1 hala
  *          atau null kalau surat/ayat tidak bisa ditentukan (kartu tetap
  *          dicetak, hanya tanpa blok ayat — lebih baik kosong daripada salah).
  */
+/**
+ * Ambil teks ayat untuk satu baris maqra.
+ * @param {string} maqraTeks  - mis. "SURAT AL-BAQARAH - AYAT : 168 – HAL : 24"
+ * @param {string} cadSurat   - isi kolom maqra_detail, dipakai kalau baris
+ *                              maqra tidak memuat nama surat
+ * @returns {Promise<object|null>} {nomorSurat, namaSurat, ayat:[{no,arab}], dipotong, sisa}
+ *          atau null kalau surat/ayat tidak bisa ditentukan (kartu tetap
+ *          dicetak, hanya tanpa blok ayat — lebih baik kosong daripada salah).
+ *
+ * SEMUA jalur null di bawah mencetak console.warn dengan alasan spesifik
+ * (bukan cuma error tak terduga di try/catch) -- kalau suatu saat ada baris
+ * maqra yang ayatnya tidak muncul di PDF, buka Console browser (F12) saat
+ * mengunduh buktinya: pesannya langsung bilang persisnya kenapa (nama surat
+ * tidak dikenali, atau nomor ayat tidak terbaca dari baris maqra, dsb.),
+ * jadi tidak perlu menebak-nebak lagi.
+ */
 async function quranAmbilUntukMaqra(maqraTeks, cadSurat) {
+  const warn = (typeof console !== 'undefined' && console.warn) ? console.warn.bind(console) : function () {};
   try {
     const p = parseMaqra(maqraTeks);
-    const n = quranCariSurat(p.surat || cadSurat || '');
-    if (!n) return null;
+    const namaDicoba = p.surat || cadSurat || '';
+    const n = quranCariSurat(namaDicoba);
+    if (!n) {
+      warn('[Maqra] Teks ayat TIDAK ditampilkan -- nama surat tidak dikenali:',
+           JSON.stringify(namaDicoba), '(dari baris maqra:', JSON.stringify(maqraTeks) + ')');
+      return null;
+    }
     const [dari, sampai] = quranParseRentang(p.ayat);
-    if (!dari) return null;
+    if (!dari) {
+      warn('[Maqra] Teks ayat TIDAK ditampilkan -- nomor ayat tidak terbaca dari baris maqra:',
+           JSON.stringify(maqraTeks), '(surat terdeteksi:', quranNamaSurat(n) + ', tapi field ayat kosong/tidak berpola angka)');
+      return null;
+    }
     const s = await quranMuatSurat(n);
+    if (dari > s.ayat.length) {
+      warn('[Maqra] Teks ayat TIDAK ditampilkan -- nomor ayat', dari, 'melebihi jumlah ayat',
+           quranNamaSurat(n), '(' + s.ayat.length + ' ayat). Cek penulisan ayat pada baris maqra:', JSON.stringify(maqraTeks));
+      return null;
+    }
     const akhir = Math.min(Math.max(sampai, dari), s.ayat.length);
-    if (dari > s.ayat.length) return null;
     const jml = akhir - dari + 1;
     const tampil = Math.min(jml, QURAN_MAKS_AYAT);
     const ayat = [];
@@ -641,7 +691,7 @@ async function quranAmbilUntukMaqra(maqraTeks, cadSurat) {
     return { nomorSurat: n, namaSurat: s.nama || quranNamaSurat(n), ayat,
              dipotong: jml > tampil, sisa: akhir };
   } catch (e) {
-    if (typeof console !== 'undefined') console.warn('[Maqra] teks ayat gagal dimuat:', e && e.message);
+    warn('[Maqra] Teks ayat TIDAK ditampilkan -- gagal memuat berkas surat (cek folder data/quran/ ter-upload lengkap & bisa diakses):', e && e.message);
     return null;
   }
 }
