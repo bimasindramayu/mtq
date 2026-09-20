@@ -792,7 +792,7 @@ async function maqraDownloadAllBukti() {
     maqraShowToast('Kosong', 'Tidak ada hasil pengambilan maqra untuk diunduh (cek filter/pencarian).', 'warning');
     return;
   }
-  if (typeof buildBuktiMaqraCardHtml !== 'function' || typeof downloadBuktiMaqraPdf !== 'function') {
+  if (typeof buildBuktiMaqraCardHtmlAsync !== 'function' || typeof downloadBuktiMaqraPdf !== 'function') {
     maqraShowToast('Error', 'Komponen bukti maqra belum termuat — muat ulang halaman.', 'error');
     return;
   }
@@ -801,7 +801,8 @@ async function maqraDownloadAllBukti() {
   // objek datar (nama_lengkap, nomor_pendaftaran, cabang_lomba,
   // kecamatan, maqra_teks, maqra_detail, nomor_maqra) — jadi bisa dikirim
   // sebagai rec MAUPUN m sekaligus ke buildBuktiMaqraCardHtml().
-  const cards = rows.map(r => buildBuktiMaqraCardHtml(r, r, maqraEsc));
+  const cards = [];
+  for (const r of rows) cards.push(await buildBuktiMaqraCardHtmlAsync(r, r, maqraEsc));
   const fname = `Bukti_Maqra_MTQ2026_Borongan_${rows.length}_${new Date().toISOString().slice(0,10)}.pdf`;
 
   maqraShowLoading(true, `Membuat PDF 0/${rows.length}...`);
@@ -834,7 +835,21 @@ function maqraHandleSessionExpired() {
 // data yang sebenarnya sudah berhasil. Sekarang window[cb] hanya dihapus
 // di onerror (yang berarti browser sudah pasti tidak akan mencoba lagi),
 // bukan di timeout.
+// rev 13: fetch TANPA cookie lebih dulu (MTQ_HTTP di js/config.js) — <script>
+// membawa cookie Google browser dan memicu "404 Not Found" saat browser login
+// ke >1 akun Google. <script> lama (maqraJsonpGetScript_) jadi cadangan.
 function maqraJsonpGet(params, timeout = 15000) {
+  if (typeof MTQ_HTTP === 'undefined' || !MTQ_HTTP.available) return maqraJsonpGetScript_(params, timeout);
+  const qs  = Object.entries(params)
+    .map(([k,v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&');
+  return MTQ_HTTP.request(`${MAQRA_API_URL()}?${qs}`, { timeout: Math.max(timeout, 35000) })
+    .catch((err) => {
+      if (err && err.code === 'TIMEOUT') throw new Error('Timeout');
+      return maqraJsonpGetScript_(params, timeout);
+    });
+}
+
+function maqraJsonpGetScript_(params, timeout = 15000) {
   return new Promise((resolve, reject) => {
     const cb  = 'mtqMqG_' + Date.now() + '_' + Math.floor(Math.random()*9999);
     const qs  = Object.entries(params)
@@ -867,6 +882,16 @@ function maqraJsonpGet(params, timeout = 15000) {
 // meledak ReferenceError kalau toh masih ada pemanggil lama yang pakai
 // fungsi deprecated ini.
 function maqraJsonpPost(payload, timeout = 30000) {
+  if (typeof MTQ_HTTP === 'undefined' || !MTQ_HTTP.available) return maqraJsonpPostScript_(payload, timeout);
+  const enc = encodeURIComponent(JSON.stringify(payload));
+  return MTQ_HTTP.request(`${MAQRA_API_URL()}?postData=${enc}`, { timeout: Math.max(timeout, 35000) })
+    .catch((err) => {
+      if (err && err.code === 'TIMEOUT') throw new Error('Timeout');
+      return maqraJsonpPostScript_(payload, timeout);
+    });
+}
+
+function maqraJsonpPostScript_(payload, timeout = 30000) {
   return new Promise((resolve, reject) => {
     const cb  = 'mtqMqP_' + Date.now() + '_' + Math.floor(Math.random()*9999);
     const enc = encodeURIComponent(JSON.stringify(payload));
@@ -890,9 +915,29 @@ function maqraJsonpPost(payload, timeout = 30000) {
 // (lihat postJSON() di cek-maqra.js) — action saveMaqra/deleteMaqra/
 // saveMaqraConfig sudah dirutekan lewat _dispatchPost(body) yang sama
 // persis dengan tunnel ?postData=, jadi tinggal ganti cara kirimnya saja.
+// rev 13: aksi yang IDEMPOTEN di server (ambilMaqraAdmin: sudah punya maqra →
+// hasil lama dikembalikan; saveMaqraConfig: upsert; deleteMaqra/Bulk: hapus
+// yang sudah tiada = aman) diulang otomatis 2x dgn jeda acak bila gagal
+// KONEKSI (bukan timeout, bukan respons server). Aksi lain (saveMaqra yang
+// MENAMBAH baris) TIDAK diulang — bisa menggandakan data.
+const MAQRA_IDEMPOTENT_POST_ = { ambilMaqraAdmin:1, saveMaqraConfig:1, deleteMaqra:1, deleteMaqraBulk:1 };
 async function maqraPostJSON(payload, timeout = 30000) {
+  const retries = (payload && MAQRA_IDEMPOTENT_POST_[payload.action]) ? 2 : 0;
+  let lastErr;
+  for (let i = 0; i <= retries; i++) {
+    try { return await maqraPostJSONOnce_(payload, timeout); }
+    catch (err) {
+      lastErr = err;
+      if (err && err.noRetry) throw err;
+      if (i < retries) await new Promise(r => setTimeout(r, 800 * (i + 1) + Math.floor(Math.random() * 800)));
+    }
+  }
+  throw lastErr;
+}
+
+async function maqraPostJSONOnce_(payload, timeout = 30000) {
   const apiUrl = MAQRA_API_URL();
-  if (!apiUrl) throw new Error('API_URL tidak terkonfigurasi — periksa js/config.js');
+  if (!apiUrl) { const e = new Error('API_URL tidak terkonfigurasi — periksa js/config.js'); e.noRetry = true; throw e; }
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeout);
@@ -908,13 +953,15 @@ async function maqraPostJSON(payload, timeout = 30000) {
   } catch (err) {
     clearTimeout(timer);
     if (err.name === 'AbortError') {
-      throw new Error('Request timeout (' + Math.round(timeout / 1000) + 's) — server lambat merespons. Data mungkin sudah tersimpan; refresh untuk memastikan.');
+      const te = new Error('Request timeout (' + Math.round(timeout / 1000) + 's) — server lambat merespons. Data mungkin sudah tersimpan; refresh untuk memastikan.');
+      te.noRetry = true;   // timeout: request pertama mungkin masih berjalan — jangan digandakan
+      throw te;
     }
     throw new Error('Gagal menghubungi server: ' + err.message);
   }
   clearTimeout(timer);
 
-  if (!res.ok) throw new Error('Server merespons dengan status ' + res.status);
+  if (!res.ok) { const he = new Error('Server merespons dengan status ' + res.status); if (res.status !== 404 && res.status < 500) he.noRetry = true; throw he; }
   return res.json();
 }
 
@@ -1427,8 +1474,15 @@ async function maqraAmbilStartDraw() {
   }
 
   // Phase 4: reveal
-  document.getElementById('admResultAyat').textContent  = chosen.maqra_teks   || '—';
-  document.getElementById('admResultSurah').textContent = chosen.maqra_detail || '—';
+  // rev 14: baris maqra dipecah dgn parseMaqra() (kartu-bukti-shared.js)
+  // supaya nama SURAT tampil terpisah, sama dengan yang dicetak di PDF.
+  var _pm = (typeof parseMaqra === 'function') ? parseMaqra(chosen.maqra_teks) : null;
+  document.getElementById('admResultAyat').textContent  =
+    (_pm && _pm.ok && (_pm.ayat || _pm.halaman))
+      ? [(_pm.ayat ? 'Ayat ' + _pm.ayat : ''), (_pm.halaman ? 'Hal. ' + _pm.halaman : '')].filter(Boolean).join(' • ')
+      : (chosen.maqra_teks || '—');
+  document.getElementById('admResultSurah').textContent =
+    (_pm && _pm.surat) ? ('SURAT ' + _pm.surat.toUpperCase()) : (chosen.maqra_detail || '—');
   document.getElementById('admResultNomor').textContent = `Nomor Undian: ${chosen.nomor_maqra || '—'}`;
   reveal.style.display = 'block';
   reveal.classList.add('show');
@@ -1464,13 +1518,13 @@ function maqraSleep_(ms) { return new Promise(r => setTimeout(r, ms)); }
 async function maqraAmbilDownloadBukti() {
   if (!_maqraAmbilLastResult) return;
   const { peserta, maqra } = _maqraAmbilLastResult;
-  if (typeof buildBuktiMaqraCardHtml !== 'function' || typeof downloadBuktiMaqraPdf !== 'function') {
+  if (typeof buildBuktiMaqraCardHtmlAsync !== 'function' || typeof downloadBuktiMaqraPdf !== 'function') {
     maqraShowToast('Error', 'Komponen bukti maqra belum termuat — muat ulang halaman.', 'error');
     return;
   }
   maqraShowLoading(true, 'Membuat PDF bukti maqra...');
   try {
-    const cardHtml = buildBuktiMaqraCardHtml(peserta, maqra, maqraEsc);
+    const cardHtml = await buildBuktiMaqraCardHtmlAsync(peserta, maqra, maqraEsc);
     const fname = `Bukti_Maqra_${(peserta.nomor_pendaftaran||'MTQ').replace(/[^A-Za-z0-9]/g,'_')}.pdf`;
     await downloadBuktiMaqraPdf([cardHtml], fname);
     maqraShowToast('Berhasil', 'Bukti maqra (PDF) diunduh', 'success');
@@ -1500,13 +1554,13 @@ async function maqraAmbilDownloadBuktiRow(nomor) {
     maqraShowToast('Gagal', 'Data bukti peserta ini tidak ditemukan — coba klik 🔄 Refresh lalu ulangi.', 'error');
     return;
   }
-  if (typeof buildBuktiMaqraCardHtml !== 'function' || typeof downloadBuktiMaqraPdf !== 'function') {
+  if (typeof buildBuktiMaqraCardHtmlAsync !== 'function' || typeof downloadBuktiMaqraPdf !== 'function') {
     maqraShowToast('Error', 'Komponen bukti maqra belum termuat — muat ulang halaman.', 'error');
     return;
   }
   maqraShowLoading(true, 'Membuat PDF bukti maqra...');
   try {
-    const cardHtml = buildBuktiMaqraCardHtml(hasil, hasil, maqraEsc);
+    const cardHtml = await buildBuktiMaqraCardHtmlAsync(hasil, hasil, maqraEsc);
     const fname = `Bukti_Maqra_${(hasil.nomor_pendaftaran||'MTQ').replace(/[^A-Za-z0-9]/g,'_')}.pdf`;
     await downloadBuktiMaqraPdf([cardHtml], fname);
     maqraShowToast('Berhasil', 'Bukti maqra (PDF) diunduh', 'success');

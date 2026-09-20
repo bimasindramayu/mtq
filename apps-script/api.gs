@@ -84,6 +84,7 @@ function doGet(e) {
 
   logInfo('api', 'doGet', { action: action, hasPostData: !!params.postData });
   var result;
+  var effAction = action;   // action yang benar2 dijalankan (utk invalidasi cache)
 
   // ── Payload untuk endpoint Sistem Penilaian (Hakim/Peserta/Nilai) ──
   // Dikirim sebagai ?action=X&payload=<json> (lihat penilaian.html apiPost).
@@ -102,6 +103,7 @@ function doGet(e) {
       try { body = JSON.parse(decodeURIComponent(params.postData)); }
       catch(e1) { body = JSON.parse(params.postData); }
       result = _dispatchPost(body);
+      effAction = String((body && body.action) || '');
  
     } else {
       // ── Normal GET dispatch ────────────────────────────
@@ -180,12 +182,12 @@ function doGet(e) {
         case 'getParam'         : result = _runPenilaian_(function(){ return getParam(params.cabang || null); });                               break;
         // adminView='true' → admin panel: tampilkan semua peserta (skip Terverifikasi filter)
         // adminView tidak ada / 'false' → scoring hakim: hanya Terverifikasi
-        case 'getPeserta'       : result = _runPenilaian_(function(){ return getPeserta(params.cabang || null, params.adminView === 'true'); });  break;
+        case 'getPeserta'       : result = _runPenilaian_(function(){ var cb = params.cabang || null, av = params.adminView === 'true'; return cachedRead_('pn_peserta:' + (cb||'*') + ':' + (av?'a':'p'), 20, ['p'], function(){ return getPeserta(cb, av); }); });  break;
         case 'saveNilai'        : result = _runPenilaian_(function(){ return saveNilai(penilaianPayload.key, penilaianPayload.data); });        break;
-        case 'getNilai'         : result = _runPenilaian_(function(){ return getNilai(params.cabang || null, params.hakimId || null); });       break;
-        case 'getPeringkat'     : result = _runPenilaian_(function(){ return getPeringkat(params.cabang); });                                   break;
-        case 'getPenilaianStats': result = _runPenilaian_(function(){ return getPenilaianStats_(); });                                          break;
-        case 'getHasilPublikStatus': result = _runPenilaian_(function(){ return apiGetHasilPublikStatus_(); });                                 break;
+        case 'getNilai'         : result = _runPenilaian_(function(){ var cb = params.cabang || null, hk = params.hakimId || null; return cachedRead_('pn_nilai:' + (cb||'*') + ':' + (hk||'*'), 15, ['n'], function(){ return getNilai(cb, hk); }); });       break;
+        case 'getPeringkat'     : result = _runPenilaian_(function(){ return cachedRead_('pn_rank:' + params.cabang, 20, ['p','n'], function(){ return getPeringkat(params.cabang); }); });                                   break;
+        case 'getPenilaianStats': result = _runPenilaian_(function(){ return cachedRead_('pn_stats', 20, ['n'], function(){ return getPenilaianStats_(); }); });                                          break;
+        case 'getHasilPublikStatus': result = _runPenilaian_(function(){ return cachedRead_('pn_hasil', 20, ['n'], function(){ return apiGetHasilPublikStatus_(); }); });                                 break;
  
         default: result = { success:true, message:'MTQ 2026 API aktif', event:EVENT_INFO };
       }
@@ -195,9 +197,9 @@ function doGet(e) {
     result = { success:false, message: err.message };
   }
  
-  var ss = null;
-  try { ss = getSS_(); } catch(e2) {}
-  _flushLog(ss);
+  // Aksi yang menulis data → naikkan versi cache (lihat helper.gs, CACHE_WRITE_SCOPES_).
+  bumpCacheForAction_(effAction);
+  _flushLogIfEnabled_();   // rev 12: tidak membuka spreadsheet kalau sheet LOG mati
  
   if (callback) {
     return ContentService
@@ -485,13 +487,12 @@ function doPost(e) {
     var body = JSON.parse(e.postData.contents);
     logInfo('api', 'doPost action: ' + body.action);
     result = _dispatchPost(body);
+    bumpCacheForAction_(body.action);
   } catch (err) {
     logError('api', 'doPost ERROR: ' + err.message);
     result = { success:false, message: err.message };
   }
-  var ss = null;
-  try { ss = getSS_(); } catch(e2) {}
-  _flushLog(ss);
+  _flushLogIfEnabled_();   // rev 12
   return jsonResp_(result);
 }
 
@@ -888,16 +889,12 @@ function apiCheckDuplicate_(params) {
   var kecamatan = String(params.kecamatan||'').trim();
   var cabang    = String(params.cabang   ||'').trim();
   if (!kecamatan || !cabang) return { success:false, message:'Parameter tidak lengkap' };
-  var ss    = getSS_();
-  var sheet = getOrCreateSheet_(ss, SHEET_PENDAFTAR, PENDAFTAR_HEADERS);
-  if (sheet.getLastRow()<=1) return { success:true, isDuplicate:false, count:0 };
-  var rows  = sheet.getRange(2,1,sheet.getLastRow()-1,PENDAFTAR_HEADERS.length).getValues();
-  var count = 0;
-  rows.forEach(function(row) {
-    var s = String(row[COL.STATUS_VERIFIKASI]||'').toLowerCase();
-    if (s==='nonaktif') return;
-    if (String(row[COL.KECAMATAN]||'').trim()===kecamatan && String(row[COL.CABANG_LOMBA]||'').trim()===cabang) count++;
-  });
+  // rev 12: dijawab dari ringkasan ter-cache (getPendaftarSummary_), bukan
+  // baca-ulang seluruh sheet PENDAFTAR di tiap request. Aturan hitungnya
+  // sama persis: baris Nonaktif diabaikan, kecamatan+cabang dicocokkan
+  // setelah di-trim. Pengecekan yang MENGIKAT tetap dilakukan di dalam lock
+  // apiRegister_ (checkDuplicateKecCabang_) — ini hanya umpan-balik cepat.
+  var count = getPendaftarSummary_().byKecCabang[kecamatan + '||' + cabang] || 0;
   return { success:true, isDuplicate:count>0, count:count };
 }
 
@@ -944,38 +941,88 @@ function apiCheckNIK_(params) {
 function apiCheckNIK_v2_(params) {
   var nik = String(params.nik || '').trim();
   if (!nik) return { success:false, message:'NIK tidak boleh kosong' };
- 
+
+  // rev 12: dulu SETIAP panggilan membaca SELURUH sheet PENDAFTAR (semua
+  // kolom) + JSON.parse ANGGOTA_JSON di tiap baris. Sekarang: indeks
+  // NIK→nomor baris di-cache (60 dtk, invalidasi otomatis saat ada
+  // pendaftaran/edit), lalu HANYA baris yang cocok yang dibaca dari sheet.
+  // Aturan pencocokan sama: ketua/individu dicek dulu, lalu anggota tim;
+  // baris PERTAMA yang memuat NIK itulah yang dikembalikan.
   var ss    = getSS_();
   var sheet = getOrCreateSheet_(ss, SHEET_PENDAFTAR, PENDAFTAR_HEADERS);
   var lastRow = sheet.getLastRow();
   if (lastRow <= 1) return { success:true, found:false };
- 
+
+  var idx = _nikIndex_().idx;
+  var rowNum = idx[nik];
+  if (rowNum === undefined) return { success:true, found:false };
+
+  var hit = _matchNikInRow_(sheet, rowNum, nik);
+  if (hit) return hit.anggota ? _buildNIKRecord(hit.row, nik, hit.anggota, hit.j) : _buildNIKRecord(hit.row, nik);
+
+  // Indeks basi (baris bergeser krn edit/hapus manual di sheet) → scan penuh.
+  logWarn('api', 'checkNIK: indeks basi, scan penuh');
   var rows = sheet.getRange(2, 1, lastRow - 1, PENDAFTAR_HEADERS.length).getValues();
- 
   for (var i = 0; i < rows.length; i++) {
-    var row    = rows[i];
-    var rowNIK = String(row[COL.NIK] || '').trim();
- 
-    // Ketua / individu
-    if (rowNIK === nik) {
-      return _buildNIKRecord(row, nik);
-    }
- 
-    // Cek anggota tim di ANGGOTA_JSON
+    var row = rows[i];
+    if (String(row[COL.NIK] || '').trim() === nik) return _buildNIKRecord(row, nik);
     var anggotaRaw = row[COL.ANGGOTA_JSON];
     if (anggotaRaw) {
       try {
         var anggota = JSON.parse(anggotaRaw);
         for (var j = 0; j < anggota.length; j++) {
-          if (String(anggota[j].nik || '').trim() === nik) {
-            return _buildNIKRecord(row, nik, anggota, j);
-          }
+          if (String(anggota[j].nik || '').trim() === nik) return _buildNIKRecord(row, nik, anggota, j);
         }
       } catch (pe) {}
     }
   }
- 
   return { success:true, found:false };
+}
+
+// Baca SATU baris & cocokkan NIK dgn aturan yg sama seperti scan penuh.
+function _matchNikInRow_(sheet, rowNum, nik) {
+  var row = sheet.getRange(rowNum, 1, 1, PENDAFTAR_HEADERS.length).getValues()[0];
+  if (String(row[COL.NIK] || '').trim() === nik) return { row:row };
+  var raw = row[COL.ANGGOTA_JSON];
+  if (raw) {
+    try {
+      var anggota = JSON.parse(raw);
+      for (var j = 0; j < anggota.length; j++) {
+        if (String(anggota[j].nik || '').trim() === nik) return { row:row, anggota:anggota, j:j };
+      }
+    } catch (pe) {}
+  }
+  return null;
+}
+
+// Indeks { nik : nomorBarisSheet } untuk NIK ketua/individu & semua anggota.
+// stale:false → tidak pernah menyajikan salinan lama (hasil "belum terdaftar"
+// tidak boleh basi tepat setelah seseorang baru mendaftar).
+function _nikIndex_() {
+  return cachedRead_('nik_idx', 60, ['p'], function() {
+    var ss    = getSS_();
+    var sheet = getOrCreateSheet_(ss, SHEET_PENDAFTAR, PENDAFTAR_HEADERS);
+    var idx   = {};
+    var last  = sheet.getLastRow();
+    if (last <= 1) return { success:true, idx:idx };
+    var n     = last - 1;
+    var niks  = sheet.getRange(2, COL.NIK + 1, n, 1).getValues();
+    var jsons = sheet.getRange(2, COL.ANGGOTA_JSON + 1, n, 1).getValues();
+    for (var i = 0; i < n; i++) {
+      var k = String(niks[i][0] || '').trim();
+      if (k && idx[k] === undefined) idx[k] = i + 2;
+      var aj = jsons[i][0];
+      if (aj) {
+        try {
+          JSON.parse(aj).forEach(function(a) {
+            var kk = String((a && a.nik) || '').trim();
+            if (kk && idx[kk] === undefined) idx[kk] = i + 2;
+          });
+        } catch (pe) {}
+      }
+    }
+    return { success:true, idx:idx };
+  }, { stale:false });
 }
 
 // ── FIX #1: helper terpusat untuk lookup config cabang ─────────────
@@ -1113,6 +1160,19 @@ function buildNIKResponse_(row, nik, anggota, anggotaIdx) {
 
 // ── getConfig ─────────────────────────────────────────────────
 function apiGetConfig_() {
+  // rev 12: daftar cabang dibaca dari sheet CONFIG paling sering sekali per
+  // 2 menit (bukan per pengunjung). Status buka/tutup dihitung segar.
+  var config = cachedRead_('cfg_cabang', 120, [], function() {
+    return { success:true, config:_buildConfigList_() };
+  }).config;
+  var regStatus = isRegistrationOpen_();
+  return { success:true, config:config,
+    registrationConfig:{ buka:PENDAFTARAN_CONFIG.BUKA, tutup:PENDAFTARAN_CONFIG.TUTUP,
+      ageCutoffDate:PENDAFTARAN_CONFIG.AGE_CUTOFF_DATE, isOpen:regStatus.open, status:regStatus.status },
+    event:EVENT_INFO };
+}
+
+function _buildConfigList_() {
   var ss    = getSS_();
   var sheet = getOrCreateSheet_(ss, SHEET_CONFIG, CONFIG_HEADERS, DEFAULT_CONFIG_DATA);
   var rows  = sheet.getDataRange().getValues();
@@ -1140,42 +1200,74 @@ function apiGetConfig_() {
                kuota:parseInt(row[7])||31, status_aktif:'Aktif' };
     });
   }
-  var regStatus = isRegistrationOpen_();
-  return { success:true, config:config,
-    registrationConfig:{ buka:PENDAFTARAN_CONFIG.BUKA, tutup:PENDAFTARAN_CONFIG.TUTUP,
-      ageCutoffDate:PENDAFTARAN_CONFIG.AGE_CUTOFF_DATE, isOpen:regStatus.open, status:regStatus.status },
-    event:EVENT_INFO };
+  return config;
 }
 
 // ── getStats ──────────────────────────────────────────────────
 function apiGetStats_() {
-  var ss    = getSS_();
-  var sheet = getOrCreateSheet_(ss, SHEET_PENDAFTAR, PENDAFTAR_HEADERS);
-  // FIX: regStatus dihitung SEBELUM early-return, lalu disertakan di KEDUA
-  // jalur return (sheet PENDAFTAR kosong maupun sudah terisi). Sebelumnya
-  // jalur early-return (sheet baru berisi header / belum ada pendaftar sama
-  // sekali) TIDAK menyertakan isOpen/status/buka/tutup, sehingga di
-  // main.js → loadRegStatus() field2 itu undefined dan #heroRegBanner
-  // jatuh ke cabang "else" (dianggap TERTUTUP, dgn tanggal "—") — persis
-  // yang terjadi di hari pertama pendaftaran dibuka saat PENDAFTAR masih 0 baris.
+  // rev 12: angka diambil dari ringkasan ter-cache (satu kali scan sheet
+  // dipakai bersama semua pengunjung). Status buka/tutup pendaftaran
+  // SENGAJA dihitung segar di tiap request (murah, tanpa sheet) supaya
+  // banner tidak telat berubah saat jam buka/tutup atau OVERRIDE diganti.
   var regStatus = isRegistrationOpen_();
-  if (sheet.getLastRow()<=1) {
-    return { success:true, total:0, verified:0, pending:0, rejected:0, nonaktif:0, cabangs:0, kecamatans:0,
-             isOpen:regStatus.open, status:regStatus.status,
-             buka:PENDAFTARAN_CONFIG.BUKA, tutup:PENDAFTARAN_CONFIG.TUTUP };
-  }
-  var data = sheet.getRange(2,1,sheet.getLastRow()-1,PENDAFTAR_HEADERS.length).getValues();
-  var verified=0,pending=0,rejected=0,nonaktif=0,cabangs={},kecs={};
-  data.forEach(function(row) {
-    var s=String(row[COL.STATUS_VERIFIKASI]||'').toLowerCase();
-    if(s==='terverifikasi')verified++;else if(s==='ditolak')rejected++;else if(s==='nonaktif')nonaktif++;else pending++;
-    var cb=row[COL.CABANG_LOMBA];if(cb)cabangs[cb]=1;
-    var kc=row[COL.KECAMATAN];if(kc)kecs[kc]=1;
-  });
-  return { success:true, total:data.length, verified:verified, pending:pending, rejected:rejected, nonaktif:nonaktif,
-           cabangs:Object.keys(cabangs).length, kecamatans:Object.keys(kecs).length,
+  var sum = getPendaftarSummary_();
+  return { success:true, total:sum.total, verified:sum.verified, pending:sum.pending,
+           rejected:sum.rejected, nonaktif:sum.nonaktif,
+           cabangs:sum.cabangs, kecamatans:sum.kecamatans,
            isOpen:regStatus.open, status:regStatus.status,
            buka:PENDAFTARAN_CONFIG.BUKA, tutup:PENDAFTARAN_CONFIG.TUTUP };
+}
+
+// ── Ringkasan PENDAFTAR (SATU kali scan, di-cache 30 dtk + versi 'p') ──
+// Dipakai apiGetStats_, apiGetQuota_, apiCheckDuplicate_, apiGetDitolak_.
+// Hanya membaca kolom yg diperlukan — TANPA ANGGOTA_JSON (kolom terbesar)
+// dan LINK_REKOM. Mengembalikan objek kecil (jauh di bawah batas 100 KB).
+function getPendaftarSummary_() {
+  return cachedRead_('pend_sum', 30, ['p'], function() {
+    var ss    = getSS_();
+    var sheet = getOrCreateSheet_(ss, SHEET_PENDAFTAR, PENDAFTAR_HEADERS);
+    var sum = { success:true, total:0, verified:0, pending:0, rejected:0, nonaktif:0,
+                cabangs:0, kecamatans:0, byCabang:{}, byKecCabang:{}, ditolak:[] };
+    var last = sheet.getLastRow();
+    if (last <= 1) return sum;
+    var n       = last - 1;
+    var head    = sheet.getRange(2, 1, n, COL.LINK_FOLDER + 1).getValues();          // kolom 0..LINK_FOLDER
+    var stCol   = sheet.getRange(2, COL.STATUS_VERIFIKASI + 1, n, 1).getValues();
+    var catCol  = sheet.getRange(2, COL.CATATAN + 1, n, 1).getValues();
+    var cabs = {}, kecs = {};
+    for (var i = 0; i < n; i++) {
+      var row = head[i];
+      var s   = String(stCol[i][0]||'').toLowerCase();
+      sum.total++;
+      if (s==='terverifikasi') sum.verified++;
+      else if (s==='ditolak')  sum.rejected++;
+      else if (s==='nonaktif') sum.nonaktif++;
+      else                     sum.pending++;
+      var cb = row[COL.CABANG_LOMBA]; if (cb) cabs[cb] = 1;
+      var kc = row[COL.KECAMATAN];    if (kc) kecs[kc] = 1;
+      if (s !== 'nonaktif') {
+        var cbT = String(cb||'').trim(), kcT = String(kc||'').trim();
+        sum.byCabang[cbT] = (sum.byCabang[cbT] || 0) + 1;
+        var kk = kcT + '||' + cbT;
+        sum.byKecCabang[kk] = (sum.byKecCabang[kk] || 0) + 1;
+      }
+      if (s === 'ditolak') {
+        var tipe    = String(row[COL.TIPE_LOMBA]||'individu').trim();
+        var namaTim = String(row[COL.NAMA_TIM]||'').trim();
+        var nama    = (tipe === 'team' && namaTim) ? namaTim : String(row[COL.NAMA_LENGKAP]||'').trim();
+        sum.ditolak.push({
+          nama_peserta: nama || '-',
+          tipe_lomba  : tipe,
+          cabang_lomba: String(row[COL.CABANG_LOMBA]||''),
+          kecamatan   : String(row[COL.KECAMATAN]||''),
+          catatan     : String(catCol[i][0]||'')
+        });
+      }
+    }
+    sum.cabangs    = Object.keys(cabs).length;
+    sum.kecamatans = Object.keys(kecs).length;
+    return sum;
+  });
 }
 
 // ── getDitolak (publik, TANPA token) ─────────────────────────
@@ -1186,37 +1278,18 @@ function apiGetStats_() {
 // (nama, tipe, cabang, kecamatan, catatan) — TIDAK ada NIK, alamat,
 // no_hp, email, dst seperti checkNIK/getAllPendaftar.
 function apiGetDitolak_() {
-  var ss    = getSS_();
-  var sheet = getOrCreateSheet_(ss, SHEET_PENDAFTAR, PENDAFTAR_HEADERS);
-  if (sheet.getLastRow()<=1) return { success:true, data:[], total:0 };
-
-  var rows = sheet.getRange(2,1,sheet.getLastRow()-1,PENDAFTAR_HEADERS.length).getValues();
-  var data = [];
-  rows.forEach(function(row) {
-    if (String(row[COL.STATUS_VERIFIKASI]||'').toLowerCase() !== 'ditolak') return;
-    var tipe    = String(row[COL.TIPE_LOMBA]||'individu').trim();
-    var namaTim = String(row[COL.NAMA_TIM]||'').trim();
-    // Tim → tampilkan nama tim (bukan nama ketua) supaya jelas ini
-    // penolakan atas satu tim, bukan hanya satu orang.
-    var nama = (tipe === 'team' && namaTim) ? namaTim : String(row[COL.NAMA_LENGKAP]||'').trim();
-    data.push({
-      nama_peserta: nama || '-',
-      tipe_lomba  : tipe,
-      cabang_lomba: String(row[COL.CABANG_LOMBA]||''),
-      kecamatan   : String(row[COL.KECAMATAN]||''),
-      catatan     : String(row[COL.CATATAN]||'')
-    });
-  });
-  logInfo('api','apiGetDitolak_ — total ditolak: '+data.length);
-  return { success:true, data:data, total:data.length };
+  // rev 12: dari ringkasan ter-cache. Field yang dikembalikan TETAP dibatasi
+  // (nama, tipe, cabang, kecamatan, catatan) — tanpa NIK/alamat/no_hp/email.
+  var d = getPendaftarSummary_().ditolak;
+  return { success:true, data:d, total:d.length };
 }
 
 // ── getQuota ──────────────────────────────────────────────────
 function apiGetQuota_(params) {
   var cabang = String(params.cabang||'').trim();
-  var ss     = getSS_();
-  var sheet  = getOrCreateSheet_(ss, SHEET_PENDAFTAR, PENDAFTAR_HEADERS);
-  return { success:true, count:countByCabangActive_(sheet,cabang), cabang:cabang };
+  // rev 12: dari ringkasan ter-cache — angka informatif utk form. Penegakan
+  // kuota yang MENGIKAT tetap di dalam lock apiRegister_ (countByCabangActive_).
+  return { success:true, count:getPendaftarSummary_().byCabang[cabang] || 0, cabang:cabang };
 }
 
 
@@ -1224,26 +1297,39 @@ function apiGetQuota_(params) {
 // ── getAllPendaftar (GET via JSONP) ────────────────────────────
 function apiGetAll_(params) {
   var token = String(params.token || '').trim();
-  logInfo('api','apiGetAll_ token length: '+token.length);
   if (!isTokenValid_(token)) {
     logWarn('api','apiGetAll_ — token tidak valid');
     return { success:false, message:'Sesi tidak valid. Silakan login ulang.' };
   }
-  var ss    = getSS_();
-  var sheet = getOrCreateSheet_(ss, SHEET_PENDAFTAR, PENDAFTAR_HEADERS);
-  if (sheet.getLastRow()<=1) return { success:true, data:[] };
-  var rows = sheet.getRange(2,1,sheet.getLastRow()-1,PENDAFTAR_HEADERS.length).getValues();
-  logInfo('api','apiGetAll_ — rows: '+rows.length);
-  return {
-    success    : true,
-    data       : rows.map(function(r){ return rowToObj_(r); }),
-    driveApiKey: DRIVE_API_KEY || ''   // returned only to authenticated admin
-  };
+
+  // rev 14: SATU pembacaan sheet dipakai bersama semua admin/tab selama 45
+  // detik. Ini endpoint paling berat di seluruh proyek (baca SELURUH sheet
+  // PENDAFTAR + serialisasi tiap baris) dan satu-satunya yang dulu belum
+  // ter-cache — tiap tab & tiap refresh memicu pembacaan penuh sendiri, dan
+  // tiap pembacaan menahan 1 dari 30 "simultaneous executions per user"
+  // milik akun pemilik selama beberapa detik. Begitu antreannya penuh,
+  // request yang menunggu terlalu lama dijawab Google dengan halaman 404
+  // dari script.googleusercontent.com/macros/echo (bukan error di kode ini).
+  // cachedReadBig_ (helper.gs) dipakai, BUKAN cachedRead_, karena hasil
+  // endpoint ini hampir pasti > 95 KB dan cachedRead_ akan diam-diam
+  // melewatkannya — lihat catatan panjang di helper.gs.
+  // Invalidasi otomatis lewat scope ['p'] + bumpCacheForAction_() yang sudah
+  // terpasang di doGet/doPost, jadi verifikasi/edit peserta langsung terlihat.
+  var out = cachedReadBig_('pendaftar_all', 45, ['p'], function () {
+    var ss    = getSS_();
+    var sheet = getOrCreateSheet_(ss, SHEET_PENDAFTAR, PENDAFTAR_HEADERS);
+    if (sheet.getLastRow() <= 1) return { success:true, data:[] };
+    var rows = sheet.getRange(2,1,sheet.getLastRow()-1,PENDAFTAR_HEADERS.length).getValues();
+    logInfo('api','apiGetAll_ — baca sheet, rows: '+rows.length);
+    return { success:true, data: rows.map(function(r){ return rowToObj_(r); }) };
+  });
+
+  // driveApiKey SENGAJA di luar cache: kunci ini hanya boleh menempel pada
+  // respons yang tokennya sudah diverifikasi di atas, jangan sampai ikut
+  // tersimpan di CacheService bersama datanya.
+  out.driveApiKey = DRIVE_API_KEY || '';
+  return out;
 }
-
-
-
-
 
 // ── register ──────────────────────────────────────────────────
 function apiRegister_(body) {
@@ -1416,6 +1502,7 @@ function apiRegister_(body) {
   } finally {
     lock.releaseLock();
   }
+  bumpCache_('p');   // rev 12: baris reservasi sudah ada → kuota/NIK/duplikat ter-cache harus segar lagi
 
   // ── Lock sudah dilepas — nomor SUDAH tercatat & aman dari duplikat.
   // Upload berkas (bisa lambat) berjalan bebas, tidak menahan pendaftar
@@ -1505,7 +1592,6 @@ function generateRegNumberOddEven_(sheet, cabangLomba, gender) {
   var used   = {};
   if (sheet.getLastRow()>1) {
     var nums = sheet.getRange(2,COL.NOMOR_PENDAFTARAN+1,sheet.getLastRow()-1,1).getValues();
-    var stats= sheet.getRange(2,COL.STATUS_VERIFIKASI+1,sheet.getLastRow()-1,1).getValues();
     nums.forEach(function(r,i){
       var m=String(r[0]).match(new RegExp('^'+prefix+'-(\\d+)$'));
       if (m) used[parseInt(m[1])]=true;

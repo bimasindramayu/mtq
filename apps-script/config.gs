@@ -34,7 +34,7 @@ var DRIVE_API_KEY    = 'GANTI_DRIVE_API_KEY';
 // false = Logger.log dimatikan (mengurangi noise saat produksi)
 // CATATAN: baris ke sheet "LOG" TIDAK lagi ikut flag ini — diatur
 // terpisah lewat SHEET_LOG_ENABLED di bawah (lihat komentarnya).
-var LOGGER_ENABLED   = true;
+var LOGGER_ENABLED   = false;
 
 // ── 2c. Sheet "LOG" (audit trail pendaftaran/verifikasi/dll) ───
 // SATU PINTU untuk mematikan/menghidupkan baris yang ditulis ke sheet
