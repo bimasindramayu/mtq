@@ -102,6 +102,19 @@ const MTQ_CONFIG = {
   // cuma surat yang sedang dibutuhkan, lalu di-cache di localStorage.
   QURAN_BASE: 'data/quran',
 
+  // ── Versi PDF Bukti Maqra (rev 18) ──────────────────────────────
+  // 1 = versi LAMA -- kartu MAQRA YANG DIPEROLEH + AYAT/HALAMAN saja,
+  //     TANPA teks ayat Arab (tampilan sebelum fitur ayat ditambahkan).
+  // 2 = versi BARU -- sama seperti di atas, DITAMBAH kotak "Teks Ayat"
+  //     berisi ayat Al-Qur'an-nya (perlu folder data/quran/ ter-upload
+  //     lengkap; kalau satu entri gagal mengambil ayatnya, entri itu
+  //     otomatis kembali tampil seperti versi 1 -- lihat catatan null
+  //     di quranAmbilUntukMaqra(), kartu-bukti-shared.js).
+  // Dipakai oleh SEMUA jalur unduh bukti maqra (peserta di cekstatus.html
+  // maupun admin di doyourmagic.html) -- ganti di sini saja, berlaku di
+  // keduanya. Kalau field ini kosong/tidak ada, dianggap versi 2.
+  MAQRA_PDF_VERSION: 1,
+
   PANITIA_MAQRA_NAMA: 'ROSID, S.H.',
   PANITIA_MAQRA_NIP : '197003072014111002',
 

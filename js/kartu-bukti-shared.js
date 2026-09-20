@@ -1,5 +1,10 @@
 // ================================================================
 //  MTQ 2026 — js/kartu-bukti-shared.js
+//  KARTU_BUKTI_REV = 18  <-- kalau meragukan browser masih pakai versi
+//  lama, ketik KARTU_BUKTI_REV di Console (F12) lalu Enter: kalau
+//  hasilnya BUKAN 18, berkas ini belum ter-update di browser (cache /
+//  file lama) -- hard refresh (Ctrl+Shift+R) atau naikkan angka ?v=
+//  pada tag <script> yang memuat berkas ini.
 //  FIX #33: SATU-SATUNYA SUMBER untuk 2 hal yang dipakai bersama oleh
 //  cekstatus.html (peserta, self-service) DAN doyourmagic.html/
 //  admin-maqra.js (admin, borongan/bulk):
@@ -19,6 +24,9 @@
 //  script yang memanggil renderKartuCanvas/buildBuktiMaqraCardHtml
 //  (doyourmagic.html).
 // ================================================================
+
+var KARTU_BUKTI_REV = 18;
+if (typeof window !== 'undefined') window.KARTU_BUKTI_REV = KARTU_BUKTI_REV;
 
 async function renderKartuCanvas(member, rec, memberIdx, isTeam, CW, CH, imageLoaderFn = null) {
   const canvas = document.createElement('canvas');
@@ -786,10 +794,19 @@ function _buktiMaqraAyatHtml(q, esc) {
  * dipakai semua tombol unduh. Kalau surat/ayat tidak bisa ditentukan atau
  * berkasnya gagal dimuat, quranAmbilUntukMaqra() mengembalikan null dan kartu
  * tetap tercetak tanpa blok ayat — lebih baik kosong daripada salah.
+ *
+ * rev 18: menghormati MTQ_CONFIG.MAQRA_PDF_VERSION (js/config.js).
+ * Versi 1 (lama) SENGAJA melewati pengambilan ayat sama sekali -- bukan
+ * cuma menyembunyikan hasilnya lewat CSS, supaya kartu versi 1 tetap
+ * secepat sebelum fitur ayat ada (tidak ada fetch data/quran/ sama sekali)
+ * dan tidak bisa gagal karena masalah folder data/quran/. Titik keputusan
+ * SATU-SATUNYA ada di sini, jadi ke-4 jalur unduh (peserta & admin, satuan
+ * & borongan) otomatis konsisten tanpa perlu diubah satu-satu.
  */
 async function buildBuktiMaqraCardHtmlAsync(rec, m, esc) {
+  const versi = (typeof MTQ_CONFIG !== 'undefined' && MTQ_CONFIG.MAQRA_PDF_VERSION) || 2;
   let q = null;
-  if (typeof quranAmbilUntukMaqra === 'function') {
+  if (versi !== 1 && typeof quranAmbilUntukMaqra === 'function') {
     q = await quranAmbilUntukMaqra(m.maqra_teks || m.maqra || '', m.maqra_detail || m.surah || '');
   }
   return buildBuktiMaqraCardHtml(rec, m, esc, q);
@@ -953,12 +970,21 @@ async function downloadBuktiMaqraPdf(cardsHtml, filename, onProgress) {
   // Style tag BUKTI_MAQRA_STYLES perlu ada di document (di mana pun --
   // browser tetap menerapkannya walau bukan di <head>) supaya
   // html2canvas membaca computed style yang benar saat "memotret".
-  if (!document.getElementById('_buktiMaqraPdfStyle')) {
-    const styleTag = document.createElement('style');
+  // PENTING: textContent DIPAKSA ditulis ulang tiap panggilan (bukan
+  // cuma dibuat sekali lalu dibiarkan) -- kalau tab sempat memuat versi
+  // lama lalu berkas .js ini diperbarui tanpa reload penuh, cara lama
+  // (skip kalau tag sudah ada) akan mengunci CSS versi lama itu
+  // SELAMANYA di tab tsb, walau logika JS lain sudah berjalan dgn kode
+  // terbaru -- persis pola yang bikin membingungkan saat debug (kode
+  // sudah benar tapi tampilan masih versi lama). Sekarang setiap
+  // download dijamin memakai CSS TERBARU dari berkas ini, titik.
+  let styleTag = document.getElementById('_buktiMaqraPdfStyle');
+  if (!styleTag) {
+    styleTag = document.createElement('style');
     styleTag.id = '_buktiMaqraPdfStyle';
-    styleTag.textContent = BUKTI_MAQRA_STYLES;
     document.head.appendChild(styleTag);
   }
+  styleTag.textContent = BUKTI_MAQRA_STYLES;
 
   // Panggung di luar viewport tempat tiap kartu dirender satu-satu
   // sebelum difoto -- html2canvas butuh elemen yang benar-benar
