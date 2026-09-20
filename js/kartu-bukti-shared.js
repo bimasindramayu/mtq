@@ -9,7 +9,7 @@
 //  cekstatus.html (peserta, self-service) DAN doyourmagic.html/
 //  admin-maqra.js (admin, borongan/bulk):
 //    1. renderKartuCanvas() + helper-nya  -- kartu ID peserta (canvas)
-//    2. buildBuktiMaqraCardHtml() + BUKTI_MAQRA_STYLES -- bukti maqra (HTML)
+//    2. buildBuktiMaqraCardHtmlAsync() + BUKTI_MAQRA_STYLES_V1/_V2 -- bukti maqra (HTML)
 //  Sebelumnya kode ini HANYA ada di cek-maqra.js -- kalau desain kartu/
 //  bukti perlu diubah lagi nanti, cukup edit DI SINI, otomatis konsisten
 //  di kedua sisi (peserta & admin), tidak perlu ubah 2 tempat terpisah.
@@ -764,7 +764,89 @@ if (typeof window !== 'undefined') {
 //  (tidak dihitung benar) -- kolom memakai inline-block + padding, dan
 //  induknya font-size:0 untuk membuang celah spasi antar inline-block.
 // ================================================================
-const BUKTI_MAQRA_STYLES = `*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Georgia','Times New Roman',serif;background:#eef2f1;padding:20px}.card{background:#fff;border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,.15);width:100%;max-width:620px;overflow:hidden;margin:0 auto 24px;border:1px solid #d7e0dc}.header{background:linear-gradient(135deg,#064e3b,#059669);padding:22px 30px;color:#fff;text-align:center}.header h1{font-size:25px;line-height:1.25;margin-bottom:5px;letter-spacing:.3px}.header p{font-size:12.5px;color:#d1fae5;letter-spacing:.3px}.body{padding:20px 26px 22px}.cols{font-size:0;margin:0 -9px}.col{display:inline-block;vertical-align:top;padding:0 9px}.col-a{width:45%}.col-b{width:55%}.field{margin-bottom:13px}.field label{font-size:10px;text-transform:uppercase;letter-spacing:1.1px;color:#3f5b52;display:block;margin-bottom:2px;font-family:'Helvetica Neue',Arial,sans-serif;font-weight:700}.field .val{font-size:15.5px;line-height:1.3;font-weight:700;color:#000;word-break:break-word}.mbox{background:linear-gradient(135deg,#064e3b,#047857);border:1px solid #043d2e;color:#fff;border-radius:13px;padding:16px 14px 14px;text-align:center}.mbox .ml{font-size:9.5px;text-transform:uppercase;letter-spacing:1.8px;color:#a7f3d0;font-family:'Helvetica Neue',Arial,sans-serif;font-weight:700;margin-bottom:7px}.mbox .msurat{font-size:28px;line-height:1;font-weight:700;letter-spacing:.3px;margin-bottom:11px;color:#fff}.mbox .msurat.long{font-size:22px}.mbox .msurat.xlong{font-size:17px}.mbox .mgrid{font-size:0;margin:0 -3px 9px}.mbox .mcell{display:inline-block;width:50%;padding:0 3px;vertical-align:top}.mbox .mcell.solo{width:100%}.mbox .mcin{background:#fff;border-radius:9px;padding:9px 4px;min-height:64px;display:flex;flex-direction:column;align-items:center;justify-content:center}.mbox .mck{font-size:9px;line-height:1;text-transform:uppercase;letter-spacing:1.3px;color:#047857;font-weight:700;font-family:'Helvetica Neue',Arial,sans-serif}.mbox .mcv{font-size:23px;line-height:1;font-weight:700;color:#053d2c;word-break:break-word;margin-top:6px}.mbox .mraw{font-size:10px;line-height:1.45;color:#d1fae5;letter-spacing:.2px;font-family:'Helvetica Neue',Arial,sans-serif;margin-bottom:9px;word-break:break-word}.mbox .mn{background:#fff;color:#053d2c;border-radius:999px;padding:5px 16px;font-size:11.5px;font-weight:700;display:inline-block;letter-spacing:.5px;font-family:'Helvetica Neue',Arial,sans-serif}.abox{background:#fff;border:1.5px solid #047857;border-radius:12px;padding:14px 16px 10px;margin:16px 0 12px;text-align:center}.abox .al{font-size:9.5px;text-transform:uppercase;letter-spacing:1.8px;color:#047857;font-weight:700;font-family:'Helvetica Neue',Arial,sans-serif;margin-bottom:8px}.abox .ar{font-family:'Scheherazade New','Amiri','Traditional Arabic',serif;color:#000;direction:rtl;text-align:center;unicode-bidi:plaintext;font-size:31px;line-height:2.05;margin-bottom:8px}.abox .ar.s2{font-size:27px;line-height:2}.abox .ar.s3{font-size:23px;line-height:1.95}.abox .ar.s4{font-size:20px;line-height:1.9}.abox .ar.s5{font-size:18px;line-height:1.85}.abox .anum{font-size:.78em;white-space:nowrap}.abox .asrc{font-size:9.5px;line-height:1.5;color:#1f3b32;font-family:'Helvetica Neue',Arial,sans-serif;letter-spacing:.2px;border-top:1px solid #dbe6e1;padding-top:7px}.warn{background:#fffbeb;border:1px solid #f0c14b;border-radius:8px;padding:9px 13px;font-size:11px;line-height:1.5;color:#000;font-family:'Helvetica Neue',Arial,sans-serif}.ttd-section{display:flex;margin-top:18px;padding-top:14px;border-top:1px dashed #b9c6c1}.ttd-box{flex:1;text-align:center;padding:0 10px}.ttd-role{font-size:10.5px;color:#000;margin-bottom:42px;line-height:1.4;white-space:nowrap;font-family:'Helvetica Neue',Arial,sans-serif}.ttd-printed-name{font-size:11px;color:#000;margin-top:4px;font-weight:700}.ttd-printed-nip{font-size:9.5px;color:#000;margin-top:1px}.ttd-line{border-bottom:1px solid #000;margin:0 6px}.footer{border-top:1px solid #d7e0dc;padding:11px 30px;font-size:10.5px;line-height:1.45;color:#000;text-align:center;background:#f6f9f8;font-family:'Helvetica Neue',Arial,sans-serif}@media print{body{background:#fff}.card{box-shadow:none;page-break-after:always}.card:last-child{page-break-after:auto}}`;
+// ================================================================
+//  rev 19 — koreksi tambahan utk teks yang MASIH sedikit turun setelah
+//  rev 15's flexbox: margin-top NEGATIF ditambahkan ke .msurat, .mcv,
+//  dan .abox .ar. Alasannya BUKAN kesalahan flexbox (flexbox tetap
+//  benar men-tengah-kan sisa RUANG KOSONG di sekitar sebuah blok), tapi
+//  font besar (Georgia utk nomor/nama surat, Scheherazade New utk ayat)
+//  punya rasio ascent:descent yang tidak simetris -- bagian "kosong tak
+//  kelihatan" di ATAS teks (dicadangkan font utk aksen/diakritik yang
+//  mungkin tidak dipakai glyph ybs) lebih besar drpd di BAWAH. Flexbox
+//  men-tengah-kan KOTAK line-height itu dengan benar, tapi TINTA yang
+//  terlihat di dalam kotak itu sendiri jadi tampak turun. margin-top
+//  negatif menggeser kotak itu ke atas utk mengkompensasi -- nilainya
+//  hasil uji visual thd Gelasio (pengganti metrik Georgia), BUKAN dari
+//  Georgia asli (tidak tersedia utk diuji di lingkungan ini), jadi kalau
+//  masih kurang/kelebihan sedikit di browser sungguhan, angkanya
+//  (margin-top di 3 selector ini) tinggal disetel lagi -- kabari nanti
+//  arahnya kurang naik berapa px lagi, atau malah kebablasan ke atas.
+// ================================================================
+// ================================================================
+//  rev 20 — PENTING, pelajaran dari salah kalibrasi rev 19: nilai
+//  margin-top TIDAK BOLEH diuji di kotak .mcin TERISOLASI (dilepas dari
+//  .mgrid/.mcell/.mbox di sekitarnya) -- hasilnya menyesatkan. Di kotak
+//  terisolasi, margin-top:-8px pada .mcv terlihat aman, tapi begitu
+//  dipasang di STRUKTUR ASLI (bersarang dlm .mcell 50% width di dalam
+//  .mgrid), angka & label-nya JADI BERHIMPITAN. Nilai final di bawah
+//  ini SUDAH diuji di struktur ASLI (bukan disederhanakan):
+//    .mcv      -> margin-top:-2px  (aman; -4px sudah mulai, -6px sudah
+//                 JELAS berhimpitan dgn label AYAT/HALAMAN di atasnya)
+//    .msurat   -> margin-top:-5px  (aman s.d. -6px, tak ada bedanya
+//                 scr visual krn tdk sesempit .mcin, jadi dipilih yg
+//                 sedang)
+//    .abox .ar -> margin-top:-6px  (aman s.d. minimal -6px, tanda
+//                 harakat TIDAK terpotong -- diuji dgn ayat 2-3 baris
+//                 sungguhan, bukan 1 baris buatan)
+//  Kalau di browser sungguhan (Windows, Georgia asli -- tidak tersedia
+//  utk diuji langsung di lingkungan pengembangan ini) masih ada yang
+//  kurang/kelebihan naik, sebutkan kira-kira berapa piksel supaya
+//  penyetelan berikutnya presisi, bukan tebak-tebakan lagi.
+// ================================================================
+
+// ================================================================
+//  rev 20 — VERSI 1: desain ASLI verbatim dari kartu-bukti-shared.js
+//  sebelum proyek ini disentuh sama sekali (kolom tunggal, kotak
+//  '.mbox' polos tanpa AYAT/HALAMAN terpisah, tanpa teks ayat Arab).
+//  SENGAJA disalin apa adanya -- termasuk emoji 📖/⚠️ dan pemilihan kata
+//  aslinya -- bukan versi baru yang cuma "dikosongkan" kotak ayatnya.
+//  Dipilih lewat MTQ_CONFIG.MAQRA_PDF_VERSION = 1 (js/config.js).
+//  Jangan diedit menyesuaikan gaya rev-rev berikutnya di berkas ini --
+//  kalau desain lamanya sendiri perlu diubah, ubah di sini apa adanya,
+//  tapi tujuannya field ini tetap sama persis dgn aslinya.
+// ================================================================
+const BUKTI_MAQRA_STYLES_V1 = `*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Georgia',serif;background:#f9fafb;padding:20px}.card{background:#fff;border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,.15);width:100%;max-width:480px;overflow:hidden;margin:0 auto 24px}.header{background:linear-gradient(135deg,#064e3b,#059669);padding:28px 32px;color:#fff;text-align:center}.header h1{font-size:22px;margin-bottom:4px}.header p{font-size:13px}.body{padding:28px 32px}.ornament{text-align:center;color:#000;margin:12px 0;letter-spacing:4px}.field{margin-bottom:14px}.field label{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#000;display:block;margin-bottom:3px}.field .val{font-size:15px;font-weight:600;color:#000}.mbox{background:linear-gradient(135deg,#065f46,#047857);color:#fff;border-radius:12px;padding:24px;text-align:center;margin:20px 0}.mbox .ml{font-size:11px;text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px}.mbox .ma{font-size:22px;font-weight:700;margin-bottom:4px}.mbox .ms{font-size:14px}.mbox .mn{background:rgba(255,255,255,.15);border-radius:999px;padding:5px 16px;font-size:12px;font-weight:600;display:inline-block;margin-top:10px}.warn{background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px 16px;font-size:12px;color:#000;margin-top:16px}.ttd-section{display:flex;gap:18px;margin-top:26px;padding-top:18px;border-top:1px dashed #d1d5db}.ttd-box{flex:1;text-align:center}.ttd-role{font-size:10.5px;color:#000;margin-bottom:46px;line-height:1.4;white-space:nowrap}.ttd-name{font-size:9.5px;color:#000;margin-top:4px;font-style:italic}.ttd-printed-name{font-size:11px;color:#000;margin-top:4px;font-weight:600}.ttd-printed-nip{font-size:9.5px;color:#000;margin-top:1px}.ttd-line{border-bottom:1px solid #000;margin:0 6px}.footer{border-top:1px solid #e5e7eb;padding:16px 32px;font-size:12px;color:#000;text-align:center}@media print{body{background:#fff}.card{box-shadow:none;page-break-after:always}.card:last-child{page-break-after:auto}}`;
+
+function buildBuktiMaqraCardHtmlV1(rec, m, esc) {
+  const panitiaNama = (typeof MTQ_CONFIG !== 'undefined' && MTQ_CONFIG.PANITIA_MAQRA_NAMA) || '';
+  const panitiaNip  = (typeof MTQ_CONFIG !== 'undefined' && MTQ_CONFIG.PANITIA_MAQRA_NIP)  || '';
+  return `<div class="card">
+<div class="header"><h1>📖 Bukti Maqra MTQ 2026</h1><p>Kabupaten Indramayu — ${new Date().toLocaleString('id-ID')}</p></div>
+<div class="body"><div class="ornament">✦ ✦ ✦</div>
+<div class="field"><label>Nama Peserta</label><div class="val">${esc(rec.nama_lengkap||'-')}</div></div>
+<div class="field"><label>Nomor Pendaftaran</label><div class="val" style="font-family:monospace;letter-spacing:1px">${esc(rec.nomor_pendaftaran||'-')}</div></div>
+<div class="field"><label>Cabang Lomba</label><div class="val">${esc(rec.cabang_lomba||'-')}</div></div>
+<div class="field"><label>Kecamatan</label><div class="val">${esc(rec.kecamatan||'-')}</div></div>
+<div class="mbox"><div class="ml">📖 Maqra</div><div class="ma">${esc(m.maqra_teks||m.maqra||'-')}</div><div class="ms">${esc(m.maqra_detail||m.surah||'')}</div><div class="mn">Nomor Undian: ${esc(m.nomor_maqra||'-')}</div></div>
+<div class="warn">⚠️ Simpan dokumen ini. Maqra tidak dapat diubah. Cetak dan mintakan tanda tangan panitia serta admin kecamatan di bawah sebagai bukti sah.</div>
+<div class="ttd-section">
+  <div class="ttd-box">
+    <div class="ttd-role">Panitia Pengambilan Maqra</div>
+    <div class="ttd-line"></div>
+    <div class="ttd-printed-name">${esc(panitiaNama)}</div>
+    ${panitiaNip ? `<div class="ttd-printed-nip">NIP. ${esc(panitiaNip)}</div>` : ''}
+  </div>
+  <div class="ttd-box">
+    <div class="ttd-role">Admin Kecamatan ${esc(rec.kecamatan||'-')}</div>
+    <div class="ttd-line"></div>
+  </div>
+</div>
+</div>
+<div class="footer">MTQ Kabupaten Indramayu 2026 — Sah setelah ditandatangani panitia &amp; admin kecamatan</div>
+</div>`;
+}
+
+const BUKTI_MAQRA_STYLES_V2 = `*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Georgia','Times New Roman',serif;background:#eef2f1;padding:20px}.card{background:#fff;border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,.15);width:100%;max-width:620px;overflow:hidden;margin:0 auto 24px;border:1px solid #d7e0dc}.header{background:linear-gradient(135deg,#064e3b,#059669);padding:22px 30px;color:#fff;text-align:center}.header h1{font-size:25px;line-height:1.25;margin-bottom:5px;letter-spacing:.3px}.header p{font-size:12.5px;color:#d1fae5;letter-spacing:.3px}.body{padding:20px 26px 22px}.cols{font-size:0;margin:0 -9px}.col{display:inline-block;vertical-align:top;padding:0 9px}.col-a{width:45%}.col-b{width:55%}.field{margin-bottom:13px}.field label{font-size:10px;text-transform:uppercase;letter-spacing:1.1px;color:#3f5b52;display:block;margin-bottom:2px;font-family:'Helvetica Neue',Arial,sans-serif;font-weight:700}.field .val{font-size:15.5px;line-height:1.3;font-weight:700;color:#000;word-break:break-word}.mbox{background:linear-gradient(135deg,#064e3b,#047857);border:1px solid #043d2e;color:#fff;border-radius:13px;padding:16px 14px 14px;text-align:center}.mbox .ml{font-size:9.5px;text-transform:uppercase;letter-spacing:1.8px;color:#a7f3d0;font-family:'Helvetica Neue',Arial,sans-serif;font-weight:700;margin-bottom:7px}.mbox .msurat{font-size:28px;line-height:1;font-weight:700;letter-spacing:.3px;margin-top:-5px;margin-bottom:11px;color:#fff}.mbox .msurat.long{font-size:22px}.mbox .msurat.xlong{font-size:17px}.mbox .mgrid{font-size:0;margin:0 -3px 9px}.mbox .mcell{display:inline-block;width:50%;padding:0 3px;vertical-align:top}.mbox .mcell.solo{width:100%}.mbox .mcin{background:#fff;border-radius:9px;padding:9px 4px;min-height:64px;display:flex;flex-direction:column;align-items:center;justify-content:center}.mbox .mck{font-size:9px;line-height:1;text-transform:uppercase;letter-spacing:1.3px;color:#047857;font-weight:700;font-family:'Helvetica Neue',Arial,sans-serif}.mbox .mcv{font-size:23px;line-height:1;font-weight:700;color:#053d2c;word-break:break-word;margin-top:-2px}.mbox .mraw{font-size:10px;line-height:1.45;color:#d1fae5;letter-spacing:.2px;font-family:'Helvetica Neue',Arial,sans-serif;margin-bottom:9px;word-break:break-word}.mbox .mn{background:#fff;color:#053d2c;border-radius:999px;padding:5px 16px;font-size:11.5px;font-weight:700;display:inline-block;letter-spacing:.5px;font-family:'Helvetica Neue',Arial,sans-serif}.abox{background:#fff;border:1.5px solid #047857;border-radius:12px;padding:14px 16px 10px;margin:16px 0 12px;text-align:center}.abox .al{font-size:9.5px;text-transform:uppercase;letter-spacing:1.8px;color:#047857;font-weight:700;font-family:'Helvetica Neue',Arial,sans-serif;margin-bottom:8px}.abox .ar{font-family:'Scheherazade New','Amiri','Traditional Arabic',serif;color:#000;direction:rtl;text-align:center;unicode-bidi:plaintext;font-size:31px;line-height:2.05;margin-top:-6px;margin-bottom:8px}.abox .ar.s2{font-size:27px;line-height:2}.abox .ar.s3{font-size:23px;line-height:1.95}.abox .ar.s4{font-size:20px;line-height:1.9}.abox .ar.s5{font-size:18px;line-height:1.85}.abox .anum{font-size:.78em;white-space:nowrap}.abox .asrc{font-size:9.5px;line-height:1.5;color:#1f3b32;font-family:'Helvetica Neue',Arial,sans-serif;letter-spacing:.2px;border-top:1px solid #dbe6e1;padding-top:7px}.warn{background:#fffbeb;border:1px solid #f0c14b;border-radius:8px;padding:9px 13px;font-size:11px;line-height:1.5;color:#000;font-family:'Helvetica Neue',Arial,sans-serif}.ttd-section{display:flex;margin-top:18px;padding-top:14px;border-top:1px dashed #b9c6c1}.ttd-box{flex:1;text-align:center;padding:0 10px}.ttd-role{font-size:10.5px;color:#000;margin-bottom:42px;line-height:1.4;white-space:nowrap;font-family:'Helvetica Neue',Arial,sans-serif}.ttd-printed-name{font-size:11px;color:#000;margin-top:4px;font-weight:700}.ttd-printed-nip{font-size:9.5px;color:#000;margin-top:1px}.ttd-line{border-bottom:1px solid #000;margin:0 6px}.footer{border-top:1px solid #d7e0dc;padding:11px 30px;font-size:10.5px;line-height:1.45;color:#000;text-align:center;background:#f6f9f8;font-family:'Helvetica Neue',Arial,sans-serif}@media print{body{background:#fff}.card{box-shadow:none;page-break-after:always}.card:last-child{page-break-after:auto}}`;
 
 /**
  * Rakit blok teks ayat (hasil quranAmbilUntukMaqra). Ukuran font diturunkan
@@ -790,26 +872,33 @@ function _buktiMaqraAyatHtml(q, esc) {
 }
 
 /**
- * Versi async: mengambil teks ayatnya dulu, lalu merakit kartu. INI yang
- * dipakai semua tombol unduh. Kalau surat/ayat tidak bisa ditentukan atau
- * berkasnya gagal dimuat, quranAmbilUntukMaqra() mengembalikan null dan kartu
- * tetap tercetak tanpa blok ayat — lebih baik kosong daripada salah.
+ * Versi async: mengambil teks ayatnya dulu (kalau versi 2), lalu merakit
+ * kartu. INI yang dipakai semua tombol unduh -- ke-4 jalur (peserta &
+ * admin, satuan & borongan) otomatis konsisten tanpa perlu diubah satu-satu.
  *
- * rev 18: menghormati MTQ_CONFIG.MAQRA_PDF_VERSION (js/config.js).
- * Versi 1 (lama) SENGAJA melewati pengambilan ayat sama sekali -- bukan
- * cuma menyembunyikan hasilnya lewat CSS, supaya kartu versi 1 tetap
- * secepat sebelum fitur ayat ada (tidak ada fetch data/quran/ sama sekali)
- * dan tidak bisa gagal karena masalah folder data/quran/. Titik keputusan
- * SATU-SATUNYA ada di sini, jadi ke-4 jalur unduh (peserta & admin, satuan
- * & borongan) otomatis konsisten tanpa perlu diubah satu-satu.
+ * rev 20: menghormati MTQ_CONFIG.MAQRA_PDF_VERSION (js/config.js) dengan
+ * memanggil TEMPLATE YANG BENAR-BENAR BERBEDA, bukan cuma menyembunyikan
+ * sebagian tampilan versi baru:
+ *   - versi 1 → buildBuktiMaqraCardHtmlV1() -- desain ASLI verbatim dari
+ *     sebelum proyek ini disentuh (lihat komentar di atas BUKTI_MAQRA_STYLES_V1).
+ *     Tidak fetch ayat sama sekali -- tidak bisa gagal krn folder data/quran/.
+ *   - versi 2 (default) → buildBuktiMaqraCardHtmlV2(), desain kotak
+ *     AYAT/HALAMAN terpisah + teks ayat Arab. Kalau surat/ayat tidak bisa
+ *     ditentukan atau berkasnya gagal dimuat, quranAmbilUntukMaqra()
+ *     mengembalikan null dan kartu tetap tercetak tanpa blok ayat.
+ *
+ * downloadBuktiMaqraPdf() (di bawah) membaca MAQRA_PDF_VERSION yang SAMA
+ * ini lagi untuk memilih stylesheet mana yang disuntikkan -- lihat
+ * catatan di sana kenapa keduanya tidak bisa disuntik bersamaan.
  */
 async function buildBuktiMaqraCardHtmlAsync(rec, m, esc) {
   const versi = (typeof MTQ_CONFIG !== 'undefined' && MTQ_CONFIG.MAQRA_PDF_VERSION) || 2;
+  if (versi === 1) return buildBuktiMaqraCardHtmlV1(rec, m, esc);
   let q = null;
-  if (versi !== 1 && typeof quranAmbilUntukMaqra === 'function') {
+  if (typeof quranAmbilUntukMaqra === 'function') {
     q = await quranAmbilUntukMaqra(m.maqra_teks || m.maqra || '', m.maqra_detail || m.surah || '');
   }
-  return buildBuktiMaqraCardHtml(rec, m, esc, q);
+  return buildBuktiMaqraCardHtmlV2(rec, m, esc, q);
 }
 
 /**
@@ -830,7 +919,7 @@ async function buildBuktiMaqraCardHtmlAsync(rec, m, esc) {
  * sengaja dibiarkan kosong (beda orang per kecamatan, bukan nilai config
  * tunggal) — nama & tanda tangan ditulis tangan.
  */
-function buildBuktiMaqraCardHtml(rec, m, esc, ayatQuran) {
+function buildBuktiMaqraCardHtmlV2(rec, m, esc, ayatQuran) {
   const panitiaNama = (typeof MTQ_CONFIG !== 'undefined' && MTQ_CONFIG.PANITIA_MAQRA_NAMA) || '';
   const panitiaNip  = (typeof MTQ_CONFIG !== 'undefined' && MTQ_CONFIG.PANITIA_MAQRA_NIP)  || '';
 
@@ -967,9 +1056,9 @@ async function downloadBuktiMaqraPdf(cardsHtml, filename, onProgress) {
   if (typeof html2canvas !== 'function') throw new Error('Pustaka html2canvas gagal dimuat');
   if (!window.jspdf || !window.jspdf.jsPDF) throw new Error('Pustaka jsPDF gagal dimuat');
 
-  // Style tag BUKTI_MAQRA_STYLES perlu ada di document (di mana pun --
-  // browser tetap menerapkannya walau bukan di <head>) supaya
-  // html2canvas membaca computed style yang benar saat "memotret".
+  // Style tag perlu ada di document (di mana pun -- browser tetap
+  // menerapkannya walau bukan di <head>) supaya html2canvas membaca
+  // computed style yang benar saat "memotret".
   // PENTING: textContent DIPAKSA ditulis ulang tiap panggilan (bukan
   // cuma dibuat sekali lalu dibiarkan) -- kalau tab sempat memuat versi
   // lama lalu berkas .js ini diperbarui tanpa reload penuh, cara lama
@@ -978,13 +1067,21 @@ async function downloadBuktiMaqraPdf(cardsHtml, filename, onProgress) {
   // terbaru -- persis pola yang bikin membingungkan saat debug (kode
   // sudah benar tapi tampilan masih versi lama). Sekarang setiap
   // download dijamin memakai CSS TERBARU dari berkas ini, titik.
+  // rev 20: DUA stylesheet berbeda (V1 desain asli, V2 desain skrng) --
+  // dipilih persis mengikuti versi yang dipakai buildBuktiMaqraCardHtmlAsync
+  // di atas utk kartu ini. Keduanya TIDAK bisa disuntik bersamaan: banyak
+  // nama class yang sama (.card, .header, .field, dst.) punya NILAI beda
+  // di tiap versi, jadi kalau digabung, salah satu bakal menimpa punya
+  // yang lain secara tak terduga tergantung urutan CSS cascade.
+  const versiPdf = (typeof MTQ_CONFIG !== 'undefined' && MTQ_CONFIG.MAQRA_PDF_VERSION) || 2;
+  const cssAktif = (versiPdf === 1) ? BUKTI_MAQRA_STYLES_V1 : BUKTI_MAQRA_STYLES_V2;
   let styleTag = document.getElementById('_buktiMaqraPdfStyle');
   if (!styleTag) {
     styleTag = document.createElement('style');
     styleTag.id = '_buktiMaqraPdfStyle';
     document.head.appendChild(styleTag);
   }
-  styleTag.textContent = BUKTI_MAQRA_STYLES;
+  styleTag.textContent = cssAktif;
 
   // Panggung di luar viewport tempat tiap kartu dirender satu-satu
   // sebelum difoto -- html2canvas butuh elemen yang benar-benar

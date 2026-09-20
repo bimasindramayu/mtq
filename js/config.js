@@ -113,7 +113,7 @@ const MTQ_CONFIG = {
   // Dipakai oleh SEMUA jalur unduh bukti maqra (peserta di cekstatus.html
   // maupun admin di doyourmagic.html) -- ganti di sini saja, berlaku di
   // keduanya. Kalau field ini kosong/tidak ada, dianggap versi 2.
-  MAQRA_PDF_VERSION: 1,
+  MAQRA_PDF_VERSION: 2,
 
   PANITIA_MAQRA_NAMA: 'ROSID, S.H.',
   PANITIA_MAQRA_NIP : '197003072014111002',
