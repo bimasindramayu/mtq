@@ -764,57 +764,7 @@ if (typeof window !== 'undefined') {
 //  (tidak dihitung benar) -- kolom memakai inline-block + padding, dan
 //  induknya font-size:0 untuk membuang celah spasi antar inline-block.
 // ================================================================
-<<<<<<< HEAD
 const BUKTI_MAQRA_STYLES = `*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Georgia',serif;background:#f9fafb;padding:20px}.card{background:#fff;border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,.15);width:100%;max-width:480px;overflow:hidden;margin:0 auto 24px}.header{background:linear-gradient(135deg,#064e3b,#059669);padding:28px 32px;color:#fff;text-align:center}.header h1{font-size:22px;margin-bottom:4px}.header p{font-size:13px;opacity:.8}.body{padding:28px 32px}.ornament{text-align:center;color:#9ca3af;margin:12px 0;letter-spacing:4px}.field{margin-bottom:14px}.field label{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#9ca3af;display:block;margin-bottom:3px}.field .val{font-size:15px;font-weight:600;color:#1f2937}.mbox{background:linear-gradient(135deg,#065f46,#047857);color:#fff;border-radius:12px;padding:24px;text-align:center;margin:20px 0}.mbox .ml{font-size:11px;text-transform:uppercase;letter-spacing:.6px;opacity:.75;margin-bottom:8px}.mbox .ma{font-size:22px;font-weight:700;margin-bottom:4px}.mbox .ms{font-size:14px;opacity:.85}.mbox .mn{background:rgba(255,255,255,.15);border-radius:999px;padding:5px 16px;font-size:12px;font-weight:600;display:inline-block;margin-top:10px}.warn{background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px 16px;font-size:12px;color:#b45309;margin-top:16px}.ttd-section{display:flex;gap:18px;margin-top:26px;padding-top:18px;border-top:1px dashed #d1d5db}.ttd-box{flex:1;text-align:center}.ttd-role{font-size:10.5px;color:#6b7280;margin-bottom:46px;line-height:1.4;white-space:nowrap}.ttd-name{font-size:9.5px;color:#9ca3af;margin-top:4px;font-style:italic}.ttd-printed-name{font-size:11px;color:#374151;margin-top:4px;font-weight:600}.ttd-printed-nip{font-size:9.5px;color:#6b7280;margin-top:1px}.ttd-line{border-bottom:1px solid #9ca3af;margin:0 6px}.footer{border-top:1px solid #e5e7eb;padding:16px 32px;font-size:12px;color:#9ca3af;text-align:center}@media print{body{background:#fff}.card{box-shadow:none;page-break-after:always}.card:last-child{page-break-after:auto}}`;
-=======
-const BUKTI_MAQRA_STYLES = `*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Georgia','Times New Roman',serif;background:#eef2f1;padding:20px}.card{background:#fff;border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,.15);width:100%;max-width:620px;overflow:hidden;margin:0 auto 24px;border:1px solid #d7e0dc}.header{background:linear-gradient(135deg,#064e3b,#059669);padding:22px 30px;color:#fff;text-align:center}.header h1{font-size:25px;line-height:1.25;margin-bottom:5px;letter-spacing:.3px}.header p{font-size:12.5px;color:#d1fae5;letter-spacing:.3px}.body{padding:20px 26px 22px}.cols{font-size:0;margin:0 -9px}.col{display:inline-block;vertical-align:top;padding:0 9px}.col-a{width:45%}.col-b{width:55%}.field{margin-bottom:13px}.field label{font-size:10px;text-transform:uppercase;letter-spacing:1.1px;color:#3f5b52;display:block;margin-bottom:2px;font-family:'Helvetica Neue',Arial,sans-serif;font-weight:700}.field .val{font-size:15.5px;line-height:1.3;font-weight:700;color:#000;word-break:break-word}.mbox{background:linear-gradient(135deg,#064e3b,#047857);border:1px solid #043d2e;color:#fff;border-radius:13px;padding:16px 14px 14px;text-align:center}.mbox .ml{font-size:9.5px;text-transform:uppercase;letter-spacing:1.8px;color:#a7f3d0;font-family:'Helvetica Neue',Arial,sans-serif;font-weight:700;margin-bottom:7px}.mbox .msurat{font-size:28px;line-height:1;font-weight:700;letter-spacing:.3px;margin-bottom:11px;color:#fff}.mbox .msurat.long{font-size:22px}.mbox .msurat.xlong{font-size:17px}.mbox .mgrid{font-size:0;margin:0 -3px 9px}.mbox .mcell{display:inline-block;width:50%;padding:0 3px;vertical-align:top}.mbox .mcell.solo{width:100%}.mbox .mcin{background:#fff;border-radius:9px;padding:9px 4px;min-height:64px;display:flex;flex-direction:column;align-items:center;justify-content:center}.mbox .mck{font-size:9px;line-height:1;text-transform:uppercase;letter-spacing:1.3px;color:#047857;font-weight:700;font-family:'Helvetica Neue',Arial,sans-serif}.mbox .mcv{font-size:23px;line-height:1;font-weight:700;color:#053d2c;word-break:break-word;margin-top:6px}.mbox .mraw{font-size:10px;line-height:1.45;color:#d1fae5;letter-spacing:.2px;font-family:'Helvetica Neue',Arial,sans-serif;margin-bottom:9px;word-break:break-word}.mbox .mn{background:#fff;color:#053d2c;border-radius:999px;padding:5px 16px;font-size:11.5px;font-weight:700;display:inline-block;letter-spacing:.5px;font-family:'Helvetica Neue',Arial,sans-serif}.abox{background:#fff;border:1.5px solid #047857;border-radius:12px;padding:14px 16px 10px;margin:16px 0 12px;text-align:center}.abox .al{font-size:9.5px;text-transform:uppercase;letter-spacing:1.8px;color:#047857;font-weight:700;font-family:'Helvetica Neue',Arial,sans-serif;margin-bottom:8px}.abox .ar{font-family:'Scheherazade New','Amiri','Traditional Arabic',serif;color:#000;direction:rtl;text-align:center;unicode-bidi:plaintext;font-size:31px;line-height:2.05;margin-bottom:8px}.abox .ar.s2{font-size:27px;line-height:2}.abox .ar.s3{font-size:23px;line-height:1.95}.abox .ar.s4{font-size:20px;line-height:1.9}.abox .ar.s5{font-size:18px;line-height:1.85}.abox .anum{font-size:.78em;white-space:nowrap}.abox .asrc{font-size:9.5px;line-height:1.5;color:#1f3b32;font-family:'Helvetica Neue',Arial,sans-serif;letter-spacing:.2px;border-top:1px solid #dbe6e1;padding-top:7px}.warn{background:#fffbeb;border:1px solid #f0c14b;border-radius:8px;padding:9px 13px;font-size:11px;line-height:1.5;color:#000;font-family:'Helvetica Neue',Arial,sans-serif}.ttd-section{display:flex;margin-top:18px;padding-top:14px;border-top:1px dashed #b9c6c1}.ttd-box{flex:1;text-align:center;padding:0 10px}.ttd-role{font-size:10.5px;color:#000;margin-bottom:42px;line-height:1.4;white-space:nowrap;font-family:'Helvetica Neue',Arial,sans-serif}.ttd-printed-name{font-size:11px;color:#000;margin-top:4px;font-weight:700}.ttd-printed-nip{font-size:9.5px;color:#000;margin-top:1px}.ttd-line{border-bottom:1px solid #000;margin:0 6px}.footer{border-top:1px solid #d7e0dc;padding:11px 30px;font-size:10.5px;line-height:1.45;color:#000;text-align:center;background:#f6f9f8;font-family:'Helvetica Neue',Arial,sans-serif}@media print{body{background:#fff}.card{box-shadow:none;page-break-after:always}.card:last-child{page-break-after:auto}}`;
-
-/**
- * Rakit blok teks ayat (hasil quranAmbilUntukMaqra). Ukuran font diturunkan
- * bertingkat mengikuti panjang total teks — 1 ayat pendek dicetak besar, satu
- * rentang panjang dikecilkan supaya kartu tetap muat 1 halaman A4 tanpa
- * diperkecil paksa oleh penyesuaian tinggi di downloadBuktiMaqraPdf().
- */
-function _buktiMaqraAyatHtml(q, esc) {
-  if (!q || !q.ayat || !q.ayat.length) return '';
-  const total = q.ayat.reduce((a, x) => a + x.arab.length, 0);
-  const cls = total <= 200 ? '' : (total <= 420 ? ' s2' : (total <= 760 ? ' s3' : (total <= 1300 ? ' s4' : ' s5')));
-  const multi = q.ayat.length > 1;
-  const teks = q.ayat.map(a =>
-    esc(a.arab) + (multi ? ' <span class="anum">\uFD3E' + quranAngkaArab(a.no) + '\uFD3F</span> ' : '')
-  ).join('');
-  const rentang = multi ? (q.ayat[0].no + '-' + q.ayat[q.ayat.length - 1].no) : String(q.ayat[0].no);
-  const potong = q.dipotong
-    ? ' \u00b7 ditampilkan ' + q.ayat.length + ' ayat pertama (sampai ayat ' + esc(String(q.sisa)) + ')'
-    : '';
-  return `<div class="abox"><div class="al">Teks Ayat</div>
-<div class="ar${cls}">${teks}</div>
-<div class="asrc">QS. ${esc(q.namaSurat)} : ${esc(rentang)} \u2014 Mushaf Standar Indonesia (Kemenag)${potong}</div></div>`;
-}
-
-/**
- * Versi async: mengambil teks ayatnya dulu, lalu merakit kartu. INI yang
- * dipakai semua tombol unduh. Kalau surat/ayat tidak bisa ditentukan atau
- * berkasnya gagal dimuat, quranAmbilUntukMaqra() mengembalikan null dan kartu
- * tetap tercetak tanpa blok ayat — lebih baik kosong daripada salah.
- *
- * rev 18: menghormati MTQ_CONFIG.MAQRA_PDF_VERSION (js/config.js).
- * Versi 1 (lama) SENGAJA melewati pengambilan ayat sama sekali -- bukan
- * cuma menyembunyikan hasilnya lewat CSS, supaya kartu versi 1 tetap
- * secepat sebelum fitur ayat ada (tidak ada fetch data/quran/ sama sekali)
- * dan tidak bisa gagal karena masalah folder data/quran/. Titik keputusan
- * SATU-SATUNYA ada di sini, jadi ke-4 jalur unduh (peserta & admin, satuan
- * & borongan) otomatis konsisten tanpa perlu diubah satu-satu.
- */
-async function buildBuktiMaqraCardHtmlAsync(rec, m, esc) {
-  const versi = (typeof MTQ_CONFIG !== 'undefined' && MTQ_CONFIG.MAQRA_PDF_VERSION) || 2;
-  let q = null;
-  if (versi !== 1 && typeof quranAmbilUntukMaqra === 'function') {
-    q = await quranAmbilUntukMaqra(m.maqra_teks || m.maqra || '', m.maqra_detail || m.surah || '');
-  }
-  return buildBuktiMaqraCardHtml(rec, m, esc, q);
-}
->>>>>>> bfde93a3277144a52aa7195815205331005e64be
 
 /**
  * Bangun 1 kartu "Bukti Maqra" (fragment <div class="card">...</div>).
