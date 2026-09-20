@@ -44,9 +44,7 @@ const SHEET = {
 
 // ── Inisialisasi spreadsheet & sheet ─────────────────────────
 function getSpreadsheet() {
-  // rev 12: pakai handle ter-cache per eksekusi (getSS_ di helper.gs) — dulu
-  // SETIAP getSheet() membuka spreadsheet lagi (2-4x per request).
-  return getSS_();
+  return SpreadsheetApp.openById(SPREADSHEET_ID);
 }
 
 function getSheet(name) {
@@ -265,25 +263,16 @@ function getPeserta(cabang, adminView) {
   // ── Ambil langsung dari SHEET_PENDAFTAR.
   // adminView=true  → admin panel: semua peserta KECUALI Ditolak/Nonaktif
   // adminView=false → scoring hakim: hanya status 'Terverifikasi'
-  var ss = getSS_();
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   var sh = ss.getSheetByName(SHEET_PENDAFTAR);
   if (!sh) return { success: false, error: 'Sheet pendaftar tidak ditemukan' };
 
-  // rev 12: hanya kolom yang dipakai (sampai NAMA_LENGKAP + kolom status) —
-  // tanpa ANGGOTA_JSON/link/alamat yang besar. Hasil akhirnya identik.
-  var maxCol = Math.max(COL.NOMOR_PENDAFTARAN, COL.TIPE_LOMBA, COL.NAMA_TIM,
-                        COL.KECAMATAN, COL.CABANG_LOMBA, COL.NAMA_LENGKAP);
-  var last = sh.getLastRow();
-  var head = [], statusCol = [];
-  if (last > 1) {
-    head      = sh.getRange(2, 1, last - 1, maxCol + 1).getValues();
-    statusCol = sh.getRange(2, COL.STATUS_VERIFIKASI + 1, last - 1, 1).getValues();
-  }
+  var rows    = sh.getDataRange().getValues();
   var result  = {};
   var counter = {};
 
-  head.forEach(function(r, i) {
-    var rowStatus  = String(statusCol[i][0] || '').trim();
+  rows.slice(1).forEach(function(r) {
+    var rowStatus  = String(r[COL.STATUS_VERIFIKASI] || '').trim();
     var rowCabang  = String(r[COL.CABANG_LOMBA]      || '').trim();
     var rowNomor   = String(r[COL.NOMOR_PENDAFTARAN] || '').trim();
     var rowKec     = String(r[COL.KECAMATAN]         || '').trim();
@@ -336,50 +325,31 @@ function saveNilai(key, data) {
   if (!key || !data) throw new Error('Data nilai tidak lengkap');
 
   const sh = getSheet(SHEET.NILAI);
+  const rows = sh.getDataRange().getValues();
 
-  // rev 12: dulu TIDAK ADA lock — cek "sudah ada?" lalu appendRow bisa
-  // ditabrak submit kembar (double-tap hakim, atau retry otomatis karena
-  // respons telat saat server ramai) → baris nilai ganda. Lock dipakai
-  // bersama seluruh project; bagian di dalamnya sengaja pendek.
-  const lock = LockService.getScriptLock();
-  try {
-    lock.waitLock(30000);
-  } catch (e) {
-    return { success: false, busy: true, error: 'Server sedang sibuk, nilai akan dicoba kirim ulang otomatis.' };
-  }
-
-  try {
-    // Cek apakah sudah ada — TIDAK BOLEH OVERWRITE setelah submit.
-    // Hanya kolom "key" yang dibaca (bukan seluruh sheet + params_json).
-    const last = sh.getLastRow();
-    if (last > 1) {
-      const keys = sh.getRange(2, 1, last - 1, 1).getValues();
-      for (let i = 0; i < keys.length; i++) {
-        if (keys[i][0] === key) {
-          return { success: false, error: 'Nilai sudah disubmit dan tidak dapat diubah' };
-        }
-      }
+  // Cek apakah sudah ada — TIDAK BOLEH OVERWRITE setelah submit
+  for (let i = 1; i < rows.length; i++) {
+    if (rows[i][0] === key) {
+      return { success: false, error: 'Nilai sudah disubmit dan tidak dapat diubah' };
     }
-
-    sh.appendRow([
-      key,
-      data.hakimId,
-      data.hakimNama,
-      data.pesertaId,
-      data.pesertaNama,
-      data.pesertaKecamatan,
-      data.cabang,
-      JSON.stringify(data.params || []),
-      Number(data.total).toFixed(4),
-      data.catatan || '',
-      data.bukti?.name || '',
-      data.bukti?.size || '',
-      data.submittedAt || new Date().toISOString()
-    ]);
-    return { success: true };
-  } finally {
-    lock.releaseLock();
   }
+
+  sh.appendRow([
+    key,
+    data.hakimId,
+    data.hakimNama,
+    data.pesertaId,
+    data.pesertaNama,
+    data.pesertaKecamatan,
+    data.cabang,
+    JSON.stringify(data.params || []),
+    Number(data.total).toFixed(4),
+    data.catatan || '',
+    data.bukti?.name || '',
+    data.bukti?.size || '',
+    data.submittedAt || new Date().toISOString()
+  ]);
+  return { success: true };
 }
 
 function getNilai(cabang, hakimId) {
@@ -544,21 +514,4 @@ function resetNilai_DANGER() {
   const lastRow = sh.getLastRow();
   if (lastRow > 1) sh.deleteRows(2, lastRow - 1);
   logWarn('penilaian', 'Semua data nilai telah dihapus! (resetNilai_DANGER)');
-}
-
-// ════════════════════════════════════════════════════════════════
-//  CONFIG key-value sederhana (Script Properties)
-//  Dirujuk apiGetHasilPublikStatus_/apiSetHasilPublikStatus_ di api.gs
-//  (toggle "Hasil Penilaian Publik"), tetapi getConfig()/setConfig()
-//  TIDAK terdefinisi di file .gs manapun → ReferenceError → tombol
-//  buka/tutup hasil publik tidak pernah bekerja. Script Properties
-//  cepat (tanpa baca sheet). JIKA project Anda SUDAH punya getConfig/
-//  setConfig di file lain, HAPUS blok ini agar tidak saling menimpa.
-// ════════════════════════════════════════════════════════════════
-function getConfig(key) {
-  try { return PropertiesService.getScriptProperties().getProperty('CFG_' + key) || ''; }
-  catch (e) { return ''; }
-}
-function setConfig(key, value) {
-  PropertiesService.getScriptProperties().setProperty('CFG_' + key, String(value));
 }

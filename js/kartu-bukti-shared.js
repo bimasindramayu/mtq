@@ -1,10 +1,5 @@
 // ================================================================
 //  MTQ 2026 — js/kartu-bukti-shared.js
-//  KARTU_BUKTI_REV = 18  <-- kalau meragukan browser masih pakai versi
-//  lama, ketik KARTU_BUKTI_REV di Console (F12) lalu Enter: kalau
-//  hasilnya BUKAN 18, berkas ini belum ter-update di browser (cache /
-//  file lama) -- hard refresh (Ctrl+Shift+R) atau naikkan angka ?v=
-//  pada tag <script> yang memuat berkas ini.
 //  FIX #33: SATU-SATUNYA SUMBER untuk 2 hal yang dipakai bersama oleh
 //  cekstatus.html (peserta, self-service) DAN doyourmagic.html/
 //  admin-maqra.js (admin, borongan/bulk):
@@ -24,9 +19,6 @@
 //  script yang memanggil renderKartuCanvas/buildBuktiMaqraCardHtml
 //  (doyourmagic.html).
 // ================================================================
-
-var KARTU_BUKTI_REV = 18;
-if (typeof window !== 'undefined') window.KARTU_BUKTI_REV = KARTU_BUKTI_REV;
 
 async function renderKartuCanvas(member, rec, memberIdx, isTeam, CW, CH, imageLoaderFn = null) {
   const canvas = document.createElement('canvas');
@@ -427,419 +419,38 @@ function truncateText(ctx, text, maxWidth) {
 }
 
 // ================================================================
-//  PARSER FORMAT MAQRA  (rev 14)
-//  ---------------------------------------------------------------
-//  Format baku yang diketik admin di tab "Kelola Maqra", satu baris
-//  satu maqra:
-//      SURAT AL-BAQARAH - AYAT : 21 – HAL : 5
-//      SURAT AL-BAQARAH - AYAT : 113 – HAL : 17
-//  Dulu string ini dipakai APA ADANYA sebagai satu blok teks di
-//  bukti PDF, jadi nama suratnya tenggelam di tengah kalimat dan
-//  sulit dibaca sekilas. parseMaqra() memecahnya jadi 3 bagian
-//  (surat / ayat / halaman) supaya bisa ditata bertingkat di kartu.
-//  Pemisahan TIDAK boleh dilakukan dengan split('-'): nama surat
-//  sendiri sering mengandung tanda hubung ("AL-BAQARAH", "AL-A'RAF"),
-//  jadi patokannya kata kunci AYAT & HAL/HALAMAN, bukan tanda baca.
-//  Toleran terhadap: hyphen "-" / en-dash "–" / em-dash "—", titik
-//  dua opsional, "HAL" atau "HALAMAN", kata "SURAT"/"SURAH" opsional,
-//  spasi berlebih, dan baris yang tidak lengkap (mis. hanya ayat).
-//  Kalau baris sama sekali tidak mengenali polanya, .ok = false dan
-//  pemanggil menampilkan teks aslinya utuh — tidak pernah hilang.
-// ================================================================
-function parseMaqra(teks) {
-  var raw = String(teks == null ? '' : teks).replace(/\s+/g, ' ').trim();
-  var out = { surat: '', ayat: '', halaman: '', raw: raw, ok: false };
-  if (!raw) return out;
-
-  var iAyat = raw.search(/\bAYAT\b/i);
-  var iHal  = raw.search(/\bHAL(?:AMAN)?\b/i);
-  var trim  = function (s) {
-    return String(s).replace(/^[\s:.\-–—]+/, '').replace(/[\s:.\-–—]+$/, '').trim();
-  };
-
-  if (iAyat >= 0) {
-    out.surat = raw.slice(0, iAyat);
-    var seg = (iHal > iAyat ? raw.slice(iAyat, iHal) : raw.slice(iAyat));
-    out.ayat = trim(seg.replace(/^\s*AYAT\b/i, ''));
-  } else if (iHal > 0) {
-    out.surat = raw.slice(0, iHal);
-  } else {
-    out.surat = raw;
-  }
-
-  if (iHal >= 0 && (iAyat < 0 || iHal > iAyat)) {
-    out.halaman = trim(raw.slice(iHal).replace(/^\s*HAL(?:AMAN)?\b/i, ''));
-  }
-
-  out.surat = trim(out.surat).replace(/^SURA[HT]\b[\s:.]*/i, '').trim();
-  out.ok    = !!(out.surat || out.ayat || out.halaman);
-  return out;
-}
-
-/** Rakit ulang jadi format baku — dipakai utk tampilan 1 baris. */
-function formatMaqra(teks) {
-  var p = parseMaqra(teks);
-  // Tanpa ayat & halaman, baris itu bukan format baku (mis. catatan bebas
-  // "Juz 30 acak") — kembalikan apa adanya, jangan dipaksa berawalan SURAT.
-  if (!p.ok || (!p.ayat && !p.halaman)) return p.raw;
-  var bag = [];
-  if (p.surat)   bag.push('SURAT ' + p.surat.toUpperCase());
-  if (p.ayat)    bag.push('AYAT : ' + p.ayat);
-  if (p.halaman) bag.push('HAL : ' + p.halaman);
-  if (!bag.length) return p.raw;
-  return bag.length === 3
-    ? bag[0] + ' - ' + bag[1] + ' – ' + bag[2]
-    : bag.join(' – ');
-}
-
-if (typeof window !== 'undefined') {
-  window.parseMaqra  = parseMaqra;
-  window.formatMaqra = formatMaqra;
-}
-
-// ================================================================
-//  TEKS AYAT AL-QUR'AN UNTUK BUKTI MAQRA  (rev 15)
-//  ---------------------------------------------------------------
-//  Sumber teks: Mushaf Standar Indonesia (Kemenag) — 6.236 ayat,
-//  disimpan sebagai berkas statis di data/quran/{nomor-surat}.json
-//  (1 berkas per surat, hanya surat yang dibutuhkan yang diunduh;
-//  paling besar Al-Baqarah ~110 KB, rata-rata ~12 KB). Berkas itu
-//  di-cache di localStorage, jadi unduhan borongan 100 peserta yang
-//  suratnya sama hanya sekali menyentuh jaringan.
-//
-//  KENAPA BERKAS STATIS, BUKAN API PIHAK KETIGA: bukti maqra dicetak
-//  saat acara berlangsung, sering dari HP dengan sinyal seadanya, dan
-//  tidak boleh gagal/ salah cetak gara-gara API pihak lain sedang
-//  down atau kena rate limit. Berkas statis ikut di-hosting bersama
-//  situs ini, jadi selama situsnya kebuka, ayatnya pasti ada.
-//
-//  PENTING soal keakuratan: teks di berkas itu disimpan dalam bentuk
-//  NFC. Huruf & harakatnya identik dengan mushaf Kemenag — normalisasi
-//  NFC hanya menyeragamkan URUTAN SIMPAN tanda (mis. shadda sebelum
-//  atau sesudah fathah), bukan mengubah tandanya. Hasil render di
-//  layar & PDF sama persis.
-//
-//  Path berkas bisa diubah lewat MTQ_CONFIG.QURAN_BASE kalau struktur
-//  folder situs berbeda (default: 'data/quran', relatif thd halaman).
-// ================================================================
-const QURAN_SURAT = [[1,"Al-Fatihah"],[2,"Al-Baqarah"],[3,"Ali 'Imran"],[4,"An-Nisa'"],[5,"Al-Ma'idah"],[6,"Al-An'am"],[7,"Al-A'raf"],[8,"Al-Anfal"],[9,"At-Taubah"],[10,"Yunus"],[11,"Hud"],[12,"Yusuf"],[13,"Ar-Ra'd"],[14,"Ibrahim"],[15,"Al-Hijr"],[16,"An-Nahl"],[17,"Al-Isra'"],[18,"Al-Kahf"],[19,"Maryam"],[20,"Taha"],[21,"Al-Anbiya'"],[22,"Al-Hajj"],[23,"Al-Mu'minun"],[24,"An-Nur"],[25,"Al-Furqan"],[26,"Asy-Syu'ara'"],[27,"An-Naml"],[28,"Al-Qasas"],[29,"Al-'Ankabut"],[30,"Ar-Rum"],[31,"Luqman"],[32,"As-Sajdah"],[33,"Al-Ahzab"],[34,"Saba'"],[35,"Fatir"],[36,"Yasin"],[37,"As-Saffat"],[38,"Sad"],[39,"Az-Zumar"],[40,"Gafir"],[41,"Fussilat"],[42,"Asy-Syura"],[43,"Az-Zukhruf"],[44,"Ad-Dukhan"],[45,"Al-Jasiyah"],[46,"Al-Ahqaf"],[47,"Muhammad"],[48,"Al-Fath"],[49,"Al-Hujurat"],[50,"Qaf"],[51,"Az-Zariyat"],[52,"At-Tur"],[53,"An-Najm"],[54,"Al-Qamar"],[55,"Ar-Rahman"],[56,"Al-Waqi'ah"],[57,"Al-Hadid"],[58,"Al-Mujadalah"],[59,"Al-Hasyr"],[60,"Al-Mumtahanah"],[61,"As-Saff"],[62,"Al-Jumu'ah"],[63,"Al-Munafiqun"],[64,"At-Tagabun"],[65,"At-Talaq"],[66,"At-Tahrim"],[67,"Al-Mulk"],[68,"Al-Qalam"],[69,"Al-Haqqah"],[70,"Al-Ma'arij"],[71,"Nuh"],[72,"Al-Jinn"],[73,"Al-Muzzammil"],[74,"Al-Muddassir"],[75,"Al-Qiyamah"],[76,"Al-Insan"],[77,"Al-Mursalat"],[78,"An-Naba'"],[79,"An-Nazi'at"],[80,"'Abasa"],[81,"At-Takwir"],[82,"Al-Infitar"],[83,"Al-Mutaffifin"],[84,"Al-Insyiqaq"],[85,"Al-Buruj"],[86,"At-Tariq"],[87,"Al-A'la"],[88,"Al-Gasyiyah"],[89,"Al-Fajr"],[90,"Al-Balad"],[91,"Asy-Syams"],[92,"Al-Lail"],[93,"Ad-Duha"],[94,"Asy-Syarh"],[95,"At-Tin"],[96,"Al-'Alaq"],[97,"Al-Qadr"],[98,"Al-Bayyinah"],[99,"Az-Zalzalah"],[100,"Al-'Adiyat"],[101,"Al-Qari'ah"],[102,"At-Takasur"],[103,"Al-'Asr"],[104,"Al-Humazah"],[105,"Al-Fil"],[106,"Quraisy"],[107,"Al-Ma'un"],[108,"Al-Kausar"],[109,"Al-Kafirun"],[110,"An-Nasr"],[111,"Al-Lahab"],[112,"Al-Ikhlas"],[113,"Al-Falaq"],[114,"An-Nas"]];
-
-// Nama lain yang lazim dipakai panitia untuk surat yang sama.
-const QURAN_ALIAS = {
-  'BARAAH':9, 'BARAAT':9, 'BANIISRAIL':17, 'BANISRAIL':17, 'SUBHANA':17,
-  'MALAIKAT':35, 'YASIN':36, 'YAASIN':36, 'HAMIMSAJDAH':41, 'HAMIM':41,
-  'ALMUMIN':40, 'ATTAHRIM':66, 'ADDAHR':76, 'ALINSYIRAH':94, 'ALAMNASYRAH':94,
-  'ALLAHAB':111, 'ATTABBAT':111, 'ALMASAD':111, 'ALMASADD':111, 'ALIIMRAN':3, 'AALIIMRAN':3, 'ALFATEHAH':1,
-  'ALFATIHA':1, 'UMMULKITAB':1, 'FATIHAH':1, 'ALKAHFI':18, 'ANNAHL':16, 'ANNAS':114, 'ALFALAQ':113, 'ALIKHLAS':112,
-  // 'Thaha' (ejaan umum) TIDAK senasib dgn normalisasi kanonik 'Taha': aturan
-  // TH->S di quranNormNama() (utk menyeragamkan ejaan TSA/DZA/dst.) ikut
-  // memakan T+H di sini, padahal keduanya huruf hijaiyah terpisah (Tha-Ha),
-  // bukan 1 bunyi gabungan -- jadi dipetakan manual: quranNormNama('Thaha')='SAHA'.
-  'SAHA':20,
-};
-
-/**
- * Normalisasi nama surat supaya ejaan bebas panitia tetap ketemu.
- * Dibuat agresif dengan sengaja: "AL-BAQARAH", "Al Baqoroh", "albaqarah",
- * dan "AL BAQARAH" semuanya jatuh ke kunci yang sama. Urutannya penting —
- * gabungan konsonan (TS/SY/DZ/...) harus diringkas SEBELUM vokal dilipat.
- */
-function quranNormNama(s) {
-  let t = String(s || '').toUpperCase();
-  try { t = t.normalize('NFD').replace(/[\u0300-\u036f]/g, ''); } catch (e) {}
-  t = t.replace(/^(SURA[HT]|QS)\b[\s:.]*/i, '');
-  t = t.replace(/[^A-Z]/g, '');
-  // Hanya lipatan yang BENAR-BENAR dipakai di ejaan Indonesia. Sengaja TIDAK
-  // melipat U/E/Y/W: pelipatan itu sempat membuat "Asy-Syura" (42) dan
-  // "Asy-Syu'ara" (26) jatuh ke kunci yang sama — salah tebak surat pada
-  // dokumen resmi jauh lebih buruk daripada sekadar gagal mengenali.
-  t = t.replace(/TS|TH/g, 'S').replace(/SY|SH/g, 'S').replace(/DZ|DH/g, 'D')
-       .replace(/KH/g, 'H').replace(/GH/g, 'G').replace(/Q/g, 'K')
-       .replace(/O/g, 'A').replace(/(.)\1+/g, '$1');
-  return t;
-}
-
-function _lev(a, b) {
-  const m = a.length, n = b.length;
-  if (!m || !n) return Math.max(m, n);
-  let prev = Array.from({ length: n + 1 }, (_, j) => j), cur = new Array(n + 1);
-  for (let i = 1; i <= m; i++) {
-    cur[0] = i;
-    for (let j = 1; j <= n; j++) {
-      cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
-    }
-    [prev, cur] = [cur, prev];
-  }
-  return prev[n];
-}
-
-/** Nama surat (ejaan bebas) → nomor surat 1..114, atau 0 kalau tak dikenali. */
-function quranCariSurat(nama) {
-  const q = quranNormNama(nama);
-  if (!q) return 0;
-  if (QURAN_ALIAS[q]) return QURAN_ALIAS[q];
-  for (const [k, v] of Object.entries(QURAN_ALIAS)) if (quranNormNama(k) === q) return v;
-  let exact = 0, best = 0, bestD = 99;
-  for (const [n, nm] of QURAN_SURAT) {
-    const c = quranNormNama(nm);
-    if (c === q) { exact = n; break; }
-    const d = _lev(c, q);
-    if (d < bestD) { bestD = d; best = n; }
-  }
-  if (exact) return exact;
-  // Toleransi salah ketik HANYA untuk nama yang cukup panjang (>=7 huruf
-  // setelah dinormalkan, kira-kira 1 kesalahan per 7 huruf). Di bawah itu
-  // WAJIB persis (atau lewat alias di atas) -- pernah ketahuan bug nyata:
-  // "AN'AM" tanpa awalan "AL-" (admin lupa/singkat) ternormalisasi jadi
-  // "ANAM" (4 huruf), dan dengan toleransi lama (selalu minimal 1 walau
-  // nama pendek) itu malah dianggap "mirip" AN-NAML ("ANAML") dan salah
-  // menampilkan ayat surat lain sama sekali. Nama pendek terlalu mudah
-  // "mirip" ke surat yang sama sekali berbeda kalau toleransinya disamakan
-  // dengan nama panjang -- salah tebak nama surat pada dokumen resmi jauh
-  // lebih buruk daripada sekadar gagal mengenali & tidak menampilkan ayat.
-  if (q.length < 7) return 0;
-  return (bestD <= Math.floor(q.length / 7)) ? best : 0;
-}
-
-function quranNamaSurat(n) {
-  const row = QURAN_SURAT.find(r => r[0] === n);
-  return row ? row[1] : '';
-}
-
-// ── Pemuatan & cache berkas surat ───────────────────────────────────────
-const _quranMem = {};
-function _quranBase() {
-  return (typeof MTQ_CONFIG !== 'undefined' && MTQ_CONFIG.QURAN_BASE) || 'data/quran';
-}
-
-// v2: kunci cache diberi versi (rev 17). Kalau berkas data/quran/*.json
-// pernah diperbarui setelah sempat ter-cache di localStorage seseorang
-// (mis. saat masih tahap uji coba), versi lama ini membuat salinan basi itu
-// otomatis diabaikan sekali saja -- tanpa perlu minta orangnya membersihkan
-// localStorage manual. Naikkan angka v ini lagi kalau berkas data diganti.
-async function quranMuatSurat(n) {
-  if (_quranMem[n]) return _quranMem[n];
-  const lsKey = 'mtq_quran_v2_s' + n;
-  try {
-    const raw = localStorage.getItem(lsKey);
-    if (raw) { const o = JSON.parse(raw); if (o && o.ayat && o.ayat.length) return (_quranMem[n] = o); }
-  } catch (e) {}
-  const res = await fetch(`${_quranBase()}/${n}.json`, { cache: 'force-cache' });
-  if (!res.ok) throw new Error('Berkas surat ' + n + ' tidak ditemukan (HTTP ' + res.status + ')');
-  const o = await res.json();
-  if (!o || !Array.isArray(o.ayat) || !o.ayat.length) throw new Error('Berkas surat ' + n + ' formatnya tidak valid');
-  _quranMem[n] = o;
-  try { localStorage.setItem(lsKey, JSON.stringify(o)); } catch (e) { /* kuota penuh — cukup cache memori */ }
-  return o;
-}
-
-/** "21", "102-109", "5 – 7" → [dari, sampai] (sampai = dari kalau bukan rentang). */
-function quranParseRentang(spec) {
-  const m = String(spec || '').match(/(\d+)\s*[-–—s.d/]+\s*(\d+)/);
-  if (m) return [parseInt(m[1], 10), parseInt(m[2], 10)];
-  const one = String(spec || '').match(/(\d+)/);
-  return one ? [parseInt(one[1], 10), parseInt(one[1], 10)] : [0, 0];
-}
-
-const QURAN_MAKS_AYAT = 10;   // di atas ini dipotong, biar 1 kartu tetap 1 halaman
-
-/**
- * Ambil teks ayat untuk satu baris maqra.
- * @param {string} maqraTeks  - mis. "SURAT AL-BAQARAH - AYAT : 168 – HAL : 24"
- * @param {string} cadSurat   - isi kolom maqra_detail, dipakai kalau baris
- *                              maqra tidak memuat nama surat
- * @returns {Promise<object|null>} {nomorSurat, namaSurat, ayat:[{no,arab}], dipotong, sisa}
- *          atau null kalau surat/ayat tidak bisa ditentukan (kartu tetap
- *          dicetak, hanya tanpa blok ayat — lebih baik kosong daripada salah).
- */
-/**
- * Ambil teks ayat untuk satu baris maqra.
- * @param {string} maqraTeks  - mis. "SURAT AL-BAQARAH - AYAT : 168 – HAL : 24"
- * @param {string} cadSurat   - isi kolom maqra_detail, dipakai kalau baris
- *                              maqra tidak memuat nama surat
- * @returns {Promise<object|null>} {nomorSurat, namaSurat, ayat:[{no,arab}], dipotong, sisa}
- *          atau null kalau surat/ayat tidak bisa ditentukan (kartu tetap
- *          dicetak, hanya tanpa blok ayat — lebih baik kosong daripada salah).
- *
- * SEMUA jalur null di bawah mencetak console.warn dengan alasan spesifik
- * (bukan cuma error tak terduga di try/catch) -- kalau suatu saat ada baris
- * maqra yang ayatnya tidak muncul di PDF, buka Console browser (F12) saat
- * mengunduh buktinya: pesannya langsung bilang persisnya kenapa (nama surat
- * tidak dikenali, atau nomor ayat tidak terbaca dari baris maqra, dsb.),
- * jadi tidak perlu menebak-nebak lagi.
- */
-async function quranAmbilUntukMaqra(maqraTeks, cadSurat) {
-  const warn = (typeof console !== 'undefined' && console.warn) ? console.warn.bind(console) : function () {};
-  try {
-    const p = parseMaqra(maqraTeks);
-    const namaDicoba = p.surat || cadSurat || '';
-    const n = quranCariSurat(namaDicoba);
-    if (!n) {
-      warn('[Maqra] Teks ayat TIDAK ditampilkan -- nama surat tidak dikenali:',
-           JSON.stringify(namaDicoba), '(dari baris maqra:', JSON.stringify(maqraTeks) + ')');
-      return null;
-    }
-    const [dari, sampai] = quranParseRentang(p.ayat);
-    if (!dari) {
-      warn('[Maqra] Teks ayat TIDAK ditampilkan -- nomor ayat tidak terbaca dari baris maqra:',
-           JSON.stringify(maqraTeks), '(surat terdeteksi:', quranNamaSurat(n) + ', tapi field ayat kosong/tidak berpola angka)');
-      return null;
-    }
-    const s = await quranMuatSurat(n);
-    if (dari > s.ayat.length) {
-      warn('[Maqra] Teks ayat TIDAK ditampilkan -- nomor ayat', dari, 'melebihi jumlah ayat',
-           quranNamaSurat(n), '(' + s.ayat.length + ' ayat). Cek penulisan ayat pada baris maqra:', JSON.stringify(maqraTeks));
-      return null;
-    }
-    const akhir = Math.min(Math.max(sampai, dari), s.ayat.length);
-    const jml = akhir - dari + 1;
-    const tampil = Math.min(jml, QURAN_MAKS_AYAT);
-    const ayat = [];
-    for (let i = 0; i < tampil; i++) ayat.push({ no: dari + i, arab: s.ayat[dari + i - 1] });
-    return { nomorSurat: n, namaSurat: s.nama || quranNamaSurat(n), ayat,
-             dipotong: jml > tampil, sisa: akhir };
-  } catch (e) {
-    warn('[Maqra] Teks ayat TIDAK ditampilkan -- gagal memuat berkas surat (cek folder data/quran/ ter-upload lengkap & bisa diakses):', e && e.message);
-    return null;
-  }
-}
-
-/** 168 → ١٦٨ (angka Arab-Timur, utk penanda akhir ayat). */
-function quranAngkaArab(n) {
-  return String(n).replace(/\d/g, d => '٠١٢٣٤٥٦٧٨٩'[+d]);
-}
-
-// ── Font Arab ───────────────────────────────────────────────────────────
-// Scheherazade New (SIL) dipilih karena memang dirancang untuk teks Arab
-// BERHARAKAT PENUH gaya mushaf Indonesia/Indopak: tanda baca dicetak besar
-// dan tidak bertabrakan, jadi tetap terbaca setelah html2canvas mengecilkan
-// kartu ke ~180 mm di kertas A4. Amiri jadi cadangan. Font WAJIB selesai
-// dimuat sebelum html2canvas memotret — kalau tidak, yang terpotret adalah
-// font pengganti sistem yang harakatnya berantakan.
-const QURAN_FONT_URL = 'https://fonts.googleapis.com/css2?family=Scheherazade+New:wght@400;700&family=Amiri:wght@400;700&display=swap';
-
-async function quranMuatFont() {
-  if (!document.getElementById('_quranFontLink')) {
-    const l = document.createElement('link');
-    l.id = '_quranFontLink'; l.rel = 'stylesheet'; l.href = QURAN_FONT_URL;
-    document.head.appendChild(l);
-  }
-  try {
-    if (document.fonts && document.fonts.load) {
-      await Promise.all([
-        document.fonts.load('400 32px "Scheherazade New"'),
-        document.fonts.load('700 32px "Scheherazade New"'),
-      ]);
-      await document.fonts.ready;
-    } else {
-      await new Promise(r => setTimeout(r, 1200));
-    }
-  } catch (e) { await new Promise(r => setTimeout(r, 800)); }
-}
-
-if (typeof window !== 'undefined') {
-  window.quranCariSurat      = quranCariSurat;
-  window.quranAmbilUntukMaqra = quranAmbilUntukMaqra;
-  window.quranMuatFont       = quranMuatFont;
-}
-
-// ================================================================
 //  BUKTI PENGAMBILAN MAQRA -- template HTML dipakai bersama:
 //  - cek-maqra.js   (downloadBukti(): 1 peserta, self-service)
 //  - admin-maqra.js (maqraDownloadAllBukti(): banyak peserta sekaligus,
 //    tab Hasil Pengambilan -> cetak semua jadi 1 file, 1 kartu/halaman)
 //  Satu sumber supaya kedua jalur selalu identik desainnya.
-//  ---------------------------------------------------------------
-//  rev 15 — tata letak DUA KOLOM, lebar panggung 620px.
-//  Alasannya murni soal keterbacaan cetak, bukan selera: kartu difoto
-//  html2canvas lalu ditempel ke A4, dan penskalaan di
-//  downloadBuktiMaqraPdf() memakai sisi yang lebih sesak. Versi 1 kolom
-//  + blok ayat punya rasio tinggi:lebar ~2,3 sedangkan area cetak A4
-//  hanya 1,46 — jadi kartunya dipaksa mengecil sampai ~120 mm dan
-//  menyisakan 70 mm kertas kosong di kiri-kanan. Dengan identitas
-//  peserta dikolomkan di sebelah kotak maqra, rasionya turun ke ~1,4
-//  sehingga kartu dicetak selebar 190 mm penuh dan SEMUA teks jadi
-//  lebih besar di kertas meski ukuran px-nya sama.
-//  Catatan teknis html2canvas 1.4.1: JANGAN pakai `gap` pada flex
-//  (tidak dihitung benar) -- kolom memakai inline-block + padding, dan
-//  induknya font-size:0 untuk membuang celah spasi antar inline-block.
 // ================================================================
-const BUKTI_MAQRA_STYLES = `*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Georgia',serif;background:#f9fafb;padding:20px}.card{background:#fff;border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,.15);width:100%;max-width:480px;overflow:hidden;margin:0 auto 24px}.header{background:linear-gradient(135deg,#064e3b,#059669);padding:28px 32px;color:#fff;text-align:center}.header h1{font-size:22px;margin-bottom:4px}.header p{font-size:13px;opacity:.8}.body{padding:28px 32px}.ornament{text-align:center;color:#9ca3af;margin:12px 0;letter-spacing:4px}.field{margin-bottom:14px}.field label{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#9ca3af;display:block;margin-bottom:3px}.field .val{font-size:15px;font-weight:600;color:#1f2937}.mbox{background:linear-gradient(135deg,#065f46,#047857);color:#fff;border-radius:12px;padding:24px;text-align:center;margin:20px 0}.mbox .ml{font-size:11px;text-transform:uppercase;letter-spacing:.6px;opacity:.75;margin-bottom:8px}.mbox .ma{font-size:22px;font-weight:700;margin-bottom:4px}.mbox .ms{font-size:14px;opacity:.85}.mbox .mn{background:rgba(255,255,255,.15);border-radius:999px;padding:5px 16px;font-size:12px;font-weight:600;display:inline-block;margin-top:10px}.warn{background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px 16px;font-size:12px;color:#b45309;margin-top:16px}.ttd-section{display:flex;gap:18px;margin-top:26px;padding-top:18px;border-top:1px dashed #d1d5db}.ttd-box{flex:1;text-align:center}.ttd-role{font-size:10.5px;color:#6b7280;margin-bottom:46px;line-height:1.4;white-space:nowrap}.ttd-name{font-size:9.5px;color:#9ca3af;margin-top:4px;font-style:italic}.ttd-printed-name{font-size:11px;color:#374151;margin-top:4px;font-weight:600}.ttd-printed-nip{font-size:9.5px;color:#6b7280;margin-top:1px}.ttd-line{border-bottom:1px solid #9ca3af;margin:0 6px}.footer{border-top:1px solid #e5e7eb;padding:16px 32px;font-size:12px;color:#9ca3af;text-align:center}@media print{body{background:#fff}.card{box-shadow:none;page-break-after:always}.card:last-child{page-break-after:auto}}`;
+const BUKTI_MAQRA_STYLES = `*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Georgia',serif;background:#f9fafb;padding:20px}.card{background:#fff;border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,.15);width:100%;max-width:480px;overflow:hidden;margin:0 auto 24px}.header{background:linear-gradient(135deg,#064e3b,#059669);padding:28px 32px;color:#fff;text-align:center}.header h1{font-size:22px;margin-bottom:4px}.header p{font-size:13px}.body{padding:28px 32px}.ornament{text-align:center;color:#000;margin:12px 0;letter-spacing:4px}.field{margin-bottom:14px}.field label{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:#000;display:block;margin-bottom:3px}.field .val{font-size:15px;font-weight:600;color:#000}.mbox{background:linear-gradient(135deg,#065f46,#047857);color:#fff;border-radius:12px;padding:24px;text-align:center;margin:20px 0}.mbox .ml{font-size:11px;text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px}.mbox .ma{font-size:22px;font-weight:700;margin-bottom:4px}.mbox .ms{font-size:14px}.mbox .mn{background:rgba(255,255,255,.15);border-radius:999px;padding:5px 16px;font-size:12px;font-weight:600;display:inline-block;margin-top:10px}.warn{background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px 16px;font-size:12px;color:#000;margin-top:16px}.ttd-section{display:flex;gap:18px;margin-top:26px;padding-top:18px;border-top:1px dashed #d1d5db}.ttd-box{flex:1;text-align:center}.ttd-role{font-size:10.5px;color:#000;margin-bottom:46px;line-height:1.4;white-space:nowrap}.ttd-name{font-size:9.5px;color:#000;margin-top:4px;font-style:italic}.ttd-printed-name{font-size:11px;color:#000;margin-top:4px;font-weight:600}.ttd-printed-nip{font-size:9.5px;color:#000;margin-top:1px}.ttd-line{border-bottom:1px solid #000;margin:0 6px}.footer{border-top:1px solid #e5e7eb;padding:16px 32px;font-size:12px;color:#000;text-align:center}@media print{body{background:#fff}.card{box-shadow:none;page-break-after:always}.card:last-child{page-break-after:auto}}`;
 
 /**
  * Bangun 1 kartu "Bukti Maqra" (fragment <div class="card">...</div>).
  * @param {object} rec - data peserta {nama_lengkap, nomor_pendaftaran, cabang_lomba, kecamatan}
  * @param {object} m   - data maqra {maqra_teks|maqra, maqra_detail|surah, nomor_maqra}
  * @param {function} esc - fungsi escape HTML (nama beda tapi isi sama di tiap file pemanggil)
- * @param {object} [ayatQuran] - hasil quranAmbilUntukMaqra(); boleh dikosongkan
- *
- * Nama surat diambil dari hasil parseMaqra(maqra_teks); kalau baris itu tidak
- * memuat nama surat (mis. admin hanya menulis "AYAT : 21 – HAL : 5"), dipakai
- * maqra_detail/surah sebagai cadangan — field itu memang dipakai admin untuk
- * menulis surat satu kali untuk seluruh batch.
  *
  * Kolom "Panitia Pengambilan Maqra" diisi otomatis dari
- * MTQ_CONFIG.PANITIA_MAQRA_NAMA/PANITIA_MAQRA_NIP (js/config.js) — edit di sana
- * kalau ganti panitia, JANGAN hardcode ulang di sini. Kolom "Admin Kecamatan"
- * sengaja dibiarkan kosong (beda orang per kecamatan, bukan nilai config
- * tunggal) — nama & tanda tangan ditulis tangan.
+ * MTQ_CONFIG.PANITIA_MAQRA_NAMA/PANITIA_MAQRA_NIP (js/config.js) — edit
+ * di sana kalau ganti panitia, JANGAN hardcode ulang di sini. Kolom
+ * "Admin Kecamatan" sengaja dibiarkan kosong (beda orang per kecamatan,
+ * bukan nilai config tunggal) — nama & tanda tangan ditulis tangan.
  */
-function buildBuktiMaqraCardHtml(rec, m, esc, ayatQuran) {
+function buildBuktiMaqraCardHtml(rec, m, esc) {
   const panitiaNama = (typeof MTQ_CONFIG !== 'undefined' && MTQ_CONFIG.PANITIA_MAQRA_NAMA) || '';
   const panitiaNip  = (typeof MTQ_CONFIG !== 'undefined' && MTQ_CONFIG.PANITIA_MAQRA_NIP)  || '';
-
-  const teks     = m.maqra_teks || m.maqra || '';
-  const p        = parseMaqra(teks);
-  const cadSurat = String(m.maqra_detail || m.surah || '').trim();
-  const surat    = (p.surat || cadSurat.replace(/^SURA[HT]\b[\s:.]*/i, '')).toUpperCase();
-
-  // Nama surat panjang ("ALI 'IMRAN", "AL-MU'MINUN") dikecilkan bertahap supaya
-  // tetap 1-2 baris & tidak pernah terpotong di tepi kotak.
-  const suratCls = surat.length > 22 ? ' xlong' : (surat.length > 13 ? ' long' : '');
-
-  // Dua kartu AYAT & HALAMAN; kalau salah satunya kosong, yang tersisa melebar
-  // penuh (.solo) daripada menyisakan kotak kosong di dokumen resmi.
-  const cells = [];
-  if (p.ayat)    cells.push(['Ayat', p.ayat]);
-  if (p.halaman) cells.push(['Halaman', p.halaman]);
-  const cellCls  = cells.length === 1 ? ' solo' : '';
-  const gridHtml = cells.length
-    ? `<div class="mgrid">${cells.map(([k, v]) =>
-        `<div class="mcell${cellCls}"><div class="mcin"><div class="mck">${esc(k)}</div><div class="mcv">${esc(v)}</div></div></div>`
-      ).join('')}</div>`
-    : '';
-
-  // Baris utama: nama surat kalau terbaca; kalau parser gagal total, teks asli
-  // ditampilkan besar di sini supaya isinya tidak pernah hilang.
-  const judulHtml = surat
-    ? `<div class="msurat${suratCls}">${esc(surat)}</div>`
-    : `<div class="msurat${teks.length > 22 ? ' xlong' : ' long'}">${esc(teks || '-')}</div>`;
-
-  // Baris asli untuk verifikasi manual panitia — hanya ditampilkan kalau memang
-  // menambah informasi (bukan pengulangan persis judul di atas).
-  const rawLine = formatMaqra(teks);
-  const rawHtml = (rawLine && rawLine.toUpperCase() !== surat) ? `<div class="mraw">${esc(rawLine)}</div>` : '';
-
   return `<div class="card">
-<div class="header"><h1>Bukti Pengambilan Maqra</h1><p>MTQ ke-56 Kabupaten Indramayu 2026 &mdash; ${new Date().toLocaleString('id-ID')}</p></div>
-<div class="body">
-<div class="cols">
-  <div class="col col-a">
-    <div class="field"><label>Nama Peserta</label><div class="val">${esc(rec.nama_lengkap||'-')}</div></div>
-    <div class="field"><label>Nomor Pendaftaran</label><div class="val" style="font-family:'Courier New',monospace;letter-spacing:.5px">${esc(rec.nomor_pendaftaran||'-')}</div></div>
-    <div class="field"><label>Cabang Lomba</label><div class="val">${esc(rec.cabang_lomba||'-')}</div></div>
-    <div class="field" style="margin-bottom:0"><label>Kecamatan</label><div class="val">${esc(rec.kecamatan||'-')}</div></div>
-  </div>
-  <div class="col col-b">
-    <div class="mbox"><div class="ml">Maqra yang Diperoleh</div>
-${judulHtml}
-${gridHtml}
-${rawHtml}
-<div class="mn">Nomor Undian: ${esc(m.nomor_maqra||'-')}</div></div>
-  </div>
-</div>
-${_buktiMaqraAyatHtml(ayatQuran, esc)}
-<div class="warn"><b>Simpan dokumen ini.</b> Maqra yang telah diambil tidak dapat diubah. Cetak dan mintakan tanda tangan panitia serta admin kecamatan di bawah sebagai bukti sah.</div>
+<div class="header"><h1>📖 Bukti Maqra MTQ 2026</h1><p>Kabupaten Indramayu — ${new Date().toLocaleString('id-ID')}</p></div>
+<div class="body"><div class="ornament">✦ ✦ ✦</div>
+<div class="field"><label>Nama Peserta</label><div class="val">${esc(rec.nama_lengkap||'-')}</div></div>
+<div class="field"><label>Nomor Pendaftaran</label><div class="val" style="font-family:monospace;letter-spacing:1px">${esc(rec.nomor_pendaftaran||'-')}</div></div>
+<div class="field"><label>Cabang Lomba</label><div class="val">${esc(rec.cabang_lomba||'-')}</div></div>
+<div class="field"><label>Kecamatan</label><div class="val">${esc(rec.kecamatan||'-')}</div></div>
+<div class="mbox"><div class="ml">📖 Maqra</div><div class="ma">${esc(m.maqra_teks||m.maqra||'-')}</div><div class="ms">${esc(m.maqra_detail||m.surah||'')}</div><div class="mn">Nomor Undian: ${esc(m.nomor_maqra||'-')}</div></div>
+<div class="warn">⚠️ Simpan dokumen ini. Maqra tidak dapat diubah. Cetak dan mintakan tanda tangan panitia serta admin kecamatan di bawah sebagai bukti sah.</div>
 <div class="ttd-section">
   <div class="ttd-box">
     <div class="ttd-role">Panitia Pengambilan Maqra</div>
@@ -853,7 +464,7 @@ ${_buktiMaqraAyatHtml(ayatQuran, esc)}
   </div>
 </div>
 </div>
-<div class="footer">MTQ Kabupaten Indramayu 2026 &mdash; Sah setelah ditandatangani panitia &amp; admin kecamatan</div>
+<div class="footer">MTQ Kabupaten Indramayu 2026 — Sah setelah ditandatangani panitia &amp; admin kecamatan</div>
 </div>`;
 }
 
@@ -915,42 +526,30 @@ async function downloadBuktiMaqraPdf(cardsHtml, filename, onProgress) {
 
   await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
   await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
-  // Font Arab HARUS selesai dimuat sebelum html2canvas memotret; kalau tidak,
-  // yang terpotret adalah font pengganti sistem dan harakatnya berantakan.
-  if (typeof quranMuatFont === 'function') { try { await quranMuatFont(); } catch (e) {} }
   if (typeof html2canvas !== 'function') throw new Error('Pustaka html2canvas gagal dimuat');
   if (!window.jspdf || !window.jspdf.jsPDF) throw new Error('Pustaka jsPDF gagal dimuat');
 
   // Style tag BUKTI_MAQRA_STYLES perlu ada di document (di mana pun --
   // browser tetap menerapkannya walau bukan di <head>) supaya
   // html2canvas membaca computed style yang benar saat "memotret".
-  // PENTING: textContent DIPAKSA ditulis ulang tiap panggilan (bukan
-  // cuma dibuat sekali lalu dibiarkan) -- kalau tab sempat memuat versi
-  // lama lalu berkas .js ini diperbarui tanpa reload penuh, cara lama
-  // (skip kalau tag sudah ada) akan mengunci CSS versi lama itu
-  // SELAMANYA di tab tsb, walau logika JS lain sudah berjalan dgn kode
-  // terbaru -- persis pola yang bikin membingungkan saat debug (kode
-  // sudah benar tapi tampilan masih versi lama). Sekarang setiap
-  // download dijamin memakai CSS TERBARU dari berkas ini, titik.
-  let styleTag = document.getElementById('_buktiMaqraPdfStyle');
-  if (!styleTag) {
-    styleTag = document.createElement('style');
+  if (!document.getElementById('_buktiMaqraPdfStyle')) {
+    const styleTag = document.createElement('style');
     styleTag.id = '_buktiMaqraPdfStyle';
+    styleTag.textContent = BUKTI_MAQRA_STYLES;
     document.head.appendChild(styleTag);
   }
-  styleTag.textContent = BUKTI_MAQRA_STYLES;
 
   // Panggung di luar viewport tempat tiap kartu dirender satu-satu
   // sebelum difoto -- html2canvas butuh elemen yang benar-benar
   // ter-layout (bukan display:none), jadi digeser ke luar layar,
   // bukan disembunyikan.
   const stage = document.createElement('div');
-  stage.style.cssText = 'position:fixed;left:-99999px;top:0;width:620px;background:#eef2f1';
+  stage.style.cssText = 'position:fixed;left:-99999px;top:0;width:480px;background:#f9fafb';
   document.body.appendChild(stage);
 
   const { jsPDF } = window.jspdf;
   const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-  const PAGE_W = 210, PAGE_H = 297, MARGIN = 10;   // rev 15: dikecilkan, kartu kini memuat teks ayat
+  const PAGE_W = 210, PAGE_H = 297, MARGIN = 14;
 
   try {
     for (let i = 0; i < cardsHtml.length; i++) {
@@ -963,7 +562,7 @@ async function downloadBuktiMaqraPdf(cardsHtml, filename, onProgress) {
       await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 
       const canvas = await html2canvas(stage.firstElementChild, {
-        scale: 3, backgroundColor: '#ffffff', useCORS: true, logging: false
+        scale: 2.5, backgroundColor: '#f9fafb', useCORS: true, logging: false
       });
       const imgData = canvas.toDataURL('image/jpeg', 0.95);
 

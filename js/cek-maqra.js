@@ -754,18 +754,8 @@ function renderMaqraArea(maqraData, rec) {
       <div class="maqra-result-card">
         <div class="particles" id="particles"></div>
         <div class="mrc-label">📖 Maqra Anda</div>
-        ${(() => {
-          // rev 14: nama SURAT ditonjolkan di baris atas, ayat & halaman di
-          // bawahnya — sama persis dgn tata letak di PDF (parseMaqra() ada di
-          // kartu-bukti-shared.js, dimuat sebelum file ini).
-          const p = (typeof parseMaqra === 'function') ? parseMaqra(m.maqra_teks||m.maqra||'') : null;
-          if (!p || !p.ok) return `<div class="mrc-ayat">${esc(m.maqra_teks||m.maqra||'-')}</div>
-        <div class="mrc-surah">${esc(m.maqra_detail||m.surah||'')}</div>`;
-          const surat = (p.surat || m.maqra_detail || m.surah || '').toUpperCase();
-          const sub   = [(p.ayat ? 'Ayat ' + p.ayat : ''), (p.halaman ? 'Halaman ' + p.halaman : '')].filter(Boolean).join(' &nbsp;•&nbsp; ');
-          return `<div class="mrc-ayat">${esc(surat || p.raw)}</div>
-        <div class="mrc-surah">${sub || esc(p.raw)}</div>`;
-        })()}
+        <div class="mrc-ayat">${esc(m.maqra_teks||m.maqra||'-')}</div>
+        <div class="mrc-surah">${esc(m.maqra_detail||m.surah||'')}</div>
         <div class="mrc-nomor">Nomor Undian: ${esc(m.nomor_maqra||'-')}</div>
       </div>
       <div style="max-width:380px;margin:0 auto 8px">
@@ -951,7 +941,7 @@ async function startSpin() {
 
   let chosen = null;
   try {
-    const data = await ambilMaqraRetry_({
+    const data = await jsonpPost({
       action            : 'ambilMaqra',
       nomor_pendaftaran : _record.nomor_pendaftaran,
       cabang_lomba      : _record.cabang_lomba,
@@ -1037,13 +1027,8 @@ async function startSpin() {
   const ayat  = document.getElementById('resultAyat');
   const surah = document.getElementById('resultSurah');
   const nomor = document.getElementById('resultNomor');
-  const _pm = (typeof parseMaqra === 'function') ? parseMaqra(chosen.maqra_teks || chosen.maqra || '') : null;
-  if (ayat)  ayat.textContent  = (_pm && _pm.ok && (_pm.ayat || _pm.halaman))
-    ? [(_pm.ayat ? 'Ayat ' + _pm.ayat : ''), (_pm.halaman ? 'Halaman ' + _pm.halaman : '')].filter(Boolean).join(' • ')
-    : (chosen.maqra_teks || chosen.maqra || '—');
-  if (surah) surah.textContent = (_pm && _pm.surat)
-    ? ('SURAT ' + _pm.surat.toUpperCase())
-    : (chosen.maqra_detail || chosen.surah || '—');
+  if (ayat)  ayat.textContent  = chosen.maqra_teks || chosen.maqra || '—';
+  if (surah) surah.textContent = chosen.maqra_detail || chosen.surah || '—';
   if (nomor) nomor.textContent = `Nomor Undian: ${chosen.nomor_maqra || '—'}`;
   if (reveal) { reveal.style.display = 'block'; reveal.classList.add('show'); }
   spawnParticles();
@@ -1093,7 +1078,7 @@ async function downloadBukti() {
   // downloadKartuPeserta() di bawah utk pola loading/toast-nya).
   showLoading(true, 'Membuat PDF bukti maqra...');
   try {
-    const cardHtml = await buildBuktiMaqraCardHtmlAsync(rec, m, esc);
+    const cardHtml = buildBuktiMaqraCardHtml(rec, m, esc);
     const fname = `Bukti_Maqra_${(rec.nomor_pendaftaran||'MTQ').replace(/[^A-Za-z0-9]/g,'_')}.pdf`;
     await downloadBuktiMaqraPdf([cardHtml], fname);
     showToast('Berhasil', 'Bukti maqra (PDF) diunduh', 'success', 5000);
@@ -2033,27 +2018,6 @@ function jsonpGet(params, timeout = 20000) {
   return _jsonp(`${apiUrl}?${qs}`, timeout);
 }
 
-// rev 12 — ambilMaqra dengan percobaan ulang otomatis.
-// Server (apiAmbilMaqra_) IDEMPOTEN: kalau nomor ini sudah punya maqra, hasil
-// yang SUDAH ADA dikembalikan (sudahAmbil:true), tidak digambar ulang. Jadi
-// aman mengulang bila (a) server menjawab busy:true (antrean lock penuh saat
-// banyak peserta serentak) atau (b) respons telat/hilang (timeout/jaringan)
-// padahal server mungkin sudah menyimpan hasilnya.
-async function ambilMaqraRetry_(payload) {
-  const MAX = 4;
-  let lastErr = null, data = null;
-  for (let i = 0; i < MAX; i++) {
-    try {
-      data = await jsonpPost(payload, 45000);
-      if (!data || !data.busy) return data;   // sukses / penolakan jelas → jangan diulang
-      lastErr = null;
-    } catch (err) { lastErr = err; }
-    if (i < MAX - 1) await sleep(1200 + Math.floor(Math.random() * 1800) + i * 800);
-  }
-  if (lastErr) throw lastErr;
-  return data;   // masih busy setelah MAX percobaan → pesan "Server sedang sibuk" ditampilkan
-}
-
 /**
  * POST-via-GET tunnel — payload JSON di ?postData=, dengan ?callback=
  */
@@ -2124,16 +2088,6 @@ async function postJSON(payload, timeout = 30000) {
  * GAS tidak redirect ketika ada parameter callback=
  */
 function _jsonp(baseUrl, timeout) {
-  // rev 13: fetch TANPA cookie lebih dulu (MTQ_HTTP, js/config.js) — <script>
-  // membawa cookie Google & memicu 404 saat browser login >1 akun Google.
-  if (typeof MTQ_HTTP === 'undefined' || !MTQ_HTTP.available) return _jsonpScript(baseUrl, timeout);
-  return MTQ_HTTP.request(baseUrl, { timeout: Math.max(timeout, 30000) }).catch((err) => {
-    if (err && err.code === 'TIMEOUT') throw new Error('Server tidak merespons — coba lagi sesaat lagi.');
-    return _jsonpScript(baseUrl, timeout);
-  });
-}
-
-function _jsonpScript(baseUrl, timeout) {
   return new Promise((resolve, reject) => {
     const cbName = 'mtq_' + Date.now() + '_' + Math.floor(Math.random() * 999999);
     const sep    = baseUrl.includes('?') ? '&' : '?';
