@@ -269,7 +269,7 @@ async function startSpin() {
   let chosenMaqra = null;
   try {
     // JSONP POST — tidak ada fetch/CORS preflight
-    const data = await ambilMaqraRetry_({
+    const data = await jsonpPost({
       action            : 'ambilMaqra',
       nomor_pendaftaran : _pes.nomor_pendaftaran,
       cabang_lomba      : _pes.cabang_lomba,
@@ -492,17 +492,7 @@ function downloadBuktiDirect(maqra, nomor, nama, cabang, kecamatan) {
 
 // ── JSONP helper ──────────────────────────────────────────────
 // ── JSONP GET ─────────────────────────────────────────────────
-// rev 13: fetch TANPA cookie lebih dulu (lihat MTQ_HTTP di js/config.js) —
-// <script> membawa cookie Google & memicu 404 saat browser login >1 akun.
 function jsonpCall(url, timeout = 15000) {
-  if (typeof MTQ_HTTP === 'undefined' || !MTQ_HTTP.available) return jsonpCallScript_(url, timeout);
-  return MTQ_HTTP.request(url, { timeout: Math.max(timeout, 30000) }).catch((err) => {
-    if (err && err.code === 'TIMEOUT') throw new Error('Timeout');
-    return jsonpCallScript_(url, timeout);
-  });
-}
-
-function jsonpCallScript_(url, timeout = 15000) {
   return new Promise((resolve, reject) => {
     const cb = 'mtqMaqra_' + Date.now() + Math.floor(Math.random()*9999);
     const s  = document.createElement('script');
@@ -515,40 +505,10 @@ function jsonpCallScript_(url, timeout = 15000) {
   });
 }
 
-// rev 12 — ambilMaqra dengan percobaan ulang otomatis.
-// Server (apiAmbilMaqra_) IDEMPOTEN: kalau nomor ini sudah punya maqra, hasil
-// yang SUDAH ADA dikembalikan (sudahAmbil:true), tidak digambar ulang. Jadi
-// aman mengulang bila (a) server menjawab busy:true (antrean lock penuh saat
-// banyak peserta serentak) atau (b) respons telat/hilang (timeout/jaringan)
-// padahal server mungkin sudah menyimpan hasilnya.
-async function ambilMaqraRetry_(payload) {
-  const MAX = 4;
-  let lastErr = null, data = null;
-  for (let i = 0; i < MAX; i++) {
-    try {
-      data = await jsonpPost(payload, 45000);
-      if (!data || !data.busy) return data;   // sukses / penolakan jelas → jangan diulang
-      lastErr = null;
-    } catch (err) { lastErr = err; }
-    if (i < MAX - 1) await sleep(1200 + Math.floor(Math.random() * 1800) + i * 800);
-  }
-  if (lastErr) throw lastErr;
-  return data;   // masih busy setelah MAX percobaan → pesan "Server sedang sibuk" ditampilkan
-}
-
 // ── JSONP POST (no fetch — no CORS preflight) ─────────────────
 // Payload JSON dikirim sebagai ?postData=... di URL GET.
 // GAS doGet mendeteksi postData dan menjalankan handler POST.
 function jsonpPost(payload, timeout = 30000) {
-  if (typeof MTQ_HTTP === 'undefined' || !MTQ_HTTP.available) return jsonpPostScript_(payload, timeout);
-  const enc = encodeURIComponent(JSON.stringify(payload));
-  return MTQ_HTTP.request(`${API_URL}?postData=${enc}`, { timeout: timeout }).catch((err) => {
-    if (err && err.code === 'TIMEOUT') throw new Error('Timeout');
-    return jsonpPostScript_(payload, timeout);
-  });
-}
-
-function jsonpPostScript_(payload, timeout = 30000) {
   return new Promise((resolve, reject) => {
     const cb  = 'mtqMaqraP_' + Date.now() + Math.floor(Math.random()*9999);
     const enc = encodeURIComponent(JSON.stringify(payload));

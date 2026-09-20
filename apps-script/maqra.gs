@@ -135,66 +135,59 @@ function apiAmbilMaqra_(body) {
 
   var ss = getSS_();
 
-  // rev 12 — PERSIS pola FIX #36 yang sudah dipakai jalur admin
-  // (apiAmbilMaqraAdmin_): semua yang TIDAK menyentuh pool MAQRA/MAQRA_RESULT
-  // dikerjakan DI LUAR lock. Dulu SEMUANYA (buka-tutup sheet, cek jadwal,
-  // baca SELURUH sheet PENDAFTAR utk mencari nama peserta, dst) berjalan di
-  // dalam LockService yang dipakai bersama SELURUH project, dengan
-  // waitLock cuma 10 detik. Begitu >10 peserta menekan "Ambil Maqra"
-  // nyaris bersamaan, peserta ke-6..10 dst menunggu > 10 dtk → "Server
-  // sedang sibuk". Sekarang lock hanya membungkus: cek idempoten + pilih
-  // acak + tandai + simpan hasil.
-  initMaqraSheets_(ss);
-
-  // 1. Cek buka/tutup (baca saja — tidak perlu lock)
-  var cfgStatus = getMaqraConfigStatus_(ss, cabang);
-  if (!cfgStatus.isOpen) {
-    return { success:false, message:'Pengambilan maqra belum/sudah ditutup.' };
-  }
-
-  // 2. Nama & kecamatan dari PENDAFTAR (baca saja — di luar lock). Hanya
-  //    membaca kolom yang dibutuhkan (tanpa ANGGOTA_JSON dst).
-  var namaLengkap = '', kecamatan = '';
-  try {
-    var pendSheet = ss.getSheetByName(SHEET_PENDAFTAR);
-    if (pendSheet && pendSheet.getLastRow() > 1) {
-      var c0    = COL.NOMOR_PENDAFTARAN;
-      var width = Math.max(COL.NAMA_LENGKAP, COL.KECAMATAN) - c0 + 1;
-      var rows  = pendSheet.getRange(2, c0 + 1, pendSheet.getLastRow() - 1, width).getValues();
-      for (var i = 0; i < rows.length; i++) {
-        if (String(rows[i][0]).trim() === nomor) {
-          namaLengkap = rows[i][COL.NAMA_LENGKAP - c0] || '';
-          kecamatan   = rows[i][COL.KECAMATAN    - c0] || '';
-          break;
-        }
-      }
-    }
-  } catch (e2) {}
-
-  // 3. Critical section. waitLock 10 dtk → 30 dtk (sama dgn jalur admin &
-  //    pendaftaran) + flag busy:true supaya frontend mencoba lagi otomatis.
+  // Lock menggunakan LockService untuk cegah race condition
   var lock = LockService.getScriptLock();
   try {
-    lock.waitLock(30000);
-  } catch (e) {
-    return { success:false, busy:true, message:'Server sedang sibuk. Mencoba lagi otomatis…' };
+    lock.waitLock(10000);
+  } catch(e) {
+    return { success:false, message:'Server sedang sibuk. Coba lagi dalam beberapa detik.' };
   }
 
   try {
-    // 3a. Idempoten — nomor sudah dapat maqra? (harus di dalam lock)
+    initMaqraSheets_(ss);
+
+    // 1. Cek buka/tutup
+    var cfgStatus = getMaqraConfigStatus_(ss, cabang);
+    if (!cfgStatus.isOpen) {
+      return { success:false, message:'Pengambilan maqra belum/sudah ditutup.' };
+    }
+
+    // 2. Cek duplikat — nomor sudah dapat maqra?
     var existing = findMaqraResult_(ss, nomor);
     if (existing) {
       return { success:true, sudahAmbil:true, maqra:existing,
                message:'Anda sudah mengambil maqra sebelumnya.' };
     }
 
-    // 3b. Pilih acak + tandai sudah diambil (1 baca + 1 tulis)
-    var chosen = takeRandomMaqra_(ss, cabang, nomor);
-    if (!chosen) {
+    // 3. Ambil list tersedia
+    var available = getAvailableMaqraList_(ss, cabang);
+    if (!available.length) {
       return { success:false, message:'Semua maqra untuk cabang ini sudah diambil. Hubungi panitia.' };
     }
 
-    // 3c. Simpan hasil ke sheet MAQRA_RESULT
+    // 4. Pilih acak
+    var chosenIdx  = Math.floor(Math.random() * available.length);
+    var chosen     = available[chosenIdx];
+
+    // 5. Mark maqra sebagai sudah diambil di sheet MAQRA
+    markMaqraAmbil_(ss, chosen.id_maqra, nomor);
+
+    // 6. Simpan hasil ke sheet MAQRA_RESULT
+    var namaLengkap = '', kecamatan = '';
+    try {
+      var pendSheet = ss.getSheetByName(SHEET_PENDAFTAR);
+      if (pendSheet) {
+        var rows = pendSheet.getDataRange().getValues();
+        for (var i=1; i<rows.length; i++) {
+          if (String(rows[i][COL.NOMOR_PENDAFTARAN]).trim() === nomor) {
+            namaLengkap = rows[i][COL.NAMA_LENGKAP] || '';
+            kecamatan   = rows[i][COL.KECAMATAN]    || '';
+            break;
+          }
+        }
+      }
+    } catch(e2) {}
+
     var resultSheet = getOrCreateSheet_(ss, SHEET_MAQRA_RESULT, MAQRA_RESULT_HEADERS);
     var ts = new Date().toLocaleString('id-ID');
     resultSheet.appendRow([
@@ -321,7 +314,6 @@ function apiAmbilMaqraAdmin_(body) {
   //    MAQRA/MAQRA_RESULT bersama yang perlu diproteksi lock (idempoten
   //    + pilih acak + kunci hasil). FIX #36: waitLock 30 dtk + flag
   //    busy:true, lihat penjelasan poin 2 & 3 di atas.
-  initMaqraSheets_(ss);   // rev 12: di luar lock
   var lock = LockService.getScriptLock();
   try {
     lock.waitLock(30000);
@@ -334,6 +326,8 @@ function apiAmbilMaqraAdmin_(body) {
   }
 
   try {
+    initMaqraSheets_(ss);
+
     // 3. Idempoten — sudah pernah diambilkan sebelumnya (termasuk oleh
     //    admin LAIN yang baru saja selesai memproses peserta yang sama
     //    persis sesaat sebelum lock ini didapat)? Kembalikan hasil yang
@@ -354,13 +348,17 @@ function apiAmbilMaqraAdmin_(body) {
     //    maqra walau jadwal pengambilan sedang ditutup/belum dibuka.
 
     // 5. Ambil daftar maqra tersedia untuk cabang peserta ini
-    // rev 12: 1 baca + 1 tulis (lihat takeRandomMaqra_) — dulu 2 baca penuh + 3 tulis
-    // 5-7. Ambil daftar tersedia untuk cabang peserta, pilih ACAK (adil, tidak
-    //      dipilih manual), tandai sudah diambil — sama seperti jalur peserta.
-    var chosen = takeRandomMaqra_(ss, cabang, nomor);
-    if (!chosen) {
+    var available = getAvailableMaqraList_(ss, cabang);
+    if (!available.length) {
       return { success:false, message:'Semua maqra untuk cabang "'+cabang+'" sudah diambil. Tambahkan maqra baru di tab Daftar Maqra terlebih dahulu.' };
     }
+
+    // 6. Pilih acak — SAMA seperti jalur peserta, adil & tidak dipilih manual
+    var chosenIdx = Math.floor(Math.random() * available.length);
+    var chosen    = available[chosenIdx];
+
+    // 7. Kunci maqra terpilih + simpan hasil (sama persis dgn apiAmbilMaqra_)
+    markMaqraAmbil_(ss, chosen.id_maqra, nomor);
 
     var resultSheet = getOrCreateSheet_(ss, SHEET_MAQRA_RESULT, MAQRA_RESULT_HEADERS);
     var ts = new Date().toLocaleString('id-ID');
@@ -759,48 +757,6 @@ function getAvailableMaqraList_(ss, cabang) {
   });
 
   return list;
-}
-
-/**
- * rev 12 — Pilih SATU maqra acak yang masih tersedia untuk `cabang` DAN
- * menandainya sudah diambil oleh `nomorPendaftaran`, dengan SATU kali baca
- * sheet MAQRA + SATU kali tulis 3 sel. Dulu: getAvailableMaqraList_() (baca
- * seluruh sheet) lalu markMaqraAmbil_() (baca seluruh sheet LAGI, cari baris
- * by id, lalu 3 setValue terpisah) — semuanya di dalam lock.
- * Aturan pemilihan sama: kelompok cabang tanpa Putra/Putri, baris dengan
- * sudah_diambil 'true'/'ya' dilewati, pilih acak seragam.
- * @returns {object|null} item maqra terpilih, atau null kalau habis
- */
-function takeRandomMaqra_(ss, cabang, nomorPendaftaran) {
-  var sheet = ss.getSheetByName(SHEET_MAQRA);
-  if (!sheet || sheet.getLastRow() <= 1) return null;
-
-  var rows = sheet.getRange(2,1,sheet.getLastRow()-1,MAQRA_HEADERS.length).getValues();
-  var cabangTarget = getMaqraKelompok_(cabang);
-  var avail = [];
-  for (var i = 0; i < rows.length; i++) {
-    var r = rows[i];
-    if (getMaqraKelompok_(r[MCOL.CABANG_LOMBA]) !== cabangTarget) continue;
-    var taken = String(r[MCOL.SUDAH_DIAMBIL]).toLowerCase();
-    if (taken === 'true' || taken === 'ya') continue;
-    avail.push({
-      row : i + 2,
-      item: {
-        id_maqra    : String(r[MCOL.ID_MAQRA])   || '',
-        cabang_lomba: String(r[MCOL.CABANG_LOMBA])|| '',
-        maqra_teks  : String(r[MCOL.MAQRA_TEKS]) || '',
-        maqra_detail: String(r[MCOL.MAQRA_DETAIL])|| '',
-        nomor_urut  : String(r[MCOL.NOMOR_URUT])  || ''
-      }
-    });
-  }
-  if (!avail.length) return null;
-
-  var pick = avail[Math.floor(Math.random() * avail.length)];
-  // SUDAH_DIAMBIL, DIAMBIL_OLEH, TIMESTAMP berurutan di sheet (lihat MCOL).
-  sheet.getRange(pick.row, MCOL.SUDAH_DIAMBIL + 1, 1, 3)
-       .setValues([['true', nomorPendaftaran, new Date().toLocaleString('id-ID')]]);
-  return pick.item;
 }
 
 /**

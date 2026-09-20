@@ -104,7 +104,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // ── API helper — fetch dulu, JSONP sebagai fallback ───────────
 // Menggunakan fetch() agar tidak ada SyntaxError di console
 // saat server mengembalikan HTML (mis. redirect login GAS).
-function jsonp(url, cbPrefix, fn, timeout = 15000) {
+function jsonp(url, cbPrefix, fn, timeout = 8000) {
   // Coba fetch terlebih dahulu (no-cors mode tidak bisa baca body,
   // gunakan cors — GAS deployed sebagai "Anyone" sudah support ini)
   const fetchUrl = url.includes('callback=') ? url : url;
@@ -142,23 +142,9 @@ function jsonp(url, cbPrefix, fn, timeout = 15000) {
       }
     })
     .catch(err => {
-      // rev 12 — DULU: apa pun penyebab gagalnya (termasuk timeout 8 dtk),
-      // request yang SAMA langsung dikirim ULANG lewat JSONP klasik, padahal
-      // request pertama masih diproses server (Apps Script tidak
-      // membatalkannya). Saat server ramai → semua request lambat → SEMUA
-      // klien menggandakan beban → makin lambat → makin banyak gagal
-      // (lingkaran setan). Sekarang:
-      //  • timeout/abort  → menyerah TANPA kirim ulang (server sedang sibuk,
-      //    bukan mati; respons telat masih akan diproses bila datang).
-      //  • gagal cepat (jaringan/CORS/HTTP 4xx-5xx) → SATU kali ulang lewat
-      //    JSONP klasik, dengan jeda acak supaya klien tidak menyerbu serentak.
-      if (err && (err.name === 'TimeoutError' || err.name === 'AbortError')) {
-        log.warn('API timeout — tidak dikirim ulang:', url);
-        fn(null);
-        return;
-      }
-      log.warn('fetch gagal, JSONP klasik (1x, jeda acak):', err && err.message);
-      setTimeout(() => _jsonpClassic(url, cbPrefix, fn, timeout), 400 + Math.floor(Math.random() * 900));
+      // fetch gagal (network error, timeout, dll) — fallback ke JSONP klasik
+      log.warn('fetch gagal, mencoba JSONP klasik:', err.message);
+      _jsonpClassic(url, cbPrefix, fn, timeout);
     });
 }
 

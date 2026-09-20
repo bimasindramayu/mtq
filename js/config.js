@@ -17,7 +17,7 @@
 const MTQ_CONFIG = {
 
   // ── Google Apps Script Web App URL — SATU-SATUNYA tempat edit ──
-  API_URL: 'https://script.google.com/macros/s/AKfycbwXTDY6rcFlFsHmIcyMBZsof3z5KtrEZTp2W6o-tVVNrdzapJE-1cYdfKF5h_iYrihr/exec',
+  API_URL: 'https://script.google.com/macros/s/AKfycbw6eEQE9EPdAPaXmedEGEJkZd1rCkOsEKQZBlwyfPtOuIXoTejeLlnSPS6zdY-lINK-/exec',
 
   // ── Tanggal pendaftaran & cutoff umur ────────────────────────
   // Fallback bila API tidak terjangkau — akan ditimpa nilai live
@@ -25,7 +25,7 @@ const MTQ_CONFIG = {
   // Sesuai Juknis MTQ ke-56 Kab. Indramayu: pendaftaran online 5 s.d. 15 Agustus 2026,
   // usia dihitung per 1 November 2026.
   PENDAFTARAN_BUKA : '2026-08-05T00:00:00',
-  PENDAFTARAN_TUTUP: '2026-09-17T21:59:59',
+  PENDAFTARAN_TUTUP: '2026-09-19T23:59:59',
   AGE_CUTOFF_DATE  : '2026-11-01',
 
   // ── Info Event ───────────────────────────────────────────────
@@ -95,26 +95,6 @@ const MTQ_CONFIG = {
   // GANTI nilai di bawah sebelum deploy produksi. Kosongkan
   // PANITIA_MAQRA_NIP (string kosong) kalau panitia tidak punya
   // NIP (mis. bukan ASN) — baris NIP otomatis disembunyikan di kartu.
-  // ── Teks ayat Al-Qur'an untuk Bukti Maqra (rev 15) ──────────────
-  // Folder berkas statis teks ayat (Mushaf Standar Indonesia/Kemenag),
-  // relatif terhadap halaman HTML yang memuatnya. Ubah HANYA kalau folder
-  // data/ dipindah. Isinya 114 berkas {nomor-surat}.json; yang diunduh
-  // cuma surat yang sedang dibutuhkan, lalu di-cache di localStorage.
-  QURAN_BASE: 'data/quran',
-
-  // ── Versi PDF Bukti Maqra (rev 18) ──────────────────────────────
-  // 1 = versi LAMA -- kartu MAQRA YANG DIPEROLEH + AYAT/HALAMAN saja,
-  //     TANPA teks ayat Arab (tampilan sebelum fitur ayat ditambahkan).
-  // 2 = versi BARU -- sama seperti di atas, DITAMBAH kotak "Teks Ayat"
-  //     berisi ayat Al-Qur'an-nya (perlu folder data/quran/ ter-upload
-  //     lengkap; kalau satu entri gagal mengambil ayatnya, entri itu
-  //     otomatis kembali tampil seperti versi 1 -- lihat catatan null
-  //     di quranAmbilUntukMaqra(), kartu-bukti-shared.js).
-  // Dipakai oleh SEMUA jalur unduh bukti maqra (peserta di cekstatus.html
-  // maupun admin di doyourmagic.html) -- ganti di sini saja, berlaku di
-  // keduanya. Kalau field ini kosong/tidak ada, dianggap versi 2.
-  MAQRA_PDF_VERSION: 1,
-
   PANITIA_MAQRA_NAMA: 'ROSID, S.H.',
   PANITIA_MAQRA_NIP : '197003072014111002',
 
@@ -128,7 +108,7 @@ const MTQ_CONFIG = {
   // MTQ_LOG (penilaian.html). true = tampil di console (dan panel
   // logger di penilaian.html), false = senyap di semua halaman.
   // Ganti HANYA di sini — jangan hardcode ulang di file lain.
-  LOGGER_ENABLED: true,
+  LOGGER_ENABLED: false,
 };
 
 // ── Turunan otomatis: nama cabang saja (untuk dropdown/filter) ──
@@ -255,214 +235,3 @@ function getRegStatus() {
 // main.js, daftar.js, admin.html, admin-maqra.js, admin-penilaian.js,
 // penilaian.js/.html, cek-maqra.js, maqra.js — semuanya baca dari sini.
 window.MTQ_API_URL = MTQ_CONFIG.API_URL;
-
-// ── Transport HTTP bersama: fetch TANPA cookie + antrean + retry ─────────
-// MASALAH (rev 13): semua halaman admin/hakim/peserta memanggil Apps Script
-// lewat <script src="...exec?...&callback=..."> (JSONP). Tag <script> SELALU
-// ikut mengirim cookie login Google milik browser. Kalau browser sedang login
-// ke LEBIH DARI SATU akun Google (hampir semua HP Android & laptop admin),
-// script.google.com mengalihkan ke /macros/u/1/s/... lalu menjawab
-// "404 Not Found / Sorry, unable to open the file at present" — untuk SEMUA
-// action (getAllPendaftar, getMaqraAdmin, ...). Gejalanya persis yang tertulis di
-// panduan deploy doyourmagic.html: gagal di browser biasa, aman di Incognito.
-// fetch() lintas-origin TIDAK mengirim cookie (credentials:'omit'), jadi
-// masalah akun ganda itu hilang. Dipakai lebih dulu; <script> lama tetap jadi
-// cadangan di tiap pemanggil.
-//   MTQ_HTTP.request(url, {timeout, attempts}) → Promise<objek JSON>
-//     ditolak dgn Error.code = 'TIMEOUT' | 'FAILED' | 'BAD_RESPONSE'
-//   MTQ_HTTP.attemptsFor(url) → jumlah percobaan yang AMAN utk action itu
-// Batas 4 request berjalan bersamaan per halaman (sisanya antre) supaya satu
-// halaman tidak menghabiskan slot eksekusi Apps Script sendirian; kegagalan
-// cepat (404/5xx/jaringan) diulang dgn jeda acak. TIMEOUT tidak diulang
-// (server sedang sibuk — request pertama mungkin masih berjalan).
-const MTQ_HTTP = (function () {
-  const MAX_CONCURRENT = 3;      // batas per HALAMAN (tab ini saja)
-  const GLOBAL_MAX     = 6;      // batas gabungan SEMUA tab di browser ini
-  const SLOTS_KEY      = 'mtq_http_slots';
-  const SLOT_TTL       = 60000;  // slot yatim (tab ditutup paksa) kedaluwarsa sendiri
-  const CACHE_KEY      = 'mtq_http_cache';
-  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-
-  // Action yang aman diulang otomatis (baca, atau tulis idempoten).
-  const IDEMPOTENT = {
-    updateStatus:1, deactivate:1, editPeserta:1, editAnggota:1, adminLogin:1,
-    ambilMaqra:1, ambilMaqraAdmin:1, saveMaqraConfig:1, setHasilPublikStatus:1,
-    saveParam:1, updateHakim:1, deletePeserta:1, deleteHakim:1, deleteMaqra:1,
-  };
-
-  // Hasil yang boleh disimpan di sisi klien & berapa lama (ms). Isinya nyaris
-  // statis berjam-jam, tapi di log HAR getConfig diminta 3x dalam 42 detik
-  // oleh SATU tab — dikalikan jumlah tab & refresh, ini penyumbang beban
-  // terbesar yang sebetulnya tidak perlu ada. Disimpan di localStorage supaya
-  // dipakai bersama semua tab, bukan sessionStorage per tab.
-  const CLIENT_CACHE_MS = { getConfig: 10 * 60 * 1000, getMaqraStatus: 0 };
-
-  // ── Slot lintas-tab ────────────────────────────────────────────────────
-  // MAX_CONCURRENT saja tidak cukup: batasnya per halaman, jadi 5 tab admin
-  // = 5x jatah sendiri-sendiri dan satu orang bisa menghabiskan sebagian
-  // besar dari 30 slot eksekusi Apps Script milik akun pemilik. Daftar slot
-  // yang sedang berjalan ditaruh di localStorage supaya semua tab di browser
-  // yang sama berbagi satu jatah.
-  const myId = Math.random().toString(36).slice(2) + Date.now().toString(36);
-  let mySeq = 0;
-
-  function readSlots() {
-    try {
-      const now = Date.now();
-      const raw = JSON.parse(localStorage.getItem(SLOTS_KEY) || '{}');
-      const out = {};
-      for (const k in raw) if (raw[k] > now) out[k] = raw[k];
-      return out;
-    } catch (e) { return null; }
-  }
-  function takeSlot() {
-    const s = readSlots();
-    if (s === null) return 'nostore';          // localStorage mati → jangan blokir
-    if (Object.keys(s).length >= GLOBAL_MAX) return null;
-    const id = myId + ':' + (++mySeq);
-    s[id] = Date.now() + SLOT_TTL;
-    try { localStorage.setItem(SLOTS_KEY, JSON.stringify(s)); } catch (e) { return 'nostore'; }
-    return id;
-  }
-  function freeSlot(id) {
-    if (!id || id === 'nostore') return;
-    try {
-      const s = readSlots() || {};
-      delete s[id];
-      localStorage.setItem(SLOTS_KEY, JSON.stringify(s));
-    } catch (e) {}
-  }
-
-  // ── Antrean lokal ──────────────────────────────────────────────────────
-  let running = 0;
-  const waiting = [];
-  function acquire() {
-    return new Promise((resolve) => {
-      const tryStart = () => {
-        if (running >= MAX_CONCURRENT) { waiting.push(tryStart); return; }
-        const slot = takeSlot();
-        if (!slot) { setTimeout(tryStart, 250 + Math.floor(Math.random() * 450)); return; }
-        running++;
-        resolve(slot);
-      };
-      tryStart();
-    });
-  }
-  function release(slot) {
-    running--;
-    freeSlot(slot);
-    const next = waiting.shift();
-    if (next) next();
-  }
-
-  // ── Cache klien ────────────────────────────────────────────────────────
-  function readCache() {
-    try { return JSON.parse(localStorage.getItem(CACHE_KEY) || '{}'); } catch (e) { return {}; }
-  }
-  function cacheKeyFor(url) {
-    const a = actionOf(url);
-    if (!CLIENT_CACHE_MS[a]) return null;
-    try {
-      const u = new URL(url, location.href);
-      u.searchParams.delete('callback');
-      u.searchParams.delete('token');            // token berganti tiap slot waktu
-      return u.pathname + '?' + u.searchParams.toString();
-    } catch (e) { return null; }
-  }
-  function cacheGet(k) {
-    const c = readCache()[k];
-    return (c && c.exp > Date.now()) ? c.v : null;
-  }
-  function cachePut(k, v, ttl) {
-    try {
-      const all = readCache();
-      const now = Date.now();
-      for (const x in all) if (all[x].exp <= now) delete all[x];   // sapu yang basi
-      all[k] = { exp: now + ttl, v: v };
-      localStorage.setItem(CACHE_KEY, JSON.stringify(all));
-    } catch (e) {}
-  }
-  function clearCache() { try { localStorage.removeItem(CACHE_KEY); } catch (e) {} }
-
-  function actionOf(url) {
-    try {
-      const u = new URL(url, location.href);
-      const pd = u.searchParams.get('postData');
-      if (pd) { try { return String(JSON.parse(pd).action || ''); } catch (e) { return ''; } }
-      return String(u.searchParams.get('action') || '');
-    } catch (e) { return ''; }
-  }
-
-  function attemptsFor(url) {
-    const a = actionOf(url);
-    if (!a) return 1;
-    if (/^(get|check|verify|ping)/i.test(a)) return 3;   // baca
-    return IDEMPOTENT[a] ? 2 : 1;                        // tulis
-  }
-
-  function parseBody(text) {
-    if (!text) return null;
-    try { return JSON.parse(text); } catch (e) {}
-    const m = String(text).match(/^[^(]*\(([\s\S]*)\)\s*;?\s*$/);   // _noop({...})
-    if (m) { try { return JSON.parse(m[1]); } catch (e) {} }
-    return null;
-  }
-
-  async function once(url, timeout) {
-    const ctrl  = (typeof AbortController === 'function') ? new AbortController() : null;
-    const timer = ctrl ? setTimeout(() => ctrl.abort(), timeout) : null;
-    try {
-      const full = url + (url.indexOf('?') >= 0 ? '&' : '?') + 'callback=_noop';   // sama dgn jalur fetch di daftar.js
-      const res  = await fetch(full, { method: 'GET', credentials: 'omit', redirect: 'follow', signal: ctrl ? ctrl.signal : undefined });
-      const text = await res.text();
-      if (!res.ok) { const e = new Error('HTTP ' + res.status); e.code = 'FAILED'; e.status = res.status; throw e; }
-      const json = parseBody(text);
-      if (json === null) { const e = new Error('Respons bukan JSON'); e.code = 'BAD_RESPONSE'; throw e; }
-      return json;
-    } catch (err) {
-      if (err && err.name === 'AbortError') { const e = new Error('Timeout'); e.code = 'TIMEOUT'; throw e; }
-      if (err && !err.code) err.code = 'FAILED';
-      throw err;
-    } finally { if (timer) clearTimeout(timer); }
-  }
-
-  async function run(url, o) {
-    let last;
-    for (let i = 0; i < o.attempts; i++) {
-      try { return await once(url, o.timeout); }
-      catch (err) {
-        last = err;
-        // TIMEOUT tidak diulang: eksekusi Apps Script TIDAK ikut batal saat
-        // fetch di-abort — mengirim ulang hanya menambah eksekusi yatim yang
-        // masih memegang slot, persis yang bikin antrean makin panjang.
-        if (err && err.code === 'TIMEOUT') break;
-        if (i < o.attempts - 1) {
-          // Backoff eksponensial + jitter. Jeda 600-1300 ms yang lama terlalu
-          // pendek utk skala waktu GAS yang sedang mengantre (di log, satu
-          // request sempat menunggu 29 detik sebelum dijawab 404).
-          await sleep(900 * Math.pow(2, i) + Math.floor(Math.random() * 800));
-        }
-      }
-    }
-    throw last;
-  }
-
-  function request(url, opts) {
-    const o = Object.assign({ timeout: 45000, attempts: attemptsFor(url) }, opts || {});
-    const ck = cacheKeyFor(url);
-    if (ck) { const hit = cacheGet(ck); if (hit) return Promise.resolve(hit); }
-    return acquire().then((slot) =>
-      run(url, o).then(
-        (val) => {
-          if (ck && val && val.success !== false) cachePut(ck, val, CLIENT_CACHE_MS[actionOf(url)]);
-          release(slot);
-          return val;
-        },
-        (err) => { release(slot); throw err; }
-      )
-    );
-  }
-
-  return { request, attemptsFor, clearCache, available: (typeof fetch === 'function') };
-})();
-window.MTQ_HTTP = MTQ_HTTP;

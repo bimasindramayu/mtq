@@ -560,8 +560,8 @@
      js/main.js diedit & diupload ulang — supaya browser (termasuk HP
      yang sudah pernah buka halaman ini sebelumnya) langsung ambil versi
      baru, bukan salinan lama dari cache. -->
-<script src="js/config.js?v=202609201"></script>
-<script src="js/main.js?v=202609201"></script>
+<script src="js/config.js?v=20260817"></script>
+<script src="js/main.js?v=20260817b"></script>
 <script>
 // ── Hasil Penilaian Publik — index.html ──────────────────────
 // Variabel CABANG_LIST untuk filter pills (mirror dari penilaian.html)
@@ -574,17 +574,7 @@ let _hasilPesertaCache = {};
 let _hasilNilaiCache   = {};
 
 // JSONP helper (tidak perlu library) — mirip jsonp() di main.js
-// rev 13: fetch TANPA cookie lebih dulu (MTQ_HTTP di js/config.js); <script>
-// lama = cadangan. Kontrak sama: cb(data) atau cb(null) kalau gagal.
 function hasilJsonp(url, prefix, cb, timeout = 10000) {
-  if (typeof MTQ_HTTP === 'undefined' || !MTQ_HTTP.available) { hasilJsonpScript(url, prefix, cb, timeout); return; }
-  MTQ_HTTP.request(url, { timeout: Math.max(timeout, 20000) }).then(
-    (data) => cb(data),
-    (err)  => { if (err && err.code === 'TIMEOUT') cb(null); else hasilJsonpScript(url, prefix, cb, timeout); }
-  );
-}
-
-function hasilJsonpScript(url, prefix, cb, timeout = 10000) {
   const name = prefix + '_' + Date.now();
   const s = document.createElement('script');
   let done = false;
@@ -614,19 +604,7 @@ function initHasilPenilaian() {
       gate.style.display    = 'none';
       content.style.display = 'block';
       loadHasilPenilaian();
-      // rev 12: dulu setInterval(loadHasilPenilaian, 60000) berjalan TERUS di
-      // setiap tab yang terbuka — termasuk tab yang sedang di latar belakang —
-      // dan tiap putaran = 3 request berat ke Apps Script. Ratusan HP yang
-      // membiarkan halaman ini terbuka selama acara = banjir request rutin.
-      // Sekarang: hanya menyegarkan saat tab TERLIHAT, interval 90-110 dtk
-      // (acak, supaya tidak serempak), dan langsung menyegarkan begitu tab
-      // kembali dibuka setelah lama tersembunyi.
-      let _hasilLast = Date.now();
-      const _hasilTick = () => { _hasilLast = Date.now(); loadHasilPenilaian(); };
-      setInterval(() => { if (!document.hidden) _hasilTick(); }, 90000 + Math.floor(Math.random() * 20000));
-      document.addEventListener('visibilitychange', () => {
-        if (!document.hidden && Date.now() - _hasilLast > 120000) _hasilTick();
-      });
+      setInterval(loadHasilPenilaian, 60000); // auto-refresh tiap 1 menit
     } else {
       gate.innerHTML = `
         <div style="font-size:40px;margin-bottom:12px">🔒</div>
