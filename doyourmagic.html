@@ -11,6 +11,8 @@
   <meta http-equiv="Expires" content="0">
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="js/document-previewer.css">
+  <!-- Slide Juara: Marcellus (judul) + Figtree (data) — dimuat sebelum html2canvas memotret slide -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@500;700;800&family=Marcellus&display=swap">
   <!-- Config terpusat — SATU sumber API_URL -->
   <!-- FIX: ?v= cache-busting — NAIKKAN setiap kali js/config.js diupdate
        (lihat catatan sama di index.html) -->
@@ -572,6 +574,9 @@
       <div class="sidebar-item" id="nav-penilaian" tabindex="0" role="button" onclick="showPage('penilaian')">
         <span class="icon">⚖️</span> Sistem Penilaian
       </div>
+      <div class="sidebar-item" id="nav-juara" tabindex="0" role="button" onclick="showPage('juara')">
+        <span class="icon">🏆</span> Slide Juara
+      </div>
       <div class="sidebar-label">Aksi</div>
       <div class="sidebar-item" tabindex="0" role="button" onclick="refreshData()"><span class="icon">🔄</span> Refresh Data</div>
       <div class="sidebar-item" tabindex="0" role="button" onclick="exportCSV()"><span class="icon">📥</span> Export CSV</div>
@@ -1059,6 +1064,11 @@
 
       </section>
 
+
+      <!-- ══ PAGE: SLIDE JUARA ═════════════════════════════════════ -->
+      <section class="admin-page-section" id="page-juara">
+        <div id="juaraRoot"></div>
+      </section>
 
       <!-- ══ PAGE: SISTEM PENILAIAN ══════════════════════════════ -->
       <section class="admin-page-section" id="page-penilaian">
@@ -1860,6 +1870,7 @@
       document.getElementById('nav-'+name)?.classList.add('active');
       if (name === 'stats') renderStats();
       if (name === 'penilaian') initPenilaianPage();
+      if (name === 'juara' && typeof juaraInit === 'function') juaraInit();
     }
     
     // ── Load All ──────────────────────────────────────────────────
@@ -4478,6 +4489,7 @@
   <!-- ══ Manajemen Maqra — dimuat setelah admin login ══ -->
   <script src="js/admin-maqra.js?v=202609201"></script>
   <script src="js/admin-penilaian.js?v=202609201"></script>
+  <script src="js/admin-juara.js?v=202609241"></script>
   <style>
     /* Sistem Penilaian tab buttons */
     .pn-tab-btn        { transition: background .2s, color .2s, box-shadow .2s; }
