@@ -4069,7 +4069,8 @@
     }
     
     // ── Unduh Foto Peserta — tombol "⬇️ Unduh Foto" di detailModal ─────────────
-    // Nama file: {nomor_peserta}_{nama_peserta}_{kecamatan}.{ext}
+    // Nama file: {cabang}_{gender}_{nomor_peserta}_{nama_peserta}_{kecamatan}.{ext}
+    //  • cabang = nama cabang TANPA akhiran Putra/Putri (cabangBaseName); gender = Putra/Putri dari gender_cabang.
     //  • nomor_peserta = nomor_pendaftaran (sama seperti no_peserta di Kartu Peserta).
     //  • Individu: nama dari r.nama_lengkap. Tim: nama anggota yang fotonya diunduh
     //    (nomor & kecamatan sama satu tim, jadi nama anggotalah yang membedakan file).
@@ -4077,9 +4078,9 @@
     //    sama seperti driveFetcher di DocumentPreviewer), lalu disimpan lewat Blob
     //    karena atribut `download` diabaikan browser utk link lintas-domain
     //    (drive.google.com), jadi nama file baru bisa ditentukan kalau lewat Blob.
-    function buildFotoFileName_(nomor, nama, kecamatan, mimeType, driveName) {
+    function buildFotoFileName_(cabang, gender, nomor, nama, kecamatan, mimeType, driveName) {
       const clean = s => String(s || '').replace(/[\\\/:*?"<>|\u0000-\u001f]/g, '').replace(/\s+/g, ' ').trim();
-      const base  = [nomor, nama, kecamatan].map(clean).filter(Boolean).join('_').slice(0, 150) || 'foto_peserta';
+      const base  = [cabang, gender, nomor, nama, kecamatan].map(clean).filter(Boolean).join('_').slice(0, 200) || 'foto_peserta';
       const EXT   = { 'image/jpeg':'.jpg', 'image/jpg':'.jpg', 'image/png':'.png', 'image/webp':'.webp', 'image/gif':'.gif', 'image/heic':'.heic' };
       let ext = EXT[String(mimeType || '').toLowerCase()];
       if (!ext) {
@@ -4099,6 +4100,10 @@
       if (!anggota.length) { try { anggota = JSON.parse(r.anggota_json || '[]'); } catch (e) { anggota = []; } }
       const a    = anggota[idx] || {};
       const nama = (r.tipe_lomba === 'team' ? a.nama_lengkap : (r.nama_lengkap || a.nama_lengkap)) || '';
+      const cabang = cabangBaseName(r.cabang_lomba);
+      const g      = String(r.gender_cabang || '').toUpperCase();
+      const gender = g === 'L' ? 'Putra' : g === 'P' ? 'Putri'
+                   : /putri\s*$/i.test(r.cabang_lomba || '') ? 'Putri' : /putra\s*$/i.test(r.cabang_lomba || '') ? 'Putra' : '';
       const id   = extractDriveIdClient_(a.link_foto || '');
       if (!id) { toast('Foto Belum Ada', 'Peserta ini belum punya link foto.', 'warning'); return; }
 
@@ -4119,7 +4124,7 @@
           const bytes = new Uint8Array(bin.length);
           for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
           const blob  = new Blob([bytes], { type: data.mimeType || 'application/octet-stream' });
-          const fname = buildFotoFileName_(nomor, nama, r.kecamatan, data.mimeType, data.name);
+          const fname = buildFotoFileName_(cabang, gender, nomor, nama, r.kecamatan, data.mimeType, data.name);
           const url   = URL.createObjectURL(blob);
           const link  = document.createElement('a');
           link.href = url; link.download = fname;
